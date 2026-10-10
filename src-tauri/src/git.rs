@@ -836,9 +836,19 @@ fn config(repo: &Path, key: &str) -> Result<Option<String>> {
         .then(|| String::from_utf8_lossy(&out.stdout).trim().to_lowercase()))
 }
 
-/// The mode the user's `pull.rebase` setting asks for, if it is set.
+/// The mode the user's `pull.rebase` setting asks for, if they set one.
+/// The system-wide value is ignored: the Git for Windows installer writes
+/// `pull.rebase=false` there by default, which isn't a real choice.
 fn configured_pull_mode(repo: &Path) -> Result<Option<PullMode>> {
-    Ok(config(repo, "pull.rebase")?.map(|v| match v.as_str() {
+    let out = output(repo, &["config", "--get", "--show-scope", "pull.rebase"])?;
+    let line = String::from_utf8_lossy(&out.stdout).trim().to_lowercase();
+    let Some((scope, value)) = line.split_once(char::is_whitespace) else {
+        return Ok(None);
+    };
+    if !out.status.success() || scope == "system" {
+        return Ok(None);
+    }
+    Ok(Some(match value.trim() {
         "false" | "no" | "off" | "0" => PullMode::Merge,
         // true, merges, interactive and their short forms all rebase.
         _ => PullMode::Rebase,
