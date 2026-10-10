@@ -7,7 +7,8 @@ mod rebase;
 
 use conflict::{Choice, Part};
 use git::{
-    Branch, Commit, GitError, LineAction, MergeOutcome, RepoInfo, Result, Side, Stash, Status,
+    Branch, Commit, GitError, LineAction, MergeOutcome, PullMode, PullOutcome, RepoInfo, Result,
+    Side, Stash, Status,
 };
 use github::{Account, CreatedRepo, DeviceCode, PollResult, RemoteRepo};
 use rebase::{RebaseOutcome, RebasePlan, TodoItem};
@@ -184,8 +185,8 @@ fn fetch(repo: String) -> Result<()> {
 }
 
 #[tauri::command(async)]
-fn pull(repo: String) -> Result<()> {
-    git::pull(Path::new(&repo), &github::git_env())
+fn pull(repo: String, mode: Option<PullMode>, remember: bool) -> Result<PullOutcome> {
+    git::pull(Path::new(&repo), &github::git_env(), mode, remember)
 }
 
 #[tauri::command(async)]

@@ -20,10 +20,12 @@ import {
 } from 'lucide-react'
 import GithubIcon from './GithubIcon'
 import { readTheme, setTheme, type Theme } from '../lib/prefs'
+import PullDialog from './PullDialog'
 import {
   git,
   type Account,
   type Branch,
+  type PullMode,
   type RepoInfo,
   type Status,
 } from '../lib/git'
@@ -68,6 +70,17 @@ export default function Toolbar({
   const needsRemote = !hasUpstream && originUrl === null
   // After editing pushed history, a normal push is rejected.
   const diverged = hasUpstream && ahead > 0 && behind > 0
+  const [askPull, setAskPull] = useState(false)
+
+  async function pull(mode: PullMode | null = null, remember = false) {
+    setAskPull(false)
+    let mustAsk = false
+    await act('pull', async () => {
+      mustAsk = (await git.pull(repo.path, mode, remember)).diverged
+    })
+    // Conflicts show up in the Changes tab by themselves.
+    if (mustAsk) setAskPull(true)
+  }
 
   async function forcePush() {
     const ok = await confirm(
@@ -100,7 +113,7 @@ export default function Toolbar({
         icon={<Spin active={busy === 'fetch'} icon={RefreshCw} />}
       />
       <ToolbarButton
-        onClick={() => act('pull', () => git.pull(repo.path))}
+        onClick={() => pull()}
         disabled={busy !== null || !hasUpstream}
         label="Pull"
         value={behind > 0 ? `${behind} behind` : 'Up to date'}
@@ -139,6 +152,16 @@ export default function Toolbar({
         />
       )}
       <ThemeMenu />
+      {askPull && status?.branch && status.upstream && (
+        <PullDialog
+          branch={status.branch}
+          upstream={status.upstream}
+          ahead={ahead}
+          behind={behind}
+          onPull={pull}
+          onClose={() => setAskPull(false)}
+        />
+      )}
       <AccountMenu
         account={account}
         onSignIn={onSignIn}

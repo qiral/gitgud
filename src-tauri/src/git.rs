@@ -812,8 +812,121 @@ pub fn fetch(repo: &Path, env: &[(String, String)]) -> Result<()> {
     run_with_env(repo, &["fetch", "--all", "--prune"], env).map(drop)
 }
 
-pub fn pull(repo: &Path, env: &[(String, String)]) -> Result<()> {
-    run_with_env(repo, &["pull", "--ff-only"], env).map(drop)
+#[derive(Debug, Clone, Copy, serde::Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum PullMode {
+    Merge,
+    Rebase,
+}
+
+#[derive(Debug, Serialize, PartialEq)]
+pub struct PullOutcome {
+    /// Both sides have new commits and no mode was chosen or configured,
+    /// so nothing happened; ask the user how to combine them.
+    pub diverged: bool,
+    /// The merge or rebase stopped with conflicts to resolve.
+    pub conflicts: bool,
+}
+
+fn config(repo: &Path, key: &str) -> Result<Option<String>> {
+    let out = output(repo, &["config", "--get", key])?;
+    Ok(out
+        .status
+        .success()
+        .then(|| String::from_utf8_lossy(&out.stdout).trim().to_lowercase()))
+}
+
+/// The mode the user's `pull.rebase` setting asks for, if they set one.
+/// The system-wide value is ignored: the Git for Windows installer writes
+/// `pull.rebase=false` there by default, which isn't a real choice.
+fn configured_pull_mode(repo: &Path) -> Result<Option<PullMode>> {
+    let out = output(repo, &["config", "--get", "--show-scope", "pull.rebase"])?;
+    let line = String::from_utf8_lossy(&out.stdout).trim().to_lowercase();
+    let Some((scope, value)) = line.split_once(char::is_whitespace) else {
+        return Ok(None);
+    };
+    if !out.status.success() || scope == "system" {
+        return Ok(None);
+    }
+    Ok(Some(match value.trim() {
+        "false" | "no" | "off" | "0" => PullMode::Merge,
+        // true, merges, interactive and their short forms all rebase.
+        _ => PullMode::Rebase,
+    }))
+}
+
+/// True when the branch and its upstream both have commits the other lacks.
+fn diverged(repo: &Path) -> Result<bool> {
+    let out = output(
+        repo,
+        &["rev-list", "--left-right", "--count", "HEAD...@{upstream}"],
+    )?;
+    let counts = String::from_utf8_lossy(&out.stdout);
+    let mut n = counts.split_whitespace().map(|c| c.parse().unwrap_or(0u32));
+    Ok(out.status.success() && n.next() > Some(0) && n.next() > Some(0))
+}
+
+/// Pulls the upstream branch. With no `mode` it follows `pull.rebase`, or
+/// only fast-forwards when that isn't set. `remember` saves `mode` as this
+/// repository's `pull.rebase`.
+pub fn pull(
+    repo: &Path,
+    env: &[(String, String)],
+    mode: Option<PullMode>,
+    remember: bool,
+) -> Result<PullOutcome> {
+    if merge_message(repo)?.is_some() || crate::rebase::progress(repo)?.is_some() {
+        return Err(GitError::Failed(
+            "Finish or abort the merge or rebase in progress first".into(),
+        ));
+    }
+    if let (Some(mode), true) = (mode, remember) {
+        let value = if mode == PullMode::Rebase {
+            "true"
+        } else {
+            "false"
+        };
+        run(repo, &["config", "pull.rebase", value])?;
+    }
+    let mode = match mode {
+        Some(m) => Some(m),
+        None => configured_pull_mode(repo)?,
+    };
+    let mut args = vec!["pull"];
+    match mode {
+        None => args.push("--ff-only"),
+        Some(PullMode::Merge) => {
+            args.extend(["--no-rebase", "--no-edit"]);
+            // pull.ff=only would refuse the merge that was just asked for.
+            if config(repo, "pull.ff")?.as_deref() == Some("only") {
+                args.push("--ff");
+            }
+        }
+        // Local changes are set aside and come back once the rebase ends.
+        Some(PullMode::Rebase) => args.extend(["--rebase", "--autostash"]),
+    }
+
+    match run_with_env(repo, &args, env) {
+        Ok(_) => Ok(PullOutcome {
+            diverged: false,
+            conflicts: false,
+        }),
+        Err(e) => {
+            if merge_message(repo)?.is_some() || crate::rebase::progress(repo)?.is_some() {
+                Ok(PullOutcome {
+                    diverged: false,
+                    conflicts: true,
+                })
+            } else if mode.is_none() && diverged(repo)? {
+                Ok(PullOutcome {
+                    diverged: true,
+                    conflicts: false,
+                })
+            } else {
+                Err(e)
+            }
+        }
+    }
 }
 
 pub fn push(repo: &Path, env: &[(String, String)]) -> Result<()> {
@@ -1493,5 +1606,141 @@ mod tests {
         );
         assert_eq!(parse_refs("HEAD")[0].kind, RefKind::Head);
         assert!(parse_refs("").is_empty());
+    }
+
+    /// A clone of a bare remote where `f.txt` was changed both locally and
+    /// upstream, in the same line when `conflicting`.
+    fn diverged_clone(name: &str, conflicting: bool) -> PathBuf {
+        let base = std::env::temp_dir().join(format!("gitgud-pull-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        std::fs::create_dir_all(&base).unwrap();
+        run(&base, &["init", "-q", "--bare", "-b", "main", "remote.git"]).unwrap();
+        let setup = |dir: &Path| {
+            for (k, v) in [
+                ("user.name", "T"),
+                ("user.email", "t@x"),
+                ("commit.gpgsign", "false"),
+                ("core.autocrlf", "false"),
+            ] {
+                run(dir, &["config", k, v]).unwrap();
+            }
+        };
+        let edit = |dir: &Path, content: &str, message: &str| {
+            std::fs::write(dir.join("f.txt"), content).unwrap();
+            stage(dir, &["f.txt".into()]).unwrap();
+            commit(dir, message).unwrap();
+        };
+
+        run(&base, &["clone", "-q", "remote.git", "theirs"]).unwrap();
+        let theirs = base.join("theirs");
+        setup(&theirs);
+        edit(&theirs, "one\ntwo\nthree\n", "base");
+        run(&theirs, &["push", "-q", "-u", "origin", "main"]).unwrap();
+
+        run(&base, &["clone", "-q", "remote.git", "mine"]).unwrap();
+        let mine = base.join("mine");
+        setup(&mine);
+        edit(&theirs, "one\ntwo\nTHREE\n", "theirs");
+        run(&theirs, &["push", "-q"]).unwrap();
+        let local = if conflicting {
+            "one\ntwo\nmine\n"
+        } else {
+            "ONE\ntwo\nthree\n"
+        };
+        edit(&mine, local, "mine");
+        mine
+    }
+
+    #[test]
+    fn pull_asks_when_branches_diverge() {
+        let repo = diverged_clone("ask", false);
+        let outcome = pull(&repo, &[], None, false).unwrap();
+        assert_eq!(
+            outcome,
+            PullOutcome {
+                diverged: true,
+                conflicts: false
+            }
+        );
+        // Nothing was merged, but the upstream commit was fetched.
+        let commits = log(&repo, 10).unwrap();
+        assert_eq!((commits.len(), commits[0].parents.len()), (3, 1));
+        let status = status(&repo).unwrap();
+        assert_eq!((status.ahead, status.behind), (1, 1));
+    }
+
+    #[test]
+    fn pull_merges_and_remembers() {
+        let repo = diverged_clone("merge", false);
+        run(&repo, &["config", "pull.ff", "only"]).unwrap();
+        let outcome = pull(&repo, &[], Some(PullMode::Merge), true).unwrap();
+        assert_eq!(
+            outcome,
+            PullOutcome {
+                diverged: false,
+                conflicts: false
+            }
+        );
+        assert_eq!(log(&repo, 1).unwrap()[0].parents.len(), 2);
+        assert_eq!(
+            std::fs::read_to_string(repo.join("f.txt")).unwrap(),
+            "ONE\ntwo\nTHREE\n"
+        );
+        assert_eq!(configured_pull_mode(&repo).unwrap(), Some(PullMode::Merge));
+    }
+
+    #[test]
+    fn pull_rebases_from_config_with_local_changes() {
+        let repo = diverged_clone("rebase", false);
+        run(&repo, &["config", "pull.rebase", "true"]).unwrap();
+        std::fs::write(repo.join("notes.txt"), "draft\n").unwrap();
+        stage(&repo, &["notes.txt".into()]).unwrap();
+        let outcome = pull(&repo, &[], None, false).unwrap();
+        assert_eq!(
+            outcome,
+            PullOutcome {
+                diverged: false,
+                conflicts: false
+            }
+        );
+        let subjects: Vec<_> = log(&repo, 10)
+            .unwrap()
+            .into_iter()
+            .map(|c| c.subject)
+            .collect();
+        assert_eq!(subjects, ["mine", "theirs", "base"]);
+        // The autostashed change is back.
+        assert!(status(&repo)
+            .unwrap()
+            .files
+            .iter()
+            .any(|f| f.path == "notes.txt"));
+    }
+
+    #[test]
+    fn pull_rebase_stops_for_conflicts() {
+        let repo = diverged_clone("conflict", true);
+        let outcome = pull(&repo, &[], Some(PullMode::Rebase), false).unwrap();
+        assert_eq!(
+            outcome,
+            PullOutcome {
+                diverged: false,
+                conflicts: true
+            }
+        );
+        let at = crate::rebase::progress(&repo).unwrap().unwrap();
+        assert_eq!(at.branch, "main");
+        assert!(!at.editing_history);
+        assert!(pull(&repo, &[], None, false).is_err());
+
+        // While rebasing, "theirs" is the local commit being replayed.
+        resolve_file(&repo, "f.txt", Side::Theirs).unwrap();
+        assert!(!crate::rebase::continue_(&repo).unwrap().stopped);
+        let subjects: Vec<_> = log(&repo, 10)
+            .unwrap()
+            .into_iter()
+            .map(|c| c.subject)
+            .collect();
+        assert_eq!(subjects, ["mine", "theirs", "base"]);
     }
 }

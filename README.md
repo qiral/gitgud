@@ -36,7 +36,7 @@ GitGud aims to be as approachable as GitHub Desktop while exposing more of Git's
 - Stash changes (optionally with untracked files), then apply, pop, preview or delete stashes
 - Create and switch branches
 - History with a commit graph across all branches, remote branches and tags, plus each commit's changes
-- Fetch, pull (fast-forward only) and push, including publishing new branches
+- Fetch, pull and push, including publishing new branches; when your branch and its upstream have both moved on, pull asks whether to merge or rebase (or follows your `pull.rebase` setting)
 - Sign in with GitHub (device flow, token kept in the OS keychain) to push over HTTPS
 - Publish a local repository to GitHub in one step
 - Light and dark themes: follow your system or pick one

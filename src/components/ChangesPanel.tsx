@@ -73,7 +73,9 @@ export default function ChangesPanel({
 
   async function abortRebase() {
     const ok = await confirm(
-      'Abort the rebase? Your branch goes back to how it was before you started editing history.',
+      rebasing?.editingHistory
+        ? 'Abort the rebase? Your branch goes back to how it was before you started editing history.'
+        : 'Abort the rebase? Your branch goes back to how it was before pulling.',
       { title: 'Abort rebase', kind: 'warning' },
     )
     if (ok) act('rebase', () => git.rebaseAbort(repo.path))
@@ -103,7 +105,7 @@ export default function ChangesPanel({
               title={merging ?? undefined}
             >
               {merging ??
-                `Editing history of ${rebasing!.branch} (step ${rebasing!.step} of ${rebasing!.total})`}
+                `${rebasing!.editingHistory ? 'Editing history of' : 'Rebasing'} ${rebasing!.branch} (step ${rebasing!.step} of ${rebasing!.total})`}
             </span>
           </div>
           <div className="mt-1 flex items-center gap-2 text-xs text-muted">

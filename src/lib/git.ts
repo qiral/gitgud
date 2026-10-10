@@ -23,8 +23,14 @@ export interface Status {
   files: FileChange[]
   /** While a merge is in progress: its message, e.g. "Merge branch 'x'". */
   merging: string | null
-  /** While an interactive rebase is stopped, e.g. for conflicts. */
-  rebasing: { step: number; total: number; branch: string } | null
+  /** While a rebase is stopped, e.g. for conflicts. */
+  rebasing: {
+    step: number
+    total: number
+    branch: string
+    /** True for a history edit, false for e.g. a pull with rebase. */
+    editingHistory: boolean
+  } | null
 }
 
 export interface Branch {
@@ -154,6 +160,8 @@ export interface RebasePlan {
   pushed: boolean
 }
 
+export type PullMode = 'merge' | 'rebase'
+
 export type RebaseAction = 'pick' | 'reword' | 'squash' | 'fixup' | 'drop'
 
 export interface TodoItem {
@@ -229,7 +237,13 @@ export const git = {
   stashShow: (repo: string, index: number) =>
     invoke<string>('stash_show', { repo, index }),
   fetch: (repo: string) => invoke<void>('fetch', { repo }),
-  pull: (repo: string) => invoke<void>('pull', { repo }),
+  /** Without a mode, follows `pull.rebase` or only fast-forwards. */
+  pull: (repo: string, mode: PullMode | null = null, remember = false) =>
+    invoke<{ diverged: boolean; conflicts: boolean }>('pull', {
+      repo,
+      mode,
+      remember,
+    }),
   push: (repo: string) => invoke<void>('push', { repo }),
   clone: (url: string, parent: string, name: string) =>
     invoke<RepoInfo>('clone_repo', { url, parent, name }),
