@@ -65,6 +65,8 @@ pub struct RebaseProgress {
     pub total: u32,
     /// Branch being rebased, e.g. "main".
     pub branch: String,
+    /// True for a history edit started here, false for e.g. a pull rebase.
+    pub editing_history: bool,
 }
 
 fn is_hash(s: &str) -> bool {
@@ -301,6 +303,7 @@ pub fn progress(repo: &Path) -> Result<Option<RebaseProgress>> {
         branch: read("head-name")
             .trim_start_matches("refs/heads/")
             .to_string(),
+        editing_history: git_path(repo, "gitgud-rebase")?.is_dir(),
     }))
 }
 
@@ -452,6 +455,7 @@ mod tests {
         );
         let at = progress(repo).unwrap().unwrap();
         assert_eq!((at.step, at.total, at.branch.as_str()), (1, 2, "main"));
+        assert!(at.editing_history);
         abort(repo).unwrap();
         assert_eq!(progress(repo).unwrap(), None);
         assert_eq!(subjects(repo), ["three", "two", "one"]);
