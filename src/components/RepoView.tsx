@@ -50,6 +50,8 @@ interface Props {
   account: Account | null
   onAccountChange: (account: Account | null) => void
   onOpenOther: () => void
+  recents: RepoInfo[]
+  onOpenRecent: (path: string) => void
   onClone: () => void
 }
 
@@ -58,6 +60,8 @@ export default function RepoView({
   account,
   onAccountChange,
   onOpenOther,
+  recents,
+  onOpenRecent,
   onClone,
 }: Props) {
   const [tab, setTab] = useState<Tab>('changes')
@@ -184,6 +188,8 @@ export default function RepoView({
         account={account}
         busy={busy}
         onOpenOther={onOpenOther}
+        recents={recents}
+        onOpenRecent={onOpenRecent}
         onClone={onClone}
         onSignIn={() => setDialog('signIn')}
         onSignOut={() =>

@@ -16,22 +16,21 @@
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --app-bg: #16181d;
-    --app-panel: #1d2026;
-    --app-hover: #272b33;
-    --app-line: #2e323b;
-    --app-fg: #e6e8eb;
-    --app-muted: #8b919c;
-    --app-accent: #7b93ff;
-    --app-added: #4ac26b;
-    --app-added-bg: #12261a;
-    --app-removed: #f47067;
-    --app-removed-bg: #2d1517;
-    --app-modified: #d4a72c;
-    color-scheme: dark;
-  }
+/* Set by applyTheme in src/lib/prefs.ts, which resolves "system". */
+:root[data-theme='dark'] {
+  --app-bg: #16181d;
+  --app-panel: #1d2026;
+  --app-hover: #272b33;
+  --app-line: #2e323b;
+  --app-fg: #e6e8eb;
+  --app-muted: #8b919c;
+  --app-accent: #7b93ff;
+  --app-added: #4ac26b;
+  --app-added-bg: #12261a;
+  --app-removed: #f47067;
+  --app-removed-bg: #2d1517;
+  --app-modified: #d4a72c;
+  color-scheme: dark;
 }
 
 @theme inline {

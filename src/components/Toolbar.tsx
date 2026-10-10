@@ -12,10 +12,14 @@ import {
   GitBranch,
   Loader2,
   LogOut,
+  Monitor,
+  Moon,
   Plus,
   RefreshCw,
+  Sun,
 } from 'lucide-react'
 import GithubIcon from './GithubIcon'
+import { readTheme, setTheme, type Theme } from '../lib/prefs'
 import {
   git,
   type Account,
@@ -32,6 +36,8 @@ interface Props {
   account: Account | null
   busy: string | null
   onOpenOther: () => void
+  recents: RepoInfo[]
+  onOpenRecent: (path: string) => void
   onClone: () => void
   onSignIn: () => void
   onSignOut: () => void
@@ -47,6 +53,8 @@ export default function Toolbar({
   account,
   busy,
   onOpenOther,
+  recents,
+  onOpenRecent,
   onClone,
   onSignIn,
   onSignOut,
@@ -73,7 +81,13 @@ export default function Toolbar({
 
   return (
     <header className="flex h-12 shrink-0 items-stretch border-b border-line">
-      <RepoMenu repo={repo} onOpenOther={onOpenOther} onClone={onClone} />
+      <RepoMenu
+        repo={repo}
+        recents={recents}
+        onOpenRecent={onOpenRecent}
+        onOpenOther={onOpenOther}
+        onClone={onClone}
+      />
       <BranchMenu repo={repo} status={status} branches={branches} act={act} />
 
       <div className="flex-1" />
@@ -124,6 +138,7 @@ export default function Toolbar({
           icon={<Spin active={busy === 'push'} icon={ArrowUp} />}
         />
       )}
+      <ThemeMenu />
       <AccountMenu
         account={account}
         onSignIn={onSignIn}
@@ -185,9 +200,15 @@ function ToolbarButton({
 
 function RepoMenu({
   repo,
+  recents,
+  onOpenRecent,
   onOpenOther,
   onClone,
-}: Pick<Props, 'repo' | 'onOpenOther' | 'onClone'>) {
+}: Pick<
+  Props,
+  'repo' | 'recents' | 'onOpenRecent' | 'onOpenOther' | 'onClone'
+>) {
+  const others = recents.filter((r) => r.path !== repo.path)
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   useClickOutside(ref, open, () => setOpen(false))
@@ -216,13 +237,77 @@ function RepoMenu({
         trailing={<ChevronDown className="size-4 text-muted" />}
       />
       {open && (
-        <div className="absolute top-full left-0 z-10 mt-1 w-60 overflow-hidden rounded-md border border-line bg-panel shadow-lg">
+        <div className="absolute top-full left-0 z-10 mt-1 w-72 overflow-hidden rounded-md border border-line bg-panel shadow-lg">
+          {others.length > 0 && (
+            <div className="border-b border-line py-1">
+              <div className="px-3 py-1 text-xs text-muted">Recent</div>
+              {others.map((r) => (
+                <button
+                  key={r.path}
+                  onClick={() => {
+                    setOpen(false)
+                    onOpenRecent(r.path)
+                  }}
+                  title={r.path}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-hover"
+                >
+                  <FolderGit2 className="size-4 shrink-0 text-muted" />
+                  <span className="truncate">{r.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
           {item(
             'Open local repository…',
             <FolderOpen className="size-4" />,
             onOpenOther,
           )}
           {item('Clone repository…', <Download className="size-4" />, onClone)}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const themes: { value: Theme; label: string; icon: typeof Sun }[] = [
+  { value: 'system', label: 'System', icon: Monitor },
+  { value: 'light', label: 'Light', icon: Sun },
+  { value: 'dark', label: 'Dark', icon: Moon },
+]
+
+function ThemeMenu() {
+  const [open, setOpen] = useState(false)
+  const [theme, setChoice] = useState(readTheme)
+  const ref = useRef<HTMLDivElement>(null)
+  useClickOutside(ref, open, () => setOpen(false))
+  const Current = themes.find((t) => t.value === theme)!.icon
+
+  return (
+    <div ref={ref} className="relative flex border-r border-line">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        title="Theme"
+        className="flex items-center px-3 text-muted hover:bg-hover hover:text-fg"
+      >
+        <Current className="size-4" />
+      </button>
+      {open && (
+        <div className="absolute top-full right-1 z-10 mt-1 w-36 overflow-hidden rounded-md border border-line bg-panel py-1 shadow-lg">
+          {themes.map(({ value, label, icon: Icon }) => (
+            <button
+              key={value}
+              onClick={() => {
+                setTheme(value)
+                setChoice(value)
+                setOpen(false)
+              }}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-hover"
+            >
+              <Icon className="size-4 text-muted" />
+              <span className="flex-1">{label}</span>
+              {theme === value && <Check className="size-4 text-accent" />}
+            </button>
+          ))}
         </div>
       )}
     </div>

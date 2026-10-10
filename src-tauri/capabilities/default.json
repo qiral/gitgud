@@ -7,6 +7,8 @@
     "core:default",
     "opener:default",
     "dialog:allow-open",
-    "dialog:allow-confirm"
+    "dialog:allow-confirm",
+    "dialog:allow-message",
+    "core:window:allow-set-theme"
   ]
 }
