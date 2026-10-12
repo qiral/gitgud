@@ -8,8 +8,37 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Create the draft once, up front. When every build job created it on its
+  # own, two of them could race and split the installers over two drafts.
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      id: ${{ steps.create.outputs.id }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: create
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: |
+          tag="${TAG:-v$(node -p "require('./package.json').version")}"
+          # Reuse an existing release for this tag, e.g. when re-running.
+          id=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate \
+            --jq ".[] | select(.tag_name == \"$tag\") | .id" | head -n1)
+          if [ -z "$id" ]; then
+            id=$(gh api "repos/$GITHUB_REPOSITORY/releases" \
+              -f tag_name="$tag" -f target_commitish="$GITHUB_SHA" \
+              -f name="GitGud $tag" \
+              -f body="See the assets below to download GitGud for your platform." \
+              -F draft=true -F prerelease=false --jq .id)
+          fi
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
   build:
     name: ${{ matrix.name }}
+    needs: release
     permissions:
       contents: write
     strategy:
@@ -57,9 +86,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'v__VERSION__' }}
-          releaseName: GitGud ${{ github.ref_type == 'tag' && github.ref_name || 'v__VERSION__' }}
-          releaseBody: See the assets below to download GitGud for your platform.
-          releaseDraft: true
-          prerelease: false
+          releaseId: ${{ needs.release.outputs.id }}
           args: ${{ matrix.args }}
