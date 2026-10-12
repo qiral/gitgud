@@ -34,6 +34,8 @@ fn keyring_error(e: keyring::Error) -> GitError {
 pub struct Account {
     pub login: String,
     pub name: Option<String>,
+    /// GitHub's API sends `avatar_url`; the keychain copy uses `avatarUrl`.
+    #[serde(alias = "avatar_url")]
     pub avatar_url: String,
 }
 
@@ -292,4 +294,26 @@ pub fn list_repos() -> Result<Vec<RemoteRepo>> {
         }
     }
     Ok(repos)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reads_account_from_github_and_from_the_keychain() {
+        // Trimmed GET /user response.
+        let api = r#"{"login":"octocat","id":1,"avatar_url":"https://a/1","name":null}"#;
+        let account: Account = serde_json::from_str(api).unwrap();
+        assert_eq!(account.avatar_url, "https://a/1");
+
+        let stored = Stored {
+            token: "t".into(),
+            account,
+        };
+        let json = serde_json::to_string(&stored).unwrap();
+        assert!(json.contains("avatarUrl"), "the frontend reads camelCase");
+        let back: Stored = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.account.login, "octocat");
+    }
 }
