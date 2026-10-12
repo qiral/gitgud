@@ -12,6 +12,7 @@ import {
   type RemoteRepo,
   type RepoInfo,
 } from '../lib/git'
+import { repoNameFromUrl } from '../lib/url'
 import Dialog from './Dialog'
 import SignInDialog from './SignInDialog'
 import GithubIcon from './GithubIcon'
@@ -23,12 +24,6 @@ interface Props {
   onAccountChange: (account: Account) => void
   onClose: () => void
   onCloned: (repo: RepoInfo) => void
-}
-
-/** "my-app" from https://github.com/me/my-app.git or git@host:me/my-app.git */
-function repoNameFromUrl(url: string) {
-  const last = url.trim().replace(/\/+$/, '').split(/[/:]/).pop() ?? ''
-  return last.replace(/\.git$/, '')
 }
 
 export default function CloneDialog({
