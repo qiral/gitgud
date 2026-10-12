@@ -45,6 +45,9 @@ jobs:
       - name: Build frontend
         run: npm run build
 
+      - name: Frontend tests
+        run: npm test
+
       - name: Check formatting
         if: runner.os == 'Linux'
         run: |
