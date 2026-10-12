@@ -247,6 +247,8 @@ export const git = {
   push: (repo: string) => invoke<void>('push', { repo }),
   clone: (url: string, parent: string, name: string) =>
     invoke<RepoInfo>('clone_repo', { url, parent, name }),
+  /** Makes a running `clone` fail; it removes the half-cloned folder first. */
+  cancelClone: () => invoke<void>('cancel_clone'),
   originUrl: (repo: string) => invoke<string | null>('origin_url', { repo }),
 }
 

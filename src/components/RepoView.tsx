@@ -132,7 +132,12 @@ export default function RepoView({
       if (selection.kind === 'stash')
         return git.stashShow(repo.path, selection.stash.index)
       const { file, staged } = selection
-      return git.diff(repo.path, file.path, staged, file.untracked)
+      // Staging some lines of an untracked file makes it tracked, so ask the
+      // latest status rather than the selection, which was taken before.
+      const untracked =
+        status?.files.find((f) => f.path === file.path)?.untracked ??
+        file.untracked
+      return git.diff(repo.path, file.path, staged, untracked)
     }
     load()
       .then((d) => !cancelled && setDiff(d))
@@ -308,9 +313,7 @@ export default function RepoView({
             <DiffView
               diff={diff}
               actions={
-                selection.kind === 'file' &&
-                !selection.file.untracked &&
-                !selection.file.conflicted
+                selection.kind === 'file' && !selection.file.conflicted
                   ? {
                       staged: selection.staged,
                       onApply: (lines, action) =>

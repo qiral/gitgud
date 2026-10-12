@@ -29,6 +29,9 @@ keyring = { version = "3", features = ["apple-native", "windows-native", "sync-s
 ureq = { version = "3", features = ["json"] }
 base64 = "0.22"
 
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
 [profile.release]

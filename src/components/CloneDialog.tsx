@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { listen } from '@tauri-apps/api/event'
 import { homeDir } from '@tauri-apps/api/path'
 import { open } from '@tauri-apps/plugin-dialog'
@@ -45,6 +45,8 @@ export default function CloneDialog({
   const [signingIn, setSigningIn] = useState(false)
   const [progress, setProgress] = useState<CloneProgress | null>(null)
   const [cloning, setCloning] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
+  const cancelled = useRef(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -73,6 +75,7 @@ export default function CloneDialog({
     setCloning(true)
     setError(null)
     setProgress(null)
+    cancelled.current = false
     const unlisten = await listen<CloneProgress>('clone-progress', (event) =>
       setProgress(event.payload),
     )
@@ -85,10 +88,22 @@ export default function CloneDialog({
       }
       onCloned(repo)
     } catch (err) {
-      setError(errorMessage(err))
+      // Cancelling is not an error worth showing.
+      if (!cancelled.current) setError(errorMessage(err))
     } finally {
       unlisten()
       setCloning(false)
+      setCancelling(false)
+    }
+  }
+
+  async function cancel() {
+    cancelled.current = true
+    setCancelling(true)
+    try {
+      await git.cancelClone()
+    } catch (err) {
+      setError(errorMessage(err))
     }
   }
 
@@ -208,14 +223,28 @@ export default function CloneDialog({
         {cloning && (
           <div className="space-y-1">
             <div className="flex justify-between text-xs text-muted">
-              <span>{progress?.phase ?? 'Connecting…'}</span>
+              <span>
+                {cancelling
+                  ? 'Cancelling…'
+                  : (progress?.phase ?? 'Connecting…')}
+              </span>
               {progress && <span>{progress.percent}%</span>}
             </div>
-            <div className="h-1.5 overflow-hidden rounded bg-bg">
-              <div
-                className="h-full bg-accent transition-[width]"
-                style={{ width: `${progress?.percent ?? 0}%` }}
-              />
+            <div className="flex items-center gap-2">
+              <div className="h-1.5 flex-1 overflow-hidden rounded bg-bg">
+                <div
+                  className="h-full bg-accent transition-[width]"
+                  style={{ width: `${progress?.percent ?? 0}%` }}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={cancel}
+                disabled={cancelling}
+                className="shrink-0 rounded border border-line px-2 py-0.5 text-xs hover:bg-hover disabled:opacity-40"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         )}

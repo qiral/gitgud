@@ -7,13 +7,13 @@ mod rebase;
 
 use conflict::{Choice, Part};
 use git::{
-    Branch, Commit, GitError, LineAction, MergeOutcome, PullMode, PullOutcome, RepoInfo, Result,
-    Side, Stash, Status,
+    Branch, CloneCancel, Commit, GitError, LineAction, MergeOutcome, PullMode, PullOutcome,
+    RepoInfo, Result, Side, Stash, Status,
 };
 use github::{Account, CreatedRepo, DeviceCode, PollResult, RemoteRepo};
 use rebase::{RebaseOutcome, RebasePlan, TodoItem};
 use std::path::Path;
-use tauri::Emitter;
+use tauri::{Emitter, Manager};
 
 // Commands are marked `async` so git runs on a worker thread instead of
 // blocking the UI thread.
@@ -252,15 +252,30 @@ fn clone_repo(
     parent: String,
     name: String,
 ) -> Result<RepoInfo> {
-    let dest = git::clone(&url, Path::new(&parent), &name, &github::git_env(), |p| {
-        let _ = app.emit("clone-progress", p);
-    })?;
+    let cancel = app.state::<CloneCancel>();
+    let dest = git::clone(
+        &url,
+        Path::new(&parent),
+        &name,
+        &github::git_env(),
+        &cancel,
+        |p| {
+            let _ = app.emit("clone-progress", p);
+        },
+    )?;
     git::open(&dest)
+}
+
+/// Stops the running `clone_repo`, which then fails with "Clone cancelled".
+#[tauri::command]
+fn cancel_clone(cancel: tauri::State<CloneCancel>) {
+    cancel.cancel();
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(CloneCancel::default())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
@@ -307,6 +322,7 @@ pub fn run() {
             publish_to_github,
             github_repos,
             clone_repo,
+            cancel_clone,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

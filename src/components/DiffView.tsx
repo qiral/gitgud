@@ -67,8 +67,8 @@ function parse(diff: string): Line[] {
 
 const isChange = (l: Line) => l.kind === 'add' || l.kind === 'remove'
 
-/** New, deleted and binary files can only be staged as a whole. */
-const WHOLE_FILE = /^(new file mode|deleted file mode|Binary files)/m
+/** Binary files can only be staged as a whole. */
+const BINARY = /^Binary files/m
 
 const ROW: Record<LineKind, string> = {
   add: 'bg-added-bg',
@@ -97,7 +97,7 @@ interface Props {
 
 export default function DiffView({ diff, actions: rawActions }: Props) {
   const lines = useMemo(() => parse(diff), [diff])
-  const actions = rawActions && !WHOLE_FILE.test(diff) ? rawActions : undefined
+  const actions = rawActions && !BINARY.test(diff) ? rawActions : undefined
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [anchor, setAnchor] = useState<number | null>(null)
 

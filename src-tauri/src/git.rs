@@ -11,7 +11,9 @@ use crate::graph::{self, GraphRow};
 use crate::patch;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output, Stdio};
+use std::process::{Child, Command, Output, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 
 #[derive(Debug, thiserror::Error)]
 pub enum GitError {
@@ -443,15 +445,6 @@ pub fn commit(repo: &Path, message: &str) -> Result<()> {
 // Diff
 
 pub fn diff(repo: &Path, path: &str, staged: bool, untracked: bool) -> Result<String> {
-    if untracked {
-        // `--no-index` exits with 1 when the files differ, which is always the
-        // case here, so read the output regardless of the exit code.
-        let out = output(
-            repo,
-            &["diff", "--no-color", "--no-index", "--", "/dev/null", path],
-        )?;
-        return Ok(String::from_utf8_lossy(&out.stdout).into_owned());
-    }
     // Fixed prefixes so the output can be fed back to `git apply`, whatever
     // the user's diff.noprefix / diff.mnemonicPrefix settings are.
     let mut args = vec![
@@ -461,6 +454,13 @@ pub fn diff(repo: &Path, path: &str, staged: bool, untracked: bool) -> Result<St
         "--src-prefix=a/",
         "--dst-prefix=b/",
     ];
+    if untracked {
+        // `--no-index` exits with 1 when the files differ, which is always the
+        // case here, so read the output regardless of the exit code.
+        args.extend(["--no-index", "--", "/dev/null", path]);
+        let out = output(repo, &args)?;
+        return Ok(String::from_utf8_lossy(&out.stdout).into_owned());
+    }
     if staged {
         args.push("--cached");
     }
@@ -493,7 +493,7 @@ pub fn apply_lines(repo: &Path, diff: &str, selected: &[usize], action: LineActi
     let patch = patch::partial(diff, &selected, direction).map_err(|e| match e {
         patch::PatchError::NothingSelected => GitError::Failed("No changed lines selected".into()),
         patch::PatchError::WholeFileOnly => {
-            GitError::Failed("New, deleted and binary files can only be staged as a whole".into())
+            GitError::Failed("Binary files can only be staged as a whole".into())
         }
     })?;
     let args: &[&str] = match action {
@@ -1002,13 +1002,67 @@ fn parse_progress(line: &str) -> Option<CloneProgress> {
     })
 }
 
+/// Lets another thread stop a running [`clone`].
+#[derive(Default)]
+pub struct CloneCancel {
+    child: Mutex<Option<Child>>,
+    cancelled: AtomicBool,
+}
+
+impl CloneCancel {
+    /// Kills the running clone, if any. [`clone`] then removes the
+    /// half-cloned folder and returns [`CLONE_CANCELLED`].
+    pub fn cancel(&self) {
+        let mut child = self.child.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(child) = child.as_mut() {
+            self.cancelled.store(true, Ordering::SeqCst);
+            kill_tree(child);
+        }
+    }
+}
+
+pub const CLONE_CANCELLED: &str = "Clone cancelled";
+
+/// git clone runs helpers (git-remote-https, index-pack) that would keep
+/// writing into the folder after git itself is gone. On Unix they share git's
+/// process group, so kill the whole group.
+fn kill_tree(child: &mut Child) {
+    #[cfg(unix)]
+    if let Ok(pid) = libc::pid_t::try_from(child.id()) {
+        // SAFETY: kill() has no memory-safety preconditions. The group id is
+        // git's pid, which can't be reused before we wait() on it.
+        unsafe { libc::kill(-pid, libc::SIGKILL) };
+        return;
+    }
+    let _ = child.kill();
+}
+
+/// Removes a half-cloned folder. Retries for a moment because killed helpers
+/// may still be closing files (or holding locks, on Windows).
+fn remove_partial_clone(dest: &Path) -> std::io::Result<()> {
+    let mut attempt = 0;
+    loop {
+        match std::fs::remove_dir_all(dest) {
+            Ok(()) => return Ok(()),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+            Err(_) if attempt < 20 => {
+                attempt += 1;
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+            Err(e) => return Err(e),
+        }
+    }
+}
+
 /// Clones `url` into `parent/name` and returns the new repository's path.
-/// `on_progress` is called whenever git reports a new percentage.
+/// `on_progress` is called whenever git reports a new percentage, and
+/// `cancel` can stop the clone from another thread.
 pub fn clone(
     url: &str,
     parent: &Path,
     name: &str,
     env: &[(String, String)],
+    cancel: &CloneCancel,
     on_progress: impl FnMut(CloneProgress),
 ) -> Result<PathBuf> {
     let url = url.trim();
@@ -1017,7 +1071,7 @@ pub fn clone(
             "Unsupported repository URL: {url}"
         )));
     }
-    clone_unchecked(url, parent, name, env, on_progress)
+    clone_unchecked(url, parent, name, env, cancel, on_progress)
 }
 
 /// [`clone`] without the URL allow-list; tests use it with `file://` URLs.
@@ -1026,6 +1080,7 @@ fn clone_unchecked(
     parent: &Path,
     name: &str,
     env: &[(String, String)],
+    cancel: &CloneCancel,
     mut on_progress: impl FnMut(CloneProgress),
 ) -> Result<PathBuf> {
     if name.is_empty() || name.contains(['/', '\\']) || name == "." || name == ".." {
@@ -1039,14 +1094,51 @@ fn clone_unchecked(
         )));
     }
 
-    let mut child = command(parent, &["clone", "--progress", "--", url, name])
-        .envs(env.iter().cloned())
+    let mut cmd = command(parent, &["clone", "--progress", "--", url, name]);
+    cmd.envs(env.iter().cloned())
         .stdout(Stdio::null())
-        .stderr(Stdio::piped())
-        .spawn()?;
+        .stderr(Stdio::piped());
+    #[cfg(unix)]
+    std::os::unix::process::CommandExt::process_group(&mut cmd, 0);
+    let mut child = cmd.spawn()?;
 
     // git rewrites progress lines in place with '\r', so split on both.
     let mut stderr = child.stderr.take().expect("stderr is piped");
+    // Reading stderr doesn't need the child, so cancel() can reach it meanwhile.
+    cancel.cancelled.store(false, Ordering::SeqCst);
+    *cancel.child.lock().unwrap_or_else(|e| e.into_inner()) = Some(child);
+    let result = read_clone_output(&mut stderr, &mut on_progress);
+    let child = cancel
+        .child
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .take();
+    let status = child.expect("only clone takes the child").wait()?;
+
+    // Even if git got to finish, the user asked for no clone.
+    if cancel.cancelled.load(Ordering::SeqCst) {
+        remove_partial_clone(&dest)?;
+        return Err(GitError::Failed(CLONE_CANCELLED.into()));
+    }
+    let messages = result?;
+    if status.success() {
+        Ok(dest)
+    } else {
+        let tail = messages[messages.len().saturating_sub(5)..].join("\n");
+        Err(GitError::Failed(if tail.is_empty() {
+            "git clone failed".into()
+        } else {
+            tail
+        }))
+    }
+}
+
+/// Reports progress from git clone's stderr until it closes, and returns the
+/// other lines it printed.
+fn read_clone_output(
+    stderr: &mut impl Read,
+    on_progress: &mut impl FnMut(CloneProgress),
+) -> Result<Vec<String>> {
     let mut messages = Vec::new();
     let mut line = Vec::new();
     let mut last: Option<CloneProgress> = None;
@@ -1074,17 +1166,7 @@ fn clone_unchecked(
             }
         }
     }
-
-    if child.wait()?.success() {
-        Ok(dest)
-    } else {
-        let tail = messages[messages.len().saturating_sub(5)..].join("\n");
-        Err(GitError::Failed(if tail.is_empty() {
-            "git clone failed".into()
-        } else {
-            tail
-        }))
-    }
+    Ok(messages)
 }
 
 #[cfg(test)]
@@ -1260,22 +1342,39 @@ mod tests {
         let path = src.display().to_string().replace('\\', "/");
         let url = format!("file:///{}", path.trim_start_matches('/'));
         assert!(
-            clone(&url, &base, "dst", &[], |_| {}).is_err(),
+            clone(&url, &base, "dst", &[], &CloneCancel::default(), |_| {}).is_err(),
             "file:// is not user-facing"
         );
 
         let mut events = Vec::new();
-        let dest = clone_unchecked(&url, &base, "dst", &[], |p| events.push(p)).unwrap();
+        let dest = clone_unchecked(&url, &base, "dst", &[], &CloneCancel::default(), |p| {
+            events.push(p)
+        })
+        .unwrap();
         assert!(dest.join("f.txt").exists());
         assert!(events.iter().any(|p| p.percent == 100), "{events:?}");
 
         assert!(
-            clone_unchecked(&url, &base, "dst", &[], |_| {}).is_err(),
+            clone_unchecked(&url, &base, "dst", &[], &CloneCancel::default(), |_| {}).is_err(),
             "dest exists"
         );
         assert!(
-            clone_unchecked(&url, &base, "../x", &[], |_| {}).is_err(),
+            clone_unchecked(&url, &base, "../x", &[], &CloneCancel::default(), |_| {}).is_err(),
             "bad name"
+        );
+
+        // Cancelling as soon as git reports progress leaves nothing behind,
+        // and the same folder name can be cloned into afterwards.
+        let cancel = CloneCancel::default();
+        let err =
+            clone_unchecked(&url, &base, "again", &[], &cancel, |_| cancel.cancel()).unwrap_err();
+        assert_eq!(err.to_string(), CLONE_CANCELLED);
+        assert!(!base.join("again").exists());
+        clone_unchecked(&url, &base, "again", &[], &cancel, |_| {}).unwrap();
+        cancel.cancel();
+        assert!(
+            base.join("again/f.txt").exists(),
+            "cancel after the fact is a no-op"
         );
         std::fs::remove_dir_all(&base).unwrap();
     }
@@ -1293,6 +1392,7 @@ mod tests {
             &base,
             "hello",
             &[],
+            &CloneCancel::default(),
             |p| events.push(p),
         )
         .unwrap();
@@ -1564,6 +1664,83 @@ mod tests {
         // A stale diff (file changed since it was shown) is refused.
         std::fs::write(dir.join("f.txt"), "something else\n").unwrap();
         assert!(apply_lines(repo, &d, &picked, LineAction::Discard).is_err());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn stages_unstages_and_discards_lines_of_new_and_deleted_files() {
+        let dir = std::env::temp_dir().join(format!("gitgud-wholefile-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = dir.as_path();
+        run(repo, &["init", "-q", "-b", "main"]).unwrap();
+        run(repo, &["config", "user.name", "T"]).unwrap();
+        run(repo, &["config", "user.email", "t@x"]).unwrap();
+        run(repo, &["config", "commit.gpgsign", "false"]).unwrap();
+        run(repo, &["config", "core.autocrlf", "false"]).unwrap();
+        run(repo, &["config", "diff.noprefix", "true"]).unwrap();
+        std::fs::write(dir.join("old.txt"), "x\ny\nz\n").unwrap();
+        stage(repo, &["old.txt".into()]).unwrap();
+        commit(repo, "init").unwrap();
+
+        let index_of = |diff: &str, text: &str| {
+            diff.split('\n')
+                .position(|l| l == text)
+                .unwrap_or_else(|| panic!("{text} in {diff}"))
+        };
+        let staged_text = |path: &str| run(repo, &["show", &format!(":{path}")]).unwrap();
+
+        // Untracked file: stage two of three lines.
+        std::fs::write(dir.join("new file.txt"), "a\nb\nc\n").unwrap();
+        let d = diff(repo, "new file.txt", false, true).unwrap();
+        let picked = [index_of(&d, "+a"), index_of(&d, "+c")];
+        apply_lines(repo, &d, &picked, LineAction::Stage).unwrap();
+        assert_eq!(staged_text("new file.txt"), "a\nc\n");
+        let rest = diff(repo, "new file.txt", false, false).unwrap();
+        assert!(rest.contains("+b") && !rest.contains("+a"), "{rest}");
+
+        // Unstage one of them: the file stays added, with one line.
+        let s = diff(repo, "new file.txt", true, false).unwrap();
+        apply_lines(repo, &s, &[index_of(&s, "+a")], LineAction::Unstage).unwrap();
+        assert_eq!(staged_text("new file.txt"), "c\n");
+
+        // Unstage the last line: the file is no longer in the index.
+        let s = diff(repo, "new file.txt", true, false).unwrap();
+        apply_lines(repo, &s, &[index_of(&s, "+c")], LineAction::Unstage).unwrap();
+        assert!(status(repo)
+            .unwrap()
+            .files
+            .iter()
+            .any(|f| f.path == "new file.txt" && f.untracked));
+
+        // Discard one line of the untracked file.
+        let d = diff(repo, "new file.txt", false, true).unwrap();
+        apply_lines(repo, &d, &[index_of(&d, "+b")], LineAction::Discard).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(dir.join("new file.txt")).unwrap(),
+            "a\nc\n"
+        );
+
+        // Deleted file: stage the removal of one line, then unstage it again.
+        std::fs::remove_file(dir.join("old.txt")).unwrap();
+        let d = diff(repo, "old.txt", false, false).unwrap();
+        apply_lines(repo, &d, &[index_of(&d, "-y")], LineAction::Stage).unwrap();
+        assert_eq!(staged_text("old.txt"), "x\nz\n");
+        let s = diff(repo, "old.txt", true, false).unwrap();
+        apply_lines(repo, &s, &[index_of(&s, "-y")], LineAction::Unstage).unwrap();
+        assert_eq!(staged_text("old.txt"), "x\ny\nz\n");
+
+        // Staged deletion: unstage one line, which puts the file back with it.
+        stage(repo, &["old.txt".into()]).unwrap();
+        let s = diff(repo, "old.txt", true, false).unwrap();
+        apply_lines(repo, &s, &[index_of(&s, "-z")], LineAction::Unstage).unwrap();
+        assert_eq!(staged_text("old.txt"), "z\n");
+
+        // Discard one removal: the deleted file comes back with just that line.
+        unstage(repo, &["old.txt".into()]).unwrap();
+        let d = diff(repo, "old.txt", false, false).unwrap();
+        apply_lines(repo, &d, &[index_of(&d, "-x")], LineAction::Discard).unwrap();
+        assert_eq!(std::fs::read_to_string(dir.join("old.txt")).unwrap(), "x\n");
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
