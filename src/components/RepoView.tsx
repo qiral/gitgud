@@ -45,6 +45,10 @@ function Count({ n }: { n: number }) {
   )
 }
 
+/** History loads this many commits at first, and this many more each time
+ *  the list is scrolled near its end. */
+const HISTORY_PAGE = 300
+
 interface Props {
   repo: RepoInfo
   account: Account | null
@@ -75,6 +79,7 @@ export default function RepoView({
   )
   const [rebaseFrom, setRebaseFrom] = useState<Commit | null>(null)
   const [selection, setSelection] = useState<Selection | null>(null)
+  const [logLimit, setLogLimit] = useState(HISTORY_PAGE)
   const [diff, setDiff] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -84,7 +89,7 @@ export default function RepoView({
       const [s, b, c, o, st] = await Promise.all([
         git.status(repo.path),
         git.branches(repo.path),
-        git.log(repo.path),
+        git.log(repo.path, logLimit),
         git.originUrl(repo.path),
         git.stashes(repo.path),
       ])
@@ -96,7 +101,13 @@ export default function RepoView({
     } catch (e) {
       setError(errorMessage(e))
     }
-  }, [repo.path])
+  }, [repo.path, logLimit])
+
+  // Only asks for more once the last page came back full, i.e. there may be
+  // more; until then the commits are still shorter than the limit.
+  const loadMoreHistory = useCallback(() => {
+    if (commits.length >= logLimit) setLogLimit((l) => l + HISTORY_PAGE)
+  }, [commits.length, logLimit])
 
   // Pick up changes made outside the app (editor saves, terminal commands).
   useEffect(() => {
@@ -283,6 +294,7 @@ export default function RepoView({
               commits={commits}
               selection={selection}
               onSelect={setSelection}
+              onLoadMore={loadMoreHistory}
               onRebaseFrom={
                 status?.branch && !status.merging && !status.rebasing
                   ? setRebaseFrom

@@ -1,7 +1,8 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { PencilLine } from 'lucide-react'
 import type { Commit, GraphRow, RefLabel } from '../lib/git'
 import { relativeTime } from '../lib/time'
+import { useVirtualRows } from '../lib/virtual'
 import type { Selection } from './RepoView'
 
 interface Props {
@@ -10,11 +11,15 @@ interface Props {
   onSelect: (s: Selection) => void
   /** Opens history editing from this commit up to HEAD; unset to hide. */
   onRebaseFrom?: (commit: Commit) => void
+  /** Asks for older commits; called when scrolling near the end. */
+  onLoadMore?: () => void
 }
 
 const ROW_HEIGHT = 52
 const LANE_WIDTH = 14
 const GRAPH_PADDING = 8
+/** Older commits are requested this many rows before the end is reached. */
+const LOAD_MORE_BEFORE = 50
 /** Beyond this many lanes the graph is clipped so messages stay readable. */
 const MAX_LANES = 12
 
@@ -37,6 +42,7 @@ export default function HistoryPanel({
   selection,
   onSelect,
   onRebaseFrom,
+  onLoadMore,
 }: Props) {
   const lanes = useMemo(
     () =>
@@ -44,14 +50,21 @@ export default function HistoryPanel({
     [commits],
   )
 
+  const rows = useVirtualRows<HTMLUListElement>(commits.length, ROW_HEIGHT)
+  const nearEnd = rows.end + LOAD_MORE_BEFORE >= commits.length
+  useEffect(() => {
+    if (nearEnd && commits.length > 0) onLoadMore?.()
+  }, [nearEnd, commits.length, onLoadMore])
+
   if (commits.length === 0)
     return <p className="p-6 text-center text-muted">No commits yet</p>
 
   const graphWidth = lanes * LANE_WIDTH + GRAPH_PADDING
 
   return (
-    <ul className="min-h-0 flex-1 overflow-auto">
-      {commits.map((c) => {
+    <ul ref={rows.ref} className="min-h-0 flex-1 overflow-auto">
+      <li aria-hidden style={{ height: rows.top }} />
+      {commits.slice(rows.start, rows.end).map((c) => {
         const selected =
           selection?.kind === 'commit' && selection.commit.hash === c.hash
         const isHead = c.refs.some((r) => r.kind === 'head')
@@ -99,6 +112,7 @@ export default function HistoryPanel({
           </li>
         )
       })}
+      <li aria-hidden style={{ height: rows.bottom }} />
     </ul>
   )
 }

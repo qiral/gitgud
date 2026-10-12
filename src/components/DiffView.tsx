@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { confirm } from '@tauri-apps/plugin-dialog'
 import type { LineAction } from '../lib/git'
+import { useVirtualRows } from '../lib/virtual'
 
 type LineKind = 'add' | 'remove' | 'context' | 'hunk' | 'meta'
 
@@ -70,6 +71,23 @@ const isChange = (l: Line) => l.kind === 'add' || l.kind === 'remove'
 /** Binary files can only be staged as a whole. */
 const BINARY = /^Binary files/m
 
+/** Longer diffs only render the rows on screen. Short ones render fully, so
+ *  selecting and copying a whole diff keeps working where it's practical. */
+const VIRTUAL_FROM = 1000
+/** Matches `leading-5` on the table; hunk buttons fit inside it. */
+const ROW_HEIGHT = 20
+
+/** Width of the longest line in characters, tabs counted as 8 like the
+ *  browser's default tab-size. */
+function longestLine(lines: Line[]) {
+  let max = 0
+  for (const l of lines) {
+    const tabs = l.text.split('\t').length - 1
+    max = Math.max(max, l.text.length + tabs * 7)
+  }
+  return max
+}
+
 const ROW: Record<LineKind, string> = {
   add: 'bg-added-bg',
   remove: 'bg-removed-bg',
@@ -100,6 +118,18 @@ export default function DiffView({ diff, actions: rawActions }: Props) {
   const actions = rawActions && !BINARY.test(diff) ? rawActions : undefined
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [anchor, setAnchor] = useState<number | null>(null)
+  const virtual = lines.length >= VIRTUAL_FROM
+  const rows = useVirtualRows<HTMLTableElement>(
+    lines.length,
+    ROW_HEIGHT,
+    virtual,
+  )
+  // Only some rows exist at a time, so they can't size the table's width;
+  // reserve room for the longest line up front instead.
+  const minWidth = useMemo(
+    () => (virtual ? `calc(8.25rem + ${longestLine(lines)}ch)` : undefined),
+    [lines, virtual],
+  )
 
   // A new diff means new line numbers; old selections no longer apply.
   useEffect(() => {
@@ -169,9 +199,14 @@ export default function DiffView({ diff, actions: rawActions }: Props) {
           </ActionButton>
         </div>
       )}
-      <table className="w-full border-collapse font-mono text-xs leading-5 select-text">
+      <table
+        ref={rows.ref}
+        style={{ minWidth }}
+        className="w-full border-collapse font-mono text-xs leading-5 select-text"
+      >
         <tbody>
-          {lines.map((line) => {
+          {rows.top > 0 && <tr aria-hidden style={{ height: rows.top }} />}
+          {lines.slice(rows.start, rows.end).map((line) => {
             const selectable = actions && isChange(line)
             const isSelected = selected.has(line.index)
             return (
@@ -247,6 +282,9 @@ export default function DiffView({ diff, actions: rawActions }: Props) {
               </tr>
             )
           })}
+          {rows.bottom > 0 && (
+            <tr aria-hidden style={{ height: rows.bottom }} />
+          )}
         </tbody>
       </table>
     </div>
