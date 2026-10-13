@@ -33,6 +33,18 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQwMDk4Nzk5NURBQkZBQUMKUldTcytxdGRtWWNKUUd2WGhZQTJlQldDTkxhRlhYWmNxNUhvREZlZjdpdGZLd2s4SmlrMkZhTE8K",
+      "endpoints": [
+        "https://github.com/qiral/gitgud/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

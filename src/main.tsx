@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
+import UpdateNotice from './components/UpdateNotice'
 import './index.css'
 import { applyTheme, readTheme } from './lib/prefs'
 
@@ -10,5 +11,6 @@ applyTheme(readTheme())
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <App />
+    <UpdateNotice />
   </React.StrictMode>,
 )

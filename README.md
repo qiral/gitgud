@@ -40,6 +40,7 @@ GitGud aims to be as approachable as GitHub Desktop while exposing more of Git's
 - Sign in with GitHub (device flow, token kept in the OS keychain) to push over HTTPS
 - Sign in to GitLab, Gitea, Forgejo or any other HTTPS host with a personal access token; each token is only sent to its own host
 - Publish a local repository to GitHub in one step
+- Tells you when a new version is out and updates itself after you click (AppImage, Windows and macOS)
 - Light and dark themes: follow your system or pick one
 - Recent repositories on the start screen and in the Repository menu
 
@@ -118,6 +119,8 @@ Planned work lives in [GitHub issues](https://github.com/qiral/gitgud/issues). I
 ## Releases
 
 Push a tag such as `v0.2.0` and the Release workflow builds installers for Linux (AppImage, .deb, .rpm), Windows (.msi, .exe) and macOS (Intel and Apple Silicon .dmg), then attaches them to a draft GitHub release. Bump `version` in `src-tauri/tauri.conf.json` first. Builds are not code-signed yet, so Windows and macOS will warn on first launch.
+
+Update bundles are signed with the updater key; the release workflow reads it from the `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` secrets, and installed apps check each update against the public key in `tauri.conf.json`. For a local `npm run tauri build` without that key, add `-- --config '{"bundle":{"createUpdaterArtifacts":false}}'`.
 
 ## Contributing
 

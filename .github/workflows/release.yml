@@ -85,6 +85,13 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Signs the update bundles; the app checks them against the public
+          # key in tauri.conf.json before installing an update.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           releaseId: ${{ needs.release.outputs.id }}
           args: ${{ matrix.args }}
+          # Adds latest.json to the release, which installed apps read to
+          # find updates (see plugins.updater in tauri.conf.json).
+          includeUpdaterJson: true
