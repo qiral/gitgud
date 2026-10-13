@@ -108,6 +108,23 @@ export interface RemoteRepo {
   updatedAt: string
 }
 
+export type HostKind = 'gitlab' | 'gitea' | 'other'
+
+/** A non-GitHub Git host signed in with a personal access token. */
+export interface Host {
+  /** Normalized, e.g. "https://gitlab.com/". */
+  url: string
+  kind: HostKind
+  login: string
+}
+
+export const hosts = {
+  list: () => invoke<Host[]>('hosts_list'),
+  add: (url: string, kind: HostKind, username: string, token: string) =>
+    invoke<Host>('host_add', { url, kind, username, token }),
+  remove: (url: string) => invoke<void>('host_remove', { url }),
+}
+
 export interface CloneProgress {
   phase: string
   percent: number

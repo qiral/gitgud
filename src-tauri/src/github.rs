@@ -2,9 +2,8 @@
 //!
 //! The token lives in the OS keychain (Secret Service, macOS Keychain or
 //! Windows Credential Manager) and is only handed to git through environment
-//! variables, scoped to `https://github.com/` URLs.
+//! variables, scoped to `https://github.com/` URLs (see `hosts::git_env`).
 
-use base64::Engine;
 use serde::{Deserialize, Serialize};
 
 use crate::git::{GitError, Result};
@@ -69,26 +68,15 @@ pub fn sign_out() -> Result<()> {
     }
 }
 
-/// Environment variables that make git authenticate to github.com with the
-/// stored token. Passed via `GIT_CONFIG_*` rather than `-c` so the token
-/// doesn't show up in the process list.
-pub fn git_env() -> Vec<(String, String)> {
-    let Ok(Some(stored)) = load() else {
-        return Vec::new();
-    };
-    let basic = base64::engine::general_purpose::STANDARD
-        .encode(format!("{}:{}", stored.account.login, stored.token));
-    vec![
-        ("GIT_CONFIG_COUNT".into(), "1".into()),
-        (
-            "GIT_CONFIG_KEY_0".into(),
-            "http.https://github.com/.extraHeader".into(),
-        ),
-        (
-            "GIT_CONFIG_VALUE_0".into(),
-            format!("Authorization: Basic {basic}"),
-        ),
-    ]
+/// `(url, username, token)` for git, scoped to `https://github.com/`.
+/// See `hosts::git_env`, which hands it to git.
+pub fn credentials() -> Option<(String, String, String)> {
+    let stored = load().ok()??;
+    Some((
+        "https://github.com/".into(),
+        stored.account.login,
+        stored.token,
+    ))
 }
 
 // ---------------------------------------------------------------------------

@@ -2,6 +2,7 @@ mod conflict;
 mod git;
 mod github;
 mod graph;
+mod hosts;
 mod patch;
 mod rebase;
 
@@ -11,6 +12,7 @@ use git::{
     RepoInfo, Result, Side, Stash, Status,
 };
 use github::{Account, CreatedRepo, DeviceCode, PollResult, RemoteRepo};
+use hosts::{Host, HostKind};
 use rebase::{RebaseOutcome, RebasePlan, TodoItem};
 use std::path::Path;
 use tauri::{Emitter, Manager};
@@ -146,7 +148,7 @@ fn rebase_abort(repo: String) -> Result<()> {
 
 #[tauri::command(async)]
 fn push_force(repo: String) -> Result<()> {
-    git::push_force(Path::new(&repo), &github::git_env())
+    git::push_force(Path::new(&repo), &hosts::git_env())
 }
 
 #[tauri::command(async)]
@@ -181,17 +183,17 @@ fn stash_show(repo: String, index: u32) -> Result<String> {
 
 #[tauri::command(async)]
 fn fetch(repo: String) -> Result<()> {
-    git::fetch(Path::new(&repo), &github::git_env())
+    git::fetch(Path::new(&repo), &hosts::git_env())
 }
 
 #[tauri::command(async)]
 fn pull(repo: String, mode: Option<PullMode>, remember: bool) -> Result<PullOutcome> {
-    git::pull(Path::new(&repo), &github::git_env(), mode, remember)
+    git::pull(Path::new(&repo), &hosts::git_env(), mode, remember)
 }
 
 #[tauri::command(async)]
 fn push(repo: String) -> Result<()> {
-    git::push(Path::new(&repo), &github::git_env())
+    git::push(Path::new(&repo), &hosts::git_env())
 }
 
 #[tauri::command(async)]
@@ -219,6 +221,21 @@ fn github_sign_out() -> Result<()> {
     github::sign_out()
 }
 
+#[tauri::command(async)]
+fn hosts_list() -> Result<Vec<Host>> {
+    hosts::list()
+}
+
+#[tauri::command(async)]
+fn host_add(url: String, kind: HostKind, username: String, token: String) -> Result<Host> {
+    hosts::add(&url, kind, &username, &token)
+}
+
+#[tauri::command(async)]
+fn host_remove(url: String) -> Result<()> {
+    hosts::remove(&url)
+}
+
 /// Creates a GitHub repository, adds it as `origin` and pushes the current branch.
 #[tauri::command(async)]
 fn publish_to_github(
@@ -235,7 +252,7 @@ fn publish_to_github(
     }
     let created = github::create_repo(&name, &description, private)?;
     git::add_origin(path, &created.clone_url)?;
-    git::push(path, &github::git_env())?;
+    git::push(path, &hosts::git_env())?;
     Ok(created)
 }
 
@@ -257,7 +274,7 @@ fn clone_repo(
         &url,
         Path::new(&parent),
         &name,
-        &github::git_env(),
+        &hosts::git_env(),
         &cancel,
         |p| {
             let _ = app.emit("clone-progress", p);
@@ -319,6 +336,9 @@ pub fn run() {
             github_start_sign_in,
             github_poll_sign_in,
             github_sign_out,
+            hosts_list,
+            host_add,
+            host_remove,
             publish_to_github,
             github_repos,
             clone_repo,

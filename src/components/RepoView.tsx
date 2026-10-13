@@ -22,6 +22,7 @@ import DiffView from './DiffView'
 import ConflictView from './ConflictView'
 import RebaseDialog from './RebaseDialog'
 import SignInDialog from './SignInDialog'
+import HostsDialog from './HostsDialog'
 import PublishDialog from './PublishDialog'
 
 type Tab = 'changes' | 'history' | 'stashes'
@@ -74,9 +75,9 @@ export default function RepoView({
   const [commits, setCommits] = useState<Commit[]>([])
   const [originUrl, setOriginUrl] = useState<string | null>(null)
   const [stashes, setStashes] = useState<Stash[]>([])
-  const [dialog, setDialog] = useState<'signIn' | 'publish' | 'stash' | null>(
-    null,
-  )
+  const [dialog, setDialog] = useState<
+    'signIn' | 'hosts' | 'publish' | 'stash' | null
+  >(null)
   const [rebaseFrom, setRebaseFrom] = useState<Commit | null>(null)
   const [selection, setSelection] = useState<Selection | null>(null)
   const [logLimit, setLogLimit] = useState(HISTORY_PAGE)
@@ -214,6 +215,7 @@ export default function RepoView({
             onAccountChange(null)
           })
         }
+        onManageHosts={() => setDialog('hosts')}
         onPublish={() => setDialog(account ? 'publish' : 'signIn')}
         act={act}
       />
@@ -227,6 +229,7 @@ export default function RepoView({
           }}
         />
       )}
+      {dialog === 'hosts' && <HostsDialog onClose={() => setDialog(null)} />}
       {rebaseFrom && (
         <RebaseDialog
           repo={repo}

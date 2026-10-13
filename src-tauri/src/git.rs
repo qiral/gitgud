@@ -806,7 +806,7 @@ pub fn stash_show(repo: &Path, index: u32) -> Result<String> {
 // ---------------------------------------------------------------------------
 // Remotes
 
-// `env` carries credentials for hosts the user signed in to (see `github::git_env`).
+// `env` carries credentials for hosts the user signed in to (see `hosts::git_env`).
 
 pub fn fetch(repo: &Path, env: &[(String, String)]) -> Result<()> {
     run_with_env(repo, &["fetch", "--all", "--prune"], env).map(drop)

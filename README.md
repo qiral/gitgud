@@ -38,6 +38,7 @@ GitGud aims to be as approachable as GitHub Desktop while exposing more of Git's
 - History with a commit graph across all branches, remote branches and tags, plus each commit's changes
 - Fetch, pull and push, including publishing new branches; when your branch and its upstream have both moved on, pull asks whether to merge or rebase (or follows your `pull.rebase` setting)
 - Sign in with GitHub (device flow, token kept in the OS keychain) to push over HTTPS
+- Sign in to GitLab, Gitea, Forgejo or any other HTTPS host with a personal access token; each token is only sent to its own host
 - Publish a local repository to GitHub in one step
 - Light and dark themes: follow your system or pick one
 - Recent repositories on the start screen and in the Repository menu
@@ -106,6 +107,7 @@ src/                  React frontend
 src-tauri/
   src/git.rs          Git operations (runs the git CLI, parses its output)
   src/github.rs       GitHub sign-in, token storage and API calls
+  src/hosts.rs        Token sign-in for other hosts, and the git credentials env
   src/lib.rs          Tauri commands exposed to the frontend
 ```
 

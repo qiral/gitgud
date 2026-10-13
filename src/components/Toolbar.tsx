@@ -16,6 +16,7 @@ import {
   Moon,
   Plus,
   RefreshCw,
+  Server,
   Sun,
 } from 'lucide-react'
 import GithubIcon from './GithubIcon'
@@ -43,6 +44,7 @@ interface Props {
   onClone: () => void
   onSignIn: () => void
   onSignOut: () => void
+  onManageHosts: () => void
   onPublish: () => void
   act: (label: string, action: () => Promise<unknown>) => Promise<boolean>
 }
@@ -60,6 +62,7 @@ export default function Toolbar({
   onClone,
   onSignIn,
   onSignOut,
+  onManageHosts,
   onPublish,
   act,
 }: Props) {
@@ -166,6 +169,7 @@ export default function Toolbar({
         account={account}
         onSignIn={onSignIn}
         onSignOut={onSignOut}
+        onManageHosts={onManageHosts}
       />
     </header>
   )
@@ -341,53 +345,70 @@ function AccountMenu({
   account,
   onSignIn,
   onSignOut,
-}: Pick<Props, 'account' | 'onSignIn' | 'onSignOut'>) {
+  onManageHosts,
+}: Pick<Props, 'account' | 'onSignIn' | 'onSignOut' | 'onManageHosts'>) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   useClickOutside(ref, open, () => setOpen(false))
 
-  if (!account)
-    return (
-      <button
-        onClick={onSignIn}
-        className="flex items-center gap-2 px-4 hover:bg-hover"
-      >
-        <GithubIcon className="size-4" />
-        Sign in
-      </button>
-    )
+  const item =
+    'flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-hover'
+  function choose(action: () => void) {
+    setOpen(false)
+    action()
+  }
 
   return (
     <div ref={ref} className="relative flex">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        title={account.login}
-        className="flex items-center px-3 hover:bg-hover"
-      >
-        <img
-          src={account.avatarUrl}
-          alt=""
-          className="size-7 rounded-full border border-line"
-        />
-      </button>
+      {account ? (
+        <button
+          onClick={() => setOpen((o) => !o)}
+          title={account.login}
+          className="flex items-center px-3 hover:bg-hover"
+        >
+          <img
+            src={account.avatarUrl}
+            alt=""
+            className="size-7 rounded-full border border-line"
+          />
+        </button>
+      ) : (
+        <button
+          onClick={() => setOpen((o) => !o)}
+          className="flex items-center gap-2 px-4 hover:bg-hover"
+        >
+          <GithubIcon className="size-4" />
+          Sign in
+          <ChevronDown className="size-3 text-muted" />
+        </button>
+      )}
       {open && (
         <div className="absolute top-full right-1 z-10 mt-1 w-56 overflow-hidden rounded-md border border-line bg-panel shadow-lg">
-          <div className="border-b border-line px-3 py-2">
-            <div className="truncate font-medium">
-              {account.name ?? account.login}
+          {account ? (
+            <div className="border-b border-line px-3 py-2">
+              <div className="truncate font-medium">
+                {account.name ?? account.login}
+              </div>
+              <div className="truncate text-xs text-muted">
+                @{account.login}
+              </div>
             </div>
-            <div className="truncate text-xs text-muted">@{account.login}</div>
-          </div>
-          <button
-            onClick={() => {
-              setOpen(false)
-              onSignOut()
-            }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-hover"
-          >
-            <LogOut className="size-4" />
-            Sign out
+          ) : (
+            <button onClick={() => choose(onSignIn)} className={item}>
+              <GithubIcon className="size-4" />
+              Sign in to GitHub
+            </button>
+          )}
+          <button onClick={() => choose(onManageHosts)} className={item}>
+            <Server className="size-4" />
+            Other Git hosts…
           </button>
+          {account && (
+            <button onClick={() => choose(onSignOut)} className={item}>
+              <LogOut className="size-4" />
+              Sign out of GitHub
+            </button>
+          )}
         </div>
       )}
     </div>
