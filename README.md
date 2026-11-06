@@ -21,7 +21,9 @@ GitGud aims to be as approachable as GitHub Desktop while exposing more of Git's
 
 > **Status:** early development. Expect rough edges. [Download the latest release](https://github.com/qiral/gitgud/releases/latest).
 
-![History with the commit graph](docs/screenshots/history.png)
+![History with the commit graph and a commit's changed files](docs/screenshots/history.png)
+
+Pick a commit to browse its changed files one by one, right-click anything to copy its path, name or hash, and hide branch lines you don't care about with the "−" on their dots.
 
 ## Features
 
@@ -60,9 +62,13 @@ GitGud aims to be as approachable as GitHub Desktop while exposing more of Git's
 
 ![Editing history with interactive rebase](docs/screenshots/rebase.png)
 
-**Stash work in progress** and preview it before bringing it back. Light and dark themes follow your system.
+**Stash work in progress** and preview it before bringing it back.
 
 ![Stashes in the light theme](docs/screenshots/stashes-light.png)
+
+**Pick a theme**, or let GitGud follow your system between Light and Dark.
+
+![The theme menu over Catppuccin Latte](docs/screenshots/themes.png)
 
 ## Tech stack
 
