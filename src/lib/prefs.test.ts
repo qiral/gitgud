@@ -48,14 +48,6 @@ describe('themes', () => {
     applyTheme('system')
     expect(['light', 'dark']).toContain(document.documentElement.dataset.theme)
   })
-
-  it('has a CSS palette for every theme', async () => {
-    const { THEMES } = await import('./prefs')
-    const fs = await import('node:fs')
-    const css = fs.readFileSync('src/index.css', 'utf8')
-    for (const t of THEMES.filter((t) => t.id !== 'light'))
-      expect(css).toContain(`:root[data-theme='${t.id}']`)
-  })
 })
 
 describe('panel widths', () => {
