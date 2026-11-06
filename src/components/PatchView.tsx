@@ -5,6 +5,7 @@ import { basename, dirname } from '../lib/paths'
 import { useContextMenu } from './ContextMenu'
 import DiffView from './DiffView'
 import FileHeader, { LineCounts, STATUS_STYLE } from './FileHeader'
+import { useResizable } from './Resizable'
 
 interface Props {
   repo: string
@@ -23,6 +24,12 @@ export default function PatchView({ repo, patch, header }: Props) {
   const [selected, setSelected] = useState(0)
   const { menu, open } = useContextMenu()
   const diffPane = useRef<HTMLDivElement>(null)
+  const list = useResizable({
+    key: 'commitFiles',
+    initial: 288,
+    min: 160,
+    max: 700,
+  })
 
   // Another commit has other files; start again from the first one.
   useEffect(() => setSelected(0), [patch])
@@ -47,7 +54,11 @@ export default function PatchView({ repo, patch, header }: Props) {
         <p className="p-6 text-muted">No file changes in this commit.</p>
       ) : (
         <div className="flex min-h-0 flex-1">
-          <div className="flex w-72 shrink-0 flex-col border-r border-line">
+          <div
+            style={{ width: list.width }}
+            className="relative flex shrink-0 flex-col border-r border-line"
+          >
+            {list.handle}
             <div className="px-3 pt-2 pb-1 text-xs font-semibold tracking-wide text-muted uppercase">
               {files.length} changed file{files.length > 1 ? 's' : ''}
             </div>

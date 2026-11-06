@@ -160,7 +160,7 @@ export default function CloneDialog({
               <button
                 type="button"
                 onClick={() => setSigningIn(true)}
-                className="inline-flex items-center gap-2 rounded bg-accent px-4 py-1.5 font-medium text-white hover:opacity-90"
+                className="inline-flex items-center gap-2 rounded bg-accent px-4 py-1.5 font-medium text-on-accent hover:opacity-90"
               >
                 <GithubIcon className="size-4" /> Sign in to GitHub
               </button>
@@ -252,7 +252,7 @@ export default function CloneDialog({
         <button
           type="submit"
           disabled={cloning || !url.trim() || !name.trim() || !parent}
-          className="flex w-full items-center justify-center gap-2 rounded bg-accent py-2 font-medium text-white hover:opacity-90 disabled:opacity-40"
+          className="flex w-full items-center justify-center gap-2 rounded bg-accent py-2 font-medium text-on-accent hover:opacity-90 disabled:opacity-40"
         >
           {cloning && <Loader2 className="size-4 animate-spin" />}
           Clone

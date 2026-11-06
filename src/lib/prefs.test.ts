@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { addRecent, readRecents, removeRecent } from './prefs'
 
 const repo = (n: number) => ({ path: `/code/r${n}`, name: `r${n}` })
@@ -31,4 +31,42 @@ it('starts over when the stored list is corrupt', () => {
     '[{"path":1},{"path":"/a","name":"a"}]',
   )
   expect(readRecents()).toEqual([{ path: '/a', name: 'a' }])
+})
+
+describe('themes', () => {
+  it('falls back to system for unknown names', async () => {
+    const { readTheme, setTheme } = await import('./prefs')
+    localStorage.setItem('gitgud.theme', 'neon-pink')
+    expect(readTheme()).toBe('system')
+    setTheme('nord')
+    expect(readTheme()).toBe('nord')
+    expect(document.documentElement.dataset.theme).toBe('nord')
+  })
+
+  it('resolves system to light or dark', async () => {
+    const { applyTheme } = await import('./prefs')
+    applyTheme('system')
+    expect(['light', 'dark']).toContain(document.documentElement.dataset.theme)
+  })
+
+  it('has a CSS palette for every theme', async () => {
+    const { THEMES } = await import('./prefs')
+    const fs = await import('node:fs')
+    const css = fs.readFileSync('src/index.css', 'utf8')
+    for (const t of THEMES.filter((t) => t.id !== 'light'))
+      expect(css).toContain(`:root[data-theme='${t.id}']`)
+  })
+})
+
+describe('panel widths', () => {
+  it('remembers widths and flags', async () => {
+    const { readWidth, writeWidth, readFlag, writeFlag } =
+      await import('./prefs')
+    expect(readWidth('x', 300)).toBe(300)
+    writeWidth('x', 412.6)
+    expect(readWidth('x', 300)).toBe(413)
+    expect(readFlag('f')).toBe(false)
+    writeFlag('f', true)
+    expect(readFlag('f')).toBe(true)
+  })
 })

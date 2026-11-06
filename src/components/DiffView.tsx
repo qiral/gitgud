@@ -243,7 +243,7 @@ function ActionButton({
       onClick={onClick}
       className={`rounded px-2 py-0.5 text-xs font-medium ${
         primary
-          ? 'bg-accent text-white hover:opacity-90'
+          ? 'bg-accent text-on-accent hover:opacity-90'
           : 'border border-line text-fg hover:bg-hover'
       }`}
     >

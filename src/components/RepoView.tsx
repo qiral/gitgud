@@ -28,6 +28,7 @@ import RebaseDialog from './RebaseDialog'
 import SignInDialog from './SignInDialog'
 import HostsDialog from './HostsDialog'
 import PublishDialog from './PublishDialog'
+import { useResizable } from './Resizable'
 
 type Tab = 'changes' | 'history' | 'stashes'
 
@@ -166,6 +167,14 @@ export default function RepoView({
     }
   }, [repo.path, selection, status])
 
+  // The graph and branch labels need more room than file lists, so History
+  // starts wider and remembers its own width.
+  const sidebar = useResizable(
+    tab === 'history'
+      ? { key: 'sidebar.history', initial: 448, min: 260, max: 1000 }
+      : { key: 'sidebar', initial: 320, min: 220, max: 800 },
+  )
+
   const parts = useMemo(() => splitDiff(diff), [diff])
   const fileStats = {
     additions: parts.files.reduce((n, f) => n + f.additions, 0),
@@ -264,11 +273,10 @@ export default function RepoView({
 
       <div className="flex min-h-0 flex-1">
         <aside
-          className={`flex shrink-0 flex-col border-r border-line bg-panel ${
-            // The graph and branch labels need more room than file lists.
-            tab === 'history' ? 'w-[28rem]' : 'w-80'
-          }`}
+          style={{ width: sidebar.width }}
+          className="relative flex shrink-0 flex-col border-r border-line bg-panel"
         >
+          {sidebar.handle}
           <div className="flex border-b border-line">
             {(['changes', 'history', 'stashes'] as const).map((t) => (
               <button

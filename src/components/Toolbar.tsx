@@ -12,15 +12,14 @@ import {
   GitBranch,
   Loader2,
   LogOut,
-  Monitor,
-  Moon,
+  Palette,
   Plus,
   RefreshCw,
   Server,
-  Sun,
+  SunMoon,
 } from 'lucide-react'
 import GithubIcon from './GithubIcon'
-import { readTheme, setTheme, type Theme } from '../lib/prefs'
+import { readTheme, setTheme, THEMES, type ThemeInfo } from '../lib/prefs'
 import PullDialog from './PullDialog'
 import {
   git,
@@ -296,18 +295,37 @@ function RepoMenu({
   )
 }
 
-const themes: { value: Theme; label: string; icon: typeof Sun }[] = [
-  { value: 'system', label: 'System', icon: Monitor },
-  { value: 'light', label: 'Light', icon: Sun },
-  { value: 'dark', label: 'Dark', icon: Moon },
-]
+function Swatch({ theme }: { theme: ThemeInfo }) {
+  const [bg, panel, accent] = theme.swatch
+  return (
+    <span
+      className="flex size-4 shrink-0 overflow-hidden rounded-full border border-line"
+      aria-hidden
+    >
+      <span className="w-1/3" style={{ background: panel }} />
+      <span className="w-1/3" style={{ background: bg }} />
+      <span className="w-1/3" style={{ background: accent }} />
+    </span>
+  )
+}
 
 function ThemeMenu() {
   const [open, setOpen] = useState(false)
   const [theme, setChoice] = useState(readTheme)
   const ref = useRef<HTMLDivElement>(null)
   useClickOutside(ref, open, () => setOpen(false))
-  const Current = themes.find((t) => t.value === theme)!.icon
+
+  const choose = (id: string) => {
+    setTheme(id)
+    setChoice(id)
+    setOpen(false)
+  }
+  const row =
+    'flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-hover'
+  const groups = [
+    { label: 'Light', list: THEMES.filter((t) => !t.dark) },
+    { label: 'Dark', list: THEMES.filter((t) => t.dark) },
+  ]
 
   return (
     <div ref={ref} className="relative flex border-r border-line">
@@ -316,24 +334,26 @@ function ThemeMenu() {
         title="Theme"
         className="flex items-center px-3 text-muted hover:bg-hover hover:text-fg"
       >
-        <Current className="size-4" />
+        <Palette className="size-4" />
       </button>
       {open && (
-        <div className="absolute top-full right-1 z-10 mt-1 w-36 overflow-hidden rounded-md border border-line bg-panel py-1 shadow-lg">
-          {themes.map(({ value, label, icon: Icon }) => (
-            <button
-              key={value}
-              onClick={() => {
-                setTheme(value)
-                setChoice(value)
-                setOpen(false)
-              }}
-              className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-hover"
-            >
-              <Icon className="size-4 text-muted" />
-              <span className="flex-1">{label}</span>
-              {theme === value && <Check className="size-4 text-accent" />}
-            </button>
+        <div className="absolute top-full right-1 z-10 mt-1 max-h-[70vh] w-56 overflow-auto rounded-md border border-line bg-panel py-1 shadow-lg">
+          <button onClick={() => choose('system')} className={row}>
+            <SunMoon className="size-4 text-muted" />
+            <span className="flex-1">Match system</span>
+            {theme === 'system' && <Check className="size-4 text-accent" />}
+          </button>
+          {groups.map((g) => (
+            <div key={g.label} className="mt-1 border-t border-line pt-1">
+              <div className="px-3 py-1 text-xs text-muted">{g.label}</div>
+              {g.list.map((t) => (
+                <button key={t.id} onClick={() => choose(t.id)} className={row}>
+                  <Swatch theme={t} />
+                  <span className="flex-1">{t.label}</span>
+                  {theme === t.id && <Check className="size-4 text-accent" />}
+                </button>
+              ))}
+            </div>
           ))}
         </div>
       )}
@@ -456,10 +476,22 @@ function BranchMenu({
     await act('switch', () => git.switchBranch(repo.path, name))
   }
 
+  const query = newName.trim().toLowerCase()
+  const shown = query
+    ? branches.filter((b) => b.name.toLowerCase().includes(query))
+    : branches
+
   async function create(e: React.FormEvent) {
     e.preventDefault()
     const name = newName.trim()
     if (!name) return
+    // Enter on an existing branch's exact name switches to it instead.
+    const existing = branches.find((b) => b.name === name)
+    if (existing) {
+      if (!existing.current) await switchTo(name)
+      setNewName('')
+      return
+    }
     if (await act('branch', () => git.createBranch(repo.path, name))) {
       setNewName('')
       setOpen(false)
@@ -485,7 +517,7 @@ function BranchMenu({
               autoFocus
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              placeholder="New branch name"
+              placeholder="Filter or create a branch"
               className="min-w-0 flex-1 rounded border border-line bg-bg px-2 py-1 outline-none focus:border-accent"
             />
             <button
@@ -497,7 +529,12 @@ function BranchMenu({
             </button>
           </form>
           <ul className="max-h-80 overflow-auto py-1">
-            {branches.map((b) => (
+            {shown.length === 0 && (
+              <li className="px-3 py-1.5 text-muted">
+                No branch matches. Press Enter to create “{newName.trim()}”.
+              </li>
+            )}
+            {shown.map((b) => (
               <li key={b.name} className="group flex hover:bg-hover">
                 <button
                   onClick={() => !b.current && switchTo(b.name)}

@@ -64,26 +64,97 @@ export const addRecent = (repo: RepoInfo) =>
 export const removeRecent = (path: string) =>
   writeRecents(readRecents().filter((r) => r.path !== path))
 
-export type Theme = 'system' | 'light' | 'dark'
+export interface ThemeInfo {
+  id: string
+  label: string
+  dark: boolean
+  /** Background, sidebar and accent colors, for the preview in the menu.
+   *  The full palettes live in src/index.css. */
+  swatch: [string, string, string]
+}
+
+export const THEMES: ThemeInfo[] = [
+  {
+    id: 'light',
+    label: 'Light',
+    dark: false,
+    swatch: ['#ffffff', '#f6f7f9', '#4f6ef7'],
+  },
+  {
+    id: 'dark',
+    label: 'Dark',
+    dark: true,
+    swatch: ['#16181d', '#1d2026', '#7b93ff'],
+  },
+  {
+    id: 'solarized-light',
+    label: 'Solarized Light',
+    dark: false,
+    swatch: ['#fdf6e3', '#eee8d5', '#268bd2'],
+  },
+  {
+    id: 'solarized-dark',
+    label: 'Solarized Dark',
+    dark: true,
+    swatch: ['#002b36', '#073642', '#3a96dd'],
+  },
+  {
+    id: 'catppuccin-latte',
+    label: 'Catppuccin Latte',
+    dark: false,
+    swatch: ['#eff1f5', '#e6e9ef', '#1e66f5'],
+  },
+  {
+    id: 'catppuccin-mocha',
+    label: 'Catppuccin Mocha',
+    dark: true,
+    swatch: ['#1e1e2e', '#181825', '#89b4fa'],
+  },
+  {
+    id: 'nord',
+    label: 'Nord',
+    dark: true,
+    swatch: ['#2e3440', '#3b4252', '#88c0d0'],
+  },
+  {
+    id: 'dracula',
+    label: 'Dracula',
+    dark: true,
+    swatch: ['#282a36', '#21222c', '#bd93f9'],
+  },
+  {
+    id: 'gruvbox',
+    label: 'Gruvbox Dark',
+    dark: true,
+    swatch: ['#282828', '#1d2021', '#83a598'],
+  },
+]
+
+/** 'system' follows the OS between Light and Dark; anything else is a
+ *  THEMES id. */
+export type Theme = string
 
 export function readTheme(): Theme {
   const t = read(THEME_KEY)
-  return t === 'light' || t === 'dark' ? t : 'system'
+  return t && THEMES.some((x) => x.id === t) ? t : 'system'
 }
 
 const systemDark = window.matchMedia('(prefers-color-scheme: dark)')
 
-function resolve(theme: Theme) {
-  return theme === 'system' ? (systemDark.matches ? 'dark' : 'light') : theme
+function resolve(theme: Theme): ThemeInfo {
+  const id =
+    theme === 'system' ? (systemDark.matches ? 'dark' : 'light') : theme
+  return THEMES.find((t) => t.id === id) ?? THEMES[0]
 }
 
 /** Sets the colors on <html> and the native title bar. */
 export function applyTheme(theme: Theme) {
-  document.documentElement.dataset.theme = resolve(theme)
+  const info = resolve(theme)
+  document.documentElement.dataset.theme = info.id
   // Not available outside Tauri (e.g. in a plain browser during development).
   try {
     getCurrentWindow()
-      .setTheme(theme === 'system' ? null : theme)
+      .setTheme(theme === 'system' ? null : info.dark ? 'dark' : 'light')
       .catch(() => {})
   } catch {
     // Same as above.
@@ -98,3 +169,21 @@ export function setTheme(theme: Theme) {
 systemDark.addEventListener('change', () => {
   if (readTheme() === 'system') applyTheme('system')
 })
+
+/** A panel width the user dragged to, in pixels. */
+export function readWidth(key: string, fallback: number) {
+  const n = Number(read(`gitgud.width.${key}`))
+  return Number.isFinite(n) && n > 0 ? n : fallback
+}
+
+export function writeWidth(key: string, width: number) {
+  write(`gitgud.width.${key}`, String(Math.round(width)))
+}
+
+export function readFlag(key: string) {
+  return read(`gitgud.${key}`) === '1'
+}
+
+export function writeFlag(key: string, on: boolean) {
+  write(`gitgud.${key}`, on ? '1' : '0')
+}

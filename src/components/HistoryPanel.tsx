@@ -1,9 +1,16 @@
-import { useEffect, useMemo } from 'react'
-import { Copy, GitCommitHorizontal, PencilLine } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  Copy,
+  GitCommitHorizontal,
+  Minus,
+  PencilLine,
+  Plus,
+} from 'lucide-react'
 import type { Commit, GraphRow, RefLabel } from '../lib/git'
 import { relativeTime } from '../lib/time'
 import { useVirtualRows } from '../lib/virtual'
 import { copyText } from '../lib/copy'
+import { readFlag, writeFlag } from '../lib/prefs'
 import { useContextMenu, type MenuItem } from './ContextMenu'
 import type { Selection } from './RepoView'
 
@@ -53,6 +60,11 @@ export default function HistoryPanel({
   )
 
   const { menu, open } = useContextMenu()
+  const [collapsed, setCollapsed] = useState(() => readFlag('graphCollapsed'))
+  const toggleGraph = () => {
+    writeFlag('graphCollapsed', !collapsed)
+    setCollapsed(!collapsed)
+  }
   const rows = useVirtualRows<HTMLUListElement>(commits.length, ROW_HEIGHT)
 
   function menuFor(c: Commit): MenuItem[] {
@@ -89,10 +101,26 @@ export default function HistoryPanel({
   if (commits.length === 0)
     return <p className="p-6 text-center text-muted">No commits yet</p>
 
-  const graphWidth = lanes * LANE_WIDTH + GRAPH_PADDING
+  // Collapsed, the graph is a single line of dots so messages get the room.
+  const graphWidth = (collapsed ? 1 : lanes) * LANE_WIDTH + GRAPH_PADDING
 
   return (
     <>
+      <div className="flex shrink-0 items-center gap-1 border-b border-line px-1 py-0.5 text-xs text-muted">
+        <button
+          onClick={toggleGraph}
+          title={collapsed ? 'Show branch lines' : 'Hide branch lines'}
+          aria-expanded={!collapsed}
+          className="flex items-center gap-1.5 rounded px-1.5 py-0.5 hover:bg-hover hover:text-fg"
+        >
+          {collapsed ? (
+            <Plus className="size-3.5" />
+          ) : (
+            <Minus className="size-3.5" />
+          )}
+          Graph
+        </button>
+      </div>
       <ul ref={rows.ref} className="min-h-0 flex-1 overflow-auto">
         <li aria-hidden style={{ height: rows.top }} />
         {commits.slice(rows.start, rows.end).map((c) => {
@@ -112,7 +140,17 @@ export default function HistoryPanel({
                 selected ? 'bg-hover' : 'hover:bg-hover/60'
               }`}
             >
-              <GraphCell row={c.graph} width={graphWidth} isHead={isHead} />
+              {collapsed ? (
+                <DotCell
+                  row={c.graph}
+                  width={graphWidth}
+                  isHead={isHead}
+                  first={c === commits[0]}
+                  last={c === commits[commits.length - 1]}
+                />
+              ) : (
+                <GraphCell row={c.graph} width={graphWidth} isHead={isHead} />
+              )}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   {c.refs.map((r) => (
@@ -204,8 +242,52 @@ function GraphCell({
   )
 }
 
+/** The collapsed graph: every commit on one straight line, its dot still
+ *  in the color of its branch line. */
+function DotCell({
+  row,
+  width,
+  isHead,
+  first,
+  last,
+}: {
+  row: GraphRow
+  width: number
+  isHead: boolean
+  first: boolean
+  last: boolean
+}) {
+  const x = GRAPH_PADDING / 2 + LANE_WIDTH / 2
+  const mid = ROW_HEIGHT / 2
+  return (
+    <svg
+      width={width}
+      height={ROW_HEIGHT}
+      className="shrink-0 overflow-hidden"
+      aria-hidden
+    >
+      <line
+        x1={x}
+        x2={x}
+        y1={first ? mid : 0}
+        y2={last ? mid : ROW_HEIGHT}
+        stroke="var(--app-line)"
+        strokeWidth={2}
+      />
+      <circle
+        cx={x}
+        cy={mid}
+        r={isHead ? 5.5 : 4.5}
+        fill={isHead ? 'var(--app-panel)' : laneColor(row.color)}
+        stroke={isHead ? laneColor(row.color) : 'var(--app-panel)'}
+        strokeWidth={isHead ? 3 : 2}
+      />
+    </svg>
+  )
+}
+
 const BADGE: Record<RefLabel['kind'], string> = {
-  head: 'bg-accent text-white',
+  head: 'bg-accent text-on-accent',
   branch: 'border border-accent text-accent',
   remote: 'border border-line text-muted',
   tag: 'border border-modified text-modified',

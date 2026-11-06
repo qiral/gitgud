@@ -53,7 +53,7 @@ export default function StashDialog({ repo, onClose, act }: Props) {
         <button
           type="submit"
           disabled={busy}
-          className="flex w-full items-center justify-center gap-2 rounded bg-accent py-2 font-medium text-white hover:opacity-90 disabled:opacity-40"
+          className="flex w-full items-center justify-center gap-2 rounded bg-accent py-2 font-medium text-on-accent hover:opacity-90 disabled:opacity-40"
         >
           {busy && <Loader2 className="size-4 animate-spin" />}
           Stash changes

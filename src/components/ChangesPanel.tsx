@@ -228,7 +228,7 @@ export default function ChangesPanel({
             onClick={commit}
             disabled={busy || !canCommit}
             title="Ctrl+Enter"
-            className="flex-1 rounded bg-accent py-1.5 font-medium text-white hover:opacity-90 disabled:opacity-40"
+            className="flex-1 rounded bg-accent py-1.5 font-medium text-on-accent hover:opacity-90 disabled:opacity-40"
           >
             {rebasing
               ? 'Continue rebase'
