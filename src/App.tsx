@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { message, open } from '@tauri-apps/plugin-dialog'
-import { Download, FolderGit2, FolderOpen, GitBranch, X } from 'lucide-react'
+import { Download, FolderGit2, FolderOpen, X } from 'lucide-react'
 import {
   errorMessage,
   git,
@@ -11,6 +11,7 @@ import {
 import RepoView from './components/RepoView'
 import CloneDialog from './components/CloneDialog'
 import { addRecent, readRecents, removeRecent } from './lib/prefs'
+import logoMark from './assets/logo-mark.png'
 
 export default function App() {
   const [repo, setRepo] = useState<RepoInfo | null>(null)
@@ -103,7 +104,7 @@ export default function App() {
 
   return (
     <main className="flex h-full flex-col items-center justify-center gap-6 overflow-auto p-8 text-center">
-      <GitBranch className="size-12 text-accent" strokeWidth={1.5} />
+      <img src={logoMark} alt="" className="size-24" draggable={false} />
       <div>
         <h1 className="text-2xl font-semibold">GitGud</h1>
         <p className="mt-1 text-muted">Open a Git repository to get started.</p>
