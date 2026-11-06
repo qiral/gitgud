@@ -4,6 +4,7 @@ import {
   ArrowDown,
   ArrowUp,
   Check,
+  CircleArrowUp,
   ChevronDown,
   Download,
   FolderGit2,
@@ -19,6 +20,7 @@ import {
   SunMoon,
 } from 'lucide-react'
 import GithubIcon from './GithubIcon'
+import { useUpdates } from '../lib/updates'
 import { readTheme, setTheme, THEMES, type ThemeInfo } from '../lib/prefs'
 import PullDialog from './PullDialog'
 import {
@@ -153,6 +155,7 @@ export default function Toolbar({
           icon={<Spin active={busy === 'push'} icon={ArrowUp} />}
         />
       )}
+      <UpdateButton />
       <ThemeMenu />
       {askPull && status?.branch && status.upstream && (
         <PullDialog
@@ -305,6 +308,22 @@ function RepoMenu({
   )
 }
 
+/** Shows up once a newer release is out, and stays until it's installed. */
+function UpdateButton() {
+  const { update, openCard } = useUpdates()
+  if (!update) return null
+  return (
+    <button
+      onClick={openCard}
+      title={`GitGud ${update.version} is available`}
+      className="flex items-center gap-2 border-r border-line bg-accent/10 px-3 font-medium text-accent hover:bg-accent/20"
+    >
+      <CircleArrowUp className="size-4" />
+      Update
+    </button>
+  )
+}
+
 function Swatch({ theme }: { theme: ThemeInfo }) {
   const [bg, panel, accent] = theme.swatch
   return (
@@ -380,6 +399,7 @@ function AccountMenu({
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   useClickOutside(ref, open, () => setOpen(false))
+  const updates = useUpdates()
 
   const item =
     'flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-hover'
@@ -439,6 +459,28 @@ function AccountMenu({
               Sign out of GitHub
             </button>
           )}
+          <button
+            onClick={() =>
+              choose(() =>
+                updates.update ? updates.openCard() : updates.check(true),
+              )
+            }
+            className={`${item} border-t border-line`}
+          >
+            {updates.status === 'checking' ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <CircleArrowUp className="size-4" />
+            )}
+            <span className="flex-1">
+              {updates.update
+                ? `Update to ${updates.update.version}`
+                : 'Check for updates'}
+            </span>
+            {updates.version && (
+              <span className="text-xs text-muted">v{updates.version}</span>
+            )}
+          </button>
         </div>
       )}
     </div>

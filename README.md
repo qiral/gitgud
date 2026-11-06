@@ -43,7 +43,7 @@ Pick a commit to browse its changed files one by one, right-click anything to co
 - Sign in with GitHub (device flow, token kept in the OS keychain) to push over HTTPS
 - Sign in to GitLab, Gitea, Forgejo or any other HTTPS host with a personal access token; each token is only sent to its own host
 - Publish a local repository to GitHub in one step
-- Tells you when a new version is out and updates itself after you click (AppImage, Windows and macOS)
+- Tells you when a new version is out and updates itself after you click (AppImage, Windows and macOS); an Update button stays in the toolbar until you do, and "Check for updates" sits in the account menu and on the start screen
 - Themes: Light, Dark, Solarized, Catppuccin, Nord, Dracula and Gruvbox, or follow your system
 - Drag panel edges to resize them (double-click to reset), collapse the history graph to a single line, or hide just the branch lines you don't care about
 - Recent repositories on the start screen and in the Repository menu
