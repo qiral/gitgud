@@ -12,6 +12,7 @@ import RepoView from './components/RepoView'
 import CloneDialog from './components/CloneDialog'
 import { addRecent, readRecents, removeRecent } from './lib/prefs'
 import logoMark from './assets/logo-mark.png'
+import { useUpdates } from './lib/updates'
 
 export default function App() {
   const [repo, setRepo] = useState<RepoInfo | null>(null)
@@ -162,7 +163,30 @@ export default function App() {
           </ul>
         </div>
       )}
+      <VersionLine />
       {cloneDialog}
     </main>
+  )
+}
+
+/** "GitGud 0.6.1 · Check for updates" under the start screen. */
+function VersionLine() {
+  const { version, update, status, check, openCard } = useUpdates()
+  if (!version) return null
+  return (
+    <p className="text-xs text-muted">
+      GitGud {version} ·{' '}
+      <button
+        onClick={() => (update ? openCard() : check(true))}
+        disabled={status === 'checking'}
+        className="text-accent hover:underline disabled:opacity-60"
+      >
+        {update
+          ? `Update to ${update.version}`
+          : status === 'checking'
+            ? 'Checking…'
+            : 'Check for updates'}
+      </button>
+    </p>
   )
 }
