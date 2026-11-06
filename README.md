@@ -35,7 +35,8 @@ GitGud aims to be as approachable as GitHub Desktop while exposing more of Git's
 - Commit (`Ctrl+Enter` in the message box)
 - Stash changes (optionally with untracked files), then apply, pop, preview or delete stashes
 - Create and switch branches
-- History with a commit graph across all branches, remote branches and tags, plus each commit's changes
+- History with a commit graph across all branches, remote branches and tags; pick a commit or stash to browse its changed files one by one
+- Copy file names, paths, commit hashes and messages from right-click menus or the copy buttons, and show a file in its folder
 - Fetch, pull and push, including publishing new branches; when your branch and its upstream have both moved on, pull asks whether to merge or rebase (or follows your `pull.rebase` setting)
 - Sign in with GitHub (device flow, token kept in the OS keychain) to push over HTTPS
 - Sign in to GitLab, Gitea, Forgejo or any other HTTPS host with a personal access token; each token is only sent to its own host

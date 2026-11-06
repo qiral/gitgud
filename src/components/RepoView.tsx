@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   errorMessage,
   git,
@@ -13,12 +13,16 @@ import {
   type Stash,
   type Status,
 } from '../lib/git'
+import { splitDiff } from '../lib/diff'
 import Toolbar from './Toolbar'
 import ChangesPanel from './ChangesPanel'
 import HistoryPanel from './HistoryPanel'
 import StashPanel from './StashPanel'
 import StashDialog from './StashDialog'
 import DiffView from './DiffView'
+import PatchView from './PatchView'
+import FileHeader from './FileHeader'
+import { CommitHeader, StashHeader } from './CommitHeader'
 import ConflictView from './ConflictView'
 import RebaseDialog from './RebaseDialog'
 import SignInDialog from './SignInDialog'
@@ -161,6 +165,12 @@ export default function RepoView({
       cancelled = true
     }
   }, [repo.path, selection, status])
+
+  const parts = useMemo(() => splitDiff(diff), [diff])
+  const fileStats = {
+    additions: parts.files.reduce((n, f) => n + f.additions, 0),
+    deletions: parts.files.reduce((n, f) => n + f.deletions, 0),
+  }
 
   // Use the file's current state; it may have become (un)conflicted.
   const conflictedSelection =
@@ -316,29 +326,62 @@ export default function RepoView({
           )}
         </aside>
 
-        <section className="min-w-0 flex-1 overflow-auto">
+        <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
           {selection?.kind === 'file' && conflictedSelection ? (
-            <ConflictView
-              repo={repo}
-              file={conflictedSelection}
-              version={status}
-              act={act}
-            />
-          ) : selection ? (
-            <DiffView
-              diff={diff}
-              actions={
-                selection.kind === 'file' && !selection.file.conflicted
-                  ? {
-                      staged: selection.staged,
-                      onApply: (lines, action) =>
-                        act('lines', () =>
-                          git.applyLines(repo.path, diff, lines, action),
-                        ),
-                    }
-                  : undefined
+            <div className="min-h-0 flex-1 overflow-auto">
+              <ConflictView
+                repo={repo}
+                file={conflictedSelection}
+                version={status}
+                act={act}
+              />
+            </div>
+          ) : selection?.kind === 'commit' ? (
+            <PatchView
+              repo={repo.path}
+              patch={diff}
+              header={
+                <CommitHeader
+                  commit={selection.commit}
+                  message={parts.preamble}
+                />
               }
             />
+          ) : selection?.kind === 'stash' ? (
+            <PatchView
+              repo={repo.path}
+              patch={diff}
+              header={<StashHeader stash={selection.stash} />}
+            />
+          ) : selection ? (
+            <>
+              <FileHeader
+                repo={repo.path}
+                path={selection.file.path}
+                additions={fileStats.additions}
+                deletions={fileStats.deletions}
+                exists={
+                  selection.file.worktree !== 'D' &&
+                  selection.file.index !== 'D'
+                }
+              />
+              <div className="min-h-0 flex-1 overflow-auto">
+                <DiffView
+                  diff={diff}
+                  actions={
+                    !selection.file.conflicted
+                      ? {
+                          staged: selection.staged,
+                          onApply: (lines, action) =>
+                            act('lines', () =>
+                              git.applyLines(repo.path, diff, lines, action),
+                            ),
+                        }
+                      : undefined
+                  }
+                />
+              </div>
+            </>
           ) : (
             <div className="flex h-full items-center justify-center text-muted">
               {EMPTY_HINT[tab]}

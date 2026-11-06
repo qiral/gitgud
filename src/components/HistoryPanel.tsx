@@ -1,8 +1,10 @@
 import { useEffect, useMemo } from 'react'
-import { PencilLine } from 'lucide-react'
+import { Copy, GitCommitHorizontal, PencilLine } from 'lucide-react'
 import type { Commit, GraphRow, RefLabel } from '../lib/git'
 import { relativeTime } from '../lib/time'
 import { useVirtualRows } from '../lib/virtual'
+import { copyText } from '../lib/copy'
+import { useContextMenu, type MenuItem } from './ContextMenu'
 import type { Selection } from './RepoView'
 
 interface Props {
@@ -50,7 +52,35 @@ export default function HistoryPanel({
     [commits],
   )
 
+  const { menu, open } = useContextMenu()
   const rows = useVirtualRows<HTMLUListElement>(commits.length, ROW_HEIGHT)
+
+  function menuFor(c: Commit): MenuItem[] {
+    const items: MenuItem[] = [
+      {
+        label: 'Copy commit hash',
+        icon: Copy,
+        onClick: () => copyText(c.hash),
+      },
+      {
+        label: 'Copy short hash',
+        icon: Copy,
+        onClick: () => copyText(c.shortHash),
+      },
+      {
+        label: 'Copy message',
+        icon: GitCommitHorizontal,
+        onClick: () => copyText(c.subject),
+      },
+    ]
+    if (onRebaseFrom && c.parents.length <= 1)
+      items.push('separator', {
+        label: 'Edit history from here…',
+        icon: PencilLine,
+        onClick: () => onRebaseFrom(c),
+      })
+    return items
+  }
   const nearEnd = rows.end + LOAD_MORE_BEFORE >= commits.length
   useEffect(() => {
     if (nearEnd && commits.length > 0) onLoadMore?.()
@@ -62,58 +92,65 @@ export default function HistoryPanel({
   const graphWidth = lanes * LANE_WIDTH + GRAPH_PADDING
 
   return (
-    <ul ref={rows.ref} className="min-h-0 flex-1 overflow-auto">
-      <li aria-hidden style={{ height: rows.top }} />
-      {commits.slice(rows.start, rows.end).map((c) => {
-        const selected =
-          selection?.kind === 'commit' && selection.commit.hash === c.hash
-        const isHead = c.refs.some((r) => r.kind === 'head')
-        return (
-          <li
-            key={c.hash}
-            onClick={() => onSelect({ kind: 'commit', commit: c })}
-            style={{ height: ROW_HEIGHT }}
-            className={`group flex cursor-default items-center pr-3 ${
-              selected ? 'bg-hover' : 'hover:bg-hover/60'
-            }`}
-          >
-            <GraphCell row={c.graph} width={graphWidth} isHead={isHead} />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                {c.refs.map((r) => (
-                  <RefBadge key={`${r.kind}:${r.name}`} label={r} />
-                ))}
-                <span className="truncate font-medium" title={c.subject}>
-                  {c.subject}
-                </span>
+    <>
+      <ul ref={rows.ref} className="min-h-0 flex-1 overflow-auto">
+        <li aria-hidden style={{ height: rows.top }} />
+        {commits.slice(rows.start, rows.end).map((c) => {
+          const selected =
+            selection?.kind === 'commit' && selection.commit.hash === c.hash
+          const isHead = c.refs.some((r) => r.kind === 'head')
+          return (
+            <li
+              key={c.hash}
+              onClick={() => onSelect({ kind: 'commit', commit: c })}
+              onContextMenu={(e) => {
+                onSelect({ kind: 'commit', commit: c })
+                open(e, menuFor(c))
+              }}
+              style={{ height: ROW_HEIGHT }}
+              className={`group flex cursor-default items-center pr-3 ${
+                selected ? 'bg-hover' : 'hover:bg-hover/60'
+              }`}
+            >
+              <GraphCell row={c.graph} width={graphWidth} isHead={isHead} />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  {c.refs.map((r) => (
+                    <RefBadge key={`${r.kind}:${r.name}`} label={r} />
+                  ))}
+                  <span className="truncate font-medium" title={c.subject}>
+                    {c.subject}
+                  </span>
+                </div>
+                <div className="mt-0.5 flex gap-2 text-xs text-muted">
+                  <span className="truncate">{c.author}</span>
+                  <span>·</span>
+                  <span className="shrink-0">{relativeTime(c.time)}</span>
+                  <span className="ml-auto shrink-0 font-mono">
+                    {c.shortHash}
+                  </span>
+                  {onRebaseFrom && c.parents.length <= 1 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onRebaseFrom(c)
+                      }}
+                      title="Edit history from this commit: reorder, squash, reword or drop"
+                      className="hidden shrink-0 items-center gap-1 rounded px-1 text-muted group-hover:flex hover:bg-line hover:text-fg"
+                    >
+                      <PencilLine className="size-3" />
+                      Edit from here
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="mt-0.5 flex gap-2 text-xs text-muted">
-                <span className="truncate">{c.author}</span>
-                <span>·</span>
-                <span className="shrink-0">{relativeTime(c.time)}</span>
-                <span className="ml-auto shrink-0 font-mono">
-                  {c.shortHash}
-                </span>
-                {onRebaseFrom && c.parents.length <= 1 && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onRebaseFrom(c)
-                    }}
-                    title="Edit history from this commit: reorder, squash, reword or drop"
-                    className="hidden shrink-0 items-center gap-1 rounded px-1 text-muted group-hover:flex hover:bg-line hover:text-fg"
-                  >
-                    <PencilLine className="size-3" />
-                    Edit from here
-                  </button>
-                )}
-              </div>
-            </div>
-          </li>
-        )
-      })}
-      <li aria-hidden style={{ height: rows.bottom }} />
-    </ul>
+            </li>
+          )
+        })}
+        <li aria-hidden style={{ height: rows.bottom }} />
+      </ul>
+      {menu}
+    </>
   )
 }
 
