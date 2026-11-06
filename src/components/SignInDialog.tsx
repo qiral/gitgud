@@ -76,7 +76,7 @@ export default function SignInDialog({ onClose, onSignedIn }: Props) {
           <p className="text-removed">{error}</p>
           <button
             onClick={() => setAttempt((a) => a + 1)}
-            className="w-full rounded bg-accent py-2 font-medium text-white hover:opacity-90"
+            className="w-full rounded bg-accent py-2 font-medium text-on-accent hover:opacity-90"
           >
             Try again
           </button>
@@ -95,7 +95,7 @@ export default function SignInDialog({ onClose, onSignedIn }: Props) {
           </p>
           <button
             onClick={openGitHub}
-            className="flex w-full items-center justify-center gap-2 rounded bg-accent py-2 font-medium text-white hover:opacity-90"
+            className="flex w-full items-center justify-center gap-2 rounded bg-accent py-2 font-medium text-on-accent hover:opacity-90"
           >
             Copy code and open GitHub
             <ExternalLink className="size-4" />

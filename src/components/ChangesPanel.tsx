@@ -9,6 +9,9 @@ import {
   type RepoInfo,
   type Status,
 } from '../lib/git'
+import { fileMenuItems } from '../lib/copy'
+import { basename, dirname } from '../lib/paths'
+import { useContextMenu, type MenuItem } from './ContextMenu'
 import type { Selection } from './RepoView'
 
 interface Props {
@@ -37,6 +40,7 @@ export default function ChangesPanel({
   act,
 }: Props) {
   const [message, setMessage] = useState('')
+  const { menu, open } = useContextMenu()
   const conflicts = files.filter((f) => f.conflicted)
   const staged = files.filter(isStaged)
   const unstaged = files.filter((f) => isUnstaged(f) && !f.conflicted)
@@ -89,6 +93,37 @@ export default function ChangesPanel({
     if (ok) act('discard', () => git.discard(repo.path, [file.path]))
   }
 
+  /** Right-click actions for a file; mirrors the buttons on its row. */
+  function menuFor(f: FileChange, inStaged: boolean): MenuItem[] {
+    const items: MenuItem[] = []
+    if (!f.conflicted) {
+      items.push(
+        inStaged
+          ? {
+              label: 'Unstage',
+              icon: Minus,
+              onClick: () =>
+                act('unstage', () => git.unstage(repo.path, [f.path])),
+            }
+          : {
+              label: 'Stage',
+              icon: Plus,
+              onClick: () => act('stage', () => git.stage(repo.path, [f.path])),
+            },
+      )
+      if (!inStaged && !f.untracked)
+        items.push({
+          label: 'Discard changes…',
+          icon: Undo2,
+          danger: true,
+          onClick: () => discard(f),
+        })
+      items.push('separator')
+    }
+    const deleted = f.worktree === 'D' || f.index === 'D'
+    return [...items, ...fileMenuItems(repo.path, f.path, !deleted)]
+  }
+
   const isSelected = (f: FileChange, inStaged: boolean) =>
     selection?.kind === 'file' &&
     selection.staged === inStaged &&
@@ -129,6 +164,7 @@ export default function ChangesPanel({
       <div className="min-h-0 flex-1 overflow-auto">
         <FileList
           title="Conflicts"
+          onMenu={(e, f) => open(e, menuFor(f, false))}
           files={conflicts}
           staged={false}
           isSelected={isSelected}
@@ -136,6 +172,7 @@ export default function ChangesPanel({
         />
         <FileList
           title="Staged"
+          onMenu={(e, f) => open(e, menuFor(f, true))}
           files={staged}
           staged
           isSelected={isSelected}
@@ -150,6 +187,7 @@ export default function ChangesPanel({
         />
         <FileList
           title="Changes"
+          onMenu={(e, f) => open(e, menuFor(f, false))}
           files={unstaged}
           staged={false}
           isSelected={isSelected}
@@ -165,6 +203,7 @@ export default function ChangesPanel({
           <p className="p-6 text-center text-muted">No local changes</p>
         )}
       </div>
+      {menu}
 
       <div className="border-t border-line p-3">
         <textarea
@@ -189,7 +228,7 @@ export default function ChangesPanel({
             onClick={commit}
             disabled={busy || !canCommit}
             title="Ctrl+Enter"
-            className="flex-1 rounded bg-accent py-1.5 font-medium text-white hover:opacity-90 disabled:opacity-40"
+            className="flex-1 rounded bg-accent py-1.5 font-medium text-on-accent hover:opacity-90 disabled:opacity-40"
           >
             {rebasing
               ? 'Continue rebase'
@@ -223,6 +262,7 @@ interface FileListProps {
   staged: boolean
   isSelected: (f: FileChange, staged: boolean) => boolean
   onSelect: (f: FileChange) => void
+  onMenu: (e: React.MouseEvent, f: FileChange) => void
   bulkLabel?: string
   onBulk?: () => void
   onToggle?: (f: FileChange) => void
@@ -235,6 +275,7 @@ function FileList({
   staged,
   isSelected,
   onSelect,
+  onMenu,
   bulkLabel,
   onBulk,
   onToggle,
@@ -261,6 +302,10 @@ function FileList({
           <li
             key={f.path}
             onClick={() => onSelect(f)}
+            onContextMenu={(e) => {
+              onSelect(f)
+              onMenu(e, f)
+            }}
             className={`group flex cursor-default items-center gap-2 px-3 py-1 ${
               isSelected(f, staged) ? 'bg-hover' : 'hover:bg-hover/60'
             }`}
@@ -338,13 +383,4 @@ function StatusBadge({ file, staged }: { file: FileChange; staged: boolean }) {
       {letter}
     </span>
   )
-}
-
-function basename(path: string) {
-  return path.slice(path.lastIndexOf('/') + 1)
-}
-
-function dirname(path: string) {
-  const i = path.lastIndexOf('/')
-  return i === -1 ? '' : path.slice(0, i)
 }

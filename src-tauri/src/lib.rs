@@ -86,6 +86,13 @@ fn log(repo: String, limit: u32) -> Result<Vec<Commit>> {
     git::log(Path::new(&repo), limit)
 }
 
+/// Lays out the graph again for a subset of the history, e.g. with some
+/// branch lines hidden. `commits` are (hash, parent hashes), newest first.
+#[tauri::command(async)]
+fn graph_layout(commits: Vec<(String, Vec<String>)>) -> Vec<graph::GraphRow> {
+    graph::layout(&commits)
+}
+
 #[tauri::command(async)]
 fn show_commit(repo: String, hash: String) -> Result<String> {
     git::show_commit(Path::new(&repo), &hash)
@@ -311,6 +318,7 @@ pub fn run() {
             switch_branch,
             create_branch,
             log,
+            graph_layout,
             show_commit,
             merge,
             merge_abort,

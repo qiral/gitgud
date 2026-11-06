@@ -210,7 +210,7 @@ function Button({
       disabled={disabled}
       className={`flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium disabled:opacity-40 ${
         primary
-          ? 'bg-accent text-white hover:opacity-90'
+          ? 'bg-accent text-on-accent hover:opacity-90'
           : 'border border-line text-fg hover:bg-hover'
       }`}
     >

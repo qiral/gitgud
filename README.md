@@ -21,7 +21,9 @@ GitGud aims to be as approachable as GitHub Desktop while exposing more of Git's
 
 > **Status:** early development. Expect rough edges. [Download the latest release](https://github.com/qiral/gitgud/releases/latest).
 
-![History with the commit graph](docs/screenshots/history.png)
+![History with the commit graph and a commit's changed files](docs/screenshots/history.png)
+
+Pick a commit to browse its changed files one by one, right-click anything to copy its path, name or hash, and hide branch lines you don't care about with the "−" on their dots.
 
 ## Features
 
@@ -34,14 +36,16 @@ GitGud aims to be as approachable as GitHub Desktop while exposing more of Git's
 - Inline diff viewer with line numbers
 - Commit (`Ctrl+Enter` in the message box)
 - Stash changes (optionally with untracked files), then apply, pop, preview or delete stashes
-- Create and switch branches
-- History with a commit graph across all branches, remote branches and tags, plus each commit's changes
+- Create, filter and switch branches
+- History with a commit graph across all branches, remote branches and tags; pick a commit or stash to browse its changed files one by one
+- Copy file names, paths, commit hashes and messages from right-click menus or the copy buttons, and show a file in its folder
 - Fetch, pull and push, including publishing new branches; when your branch and its upstream have both moved on, pull asks whether to merge or rebase (or follows your `pull.rebase` setting)
 - Sign in with GitHub (device flow, token kept in the OS keychain) to push over HTTPS
 - Sign in to GitLab, Gitea, Forgejo or any other HTTPS host with a personal access token; each token is only sent to its own host
 - Publish a local repository to GitHub in one step
 - Tells you when a new version is out and updates itself after you click (AppImage, Windows and macOS)
-- Light and dark themes: follow your system or pick one
+- Themes: Light, Dark, Solarized, Catppuccin, Nord, Dracula and Gruvbox, or follow your system
+- Drag panel edges to resize them (double-click to reset), collapse the history graph to a single line, or hide just the branch lines you don't care about
 - Recent repositories on the start screen and in the Repository menu
 
 ## Screenshots
@@ -58,9 +62,13 @@ GitGud aims to be as approachable as GitHub Desktop while exposing more of Git's
 
 ![Editing history with interactive rebase](docs/screenshots/rebase.png)
 
-**Stash work in progress** and preview it before bringing it back. Light and dark themes follow your system.
+**Stash work in progress** and preview it before bringing it back.
 
 ![Stashes in the light theme](docs/screenshots/stashes-light.png)
+
+**Pick a theme**, or let GitGud follow your system between Light and Dark.
+
+![The theme menu over Catppuccin Latte](docs/screenshots/themes.png)
 
 ## Tech stack
 

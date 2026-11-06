@@ -225,7 +225,7 @@ export default function RebaseDialog({ repo, from, onClose, act }: Props) {
           <button
             onClick={start}
             disabled={busy || !!problem || !changed}
-            className="flex w-full items-center justify-center gap-2 rounded bg-accent py-2 font-medium text-white hover:opacity-90 disabled:opacity-40"
+            className="flex w-full items-center justify-center gap-2 rounded bg-accent py-2 font-medium text-on-accent hover:opacity-90 disabled:opacity-40"
           >
             {busy && <Loader2 className="size-4 animate-spin" />}
             Rewrite {rows.length} commit{rows.length > 1 ? 's' : ''}

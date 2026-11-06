@@ -216,6 +216,9 @@ export const git = {
   createBranch: (repo: string, name: string) =>
     invoke<void>('create_branch', { repo, name }),
   log: (repo: string, limit = 200) => invoke<Commit[]>('log', { repo, limit }),
+  /** Graph rows for `commits` (hash and parents, newest first). */
+  graphLayout: (commits: [string, string[]][]) =>
+    invoke<GraphRow[]>('graph_layout', { commits }),
   showCommit: (repo: string, hash: string) =>
     invoke<string>('show_commit', { repo, hash }),
   merge: (repo: string, branch: string) =>

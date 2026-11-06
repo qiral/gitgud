@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   errorMessage,
   git,
@@ -13,17 +13,22 @@ import {
   type Stash,
   type Status,
 } from '../lib/git'
+import { splitDiff } from '../lib/diff'
 import Toolbar from './Toolbar'
 import ChangesPanel from './ChangesPanel'
 import HistoryPanel from './HistoryPanel'
 import StashPanel from './StashPanel'
 import StashDialog from './StashDialog'
 import DiffView from './DiffView'
+import PatchView from './PatchView'
+import FileHeader from './FileHeader'
+import { CommitHeader, StashHeader } from './CommitHeader'
 import ConflictView from './ConflictView'
 import RebaseDialog from './RebaseDialog'
 import SignInDialog from './SignInDialog'
 import HostsDialog from './HostsDialog'
 import PublishDialog from './PublishDialog'
+import { useResizable } from './Resizable'
 
 type Tab = 'changes' | 'history' | 'stashes'
 
@@ -162,6 +167,20 @@ export default function RepoView({
     }
   }, [repo.path, selection, status])
 
+  // The graph and branch labels need more room than file lists, so History
+  // starts wider and remembers its own width.
+  const sidebar = useResizable(
+    tab === 'history'
+      ? { key: 'sidebar.history', initial: 448, min: 260, max: 1000 }
+      : { key: 'sidebar', initial: 320, min: 220, max: 800 },
+  )
+
+  const parts = useMemo(() => splitDiff(diff), [diff])
+  const fileStats = {
+    additions: parts.files.reduce((n, f) => n + f.additions, 0),
+    deletions: parts.files.reduce((n, f) => n + f.deletions, 0),
+  }
+
   // Use the file's current state; it may have become (un)conflicted.
   const conflictedSelection =
     selection?.kind === 'file'
@@ -254,11 +273,10 @@ export default function RepoView({
 
       <div className="flex min-h-0 flex-1">
         <aside
-          className={`flex shrink-0 flex-col border-r border-line bg-panel ${
-            // The graph and branch labels need more room than file lists.
-            tab === 'history' ? 'w-[28rem]' : 'w-80'
-          }`}
+          style={{ width: sidebar.width }}
+          className="relative flex shrink-0 flex-col border-r border-line bg-panel"
         >
+          {sidebar.handle}
           <div className="flex border-b border-line">
             {(['changes', 'history', 'stashes'] as const).map((t) => (
               <button
@@ -294,6 +312,7 @@ export default function RepoView({
             />
           ) : tab === 'history' ? (
             <HistoryPanel
+              repoPath={repo.path}
               commits={commits}
               selection={selection}
               onSelect={setSelection}
@@ -316,29 +335,62 @@ export default function RepoView({
           )}
         </aside>
 
-        <section className="min-w-0 flex-1 overflow-auto">
+        <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
           {selection?.kind === 'file' && conflictedSelection ? (
-            <ConflictView
-              repo={repo}
-              file={conflictedSelection}
-              version={status}
-              act={act}
-            />
-          ) : selection ? (
-            <DiffView
-              diff={diff}
-              actions={
-                selection.kind === 'file' && !selection.file.conflicted
-                  ? {
-                      staged: selection.staged,
-                      onApply: (lines, action) =>
-                        act('lines', () =>
-                          git.applyLines(repo.path, diff, lines, action),
-                        ),
-                    }
-                  : undefined
+            <div className="min-h-0 flex-1 overflow-auto">
+              <ConflictView
+                repo={repo}
+                file={conflictedSelection}
+                version={status}
+                act={act}
+              />
+            </div>
+          ) : selection?.kind === 'commit' ? (
+            <PatchView
+              repo={repo.path}
+              patch={diff}
+              header={
+                <CommitHeader
+                  commit={selection.commit}
+                  message={parts.preamble}
+                />
               }
             />
+          ) : selection?.kind === 'stash' ? (
+            <PatchView
+              repo={repo.path}
+              patch={diff}
+              header={<StashHeader stash={selection.stash} />}
+            />
+          ) : selection ? (
+            <>
+              <FileHeader
+                repo={repo.path}
+                path={selection.file.path}
+                additions={fileStats.additions}
+                deletions={fileStats.deletions}
+                exists={
+                  selection.file.worktree !== 'D' &&
+                  selection.file.index !== 'D'
+                }
+              />
+              <div className="min-h-0 flex-1 overflow-auto">
+                <DiffView
+                  diff={diff}
+                  actions={
+                    !selection.file.conflicted
+                      ? {
+                          staged: selection.staged,
+                          onApply: (lines, action) =>
+                            act('lines', () =>
+                              git.applyLines(repo.path, diff, lines, action),
+                            ),
+                        }
+                      : undefined
+                  }
+                />
+              </div>
+            </>
           ) : (
             <div className="flex h-full items-center justify-center text-muted">
               {EMPTY_HINT[tab]}

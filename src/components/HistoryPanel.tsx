@@ -1,11 +1,29 @@
-import { useEffect, useMemo } from 'react'
-import { PencilLine } from 'lucide-react'
-import type { Commit, GraphRow, RefLabel } from '../lib/git'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  Copy,
+  EyeOff,
+  GitCommitHorizontal,
+  Minus,
+  PencilLine,
+  Plus,
+} from 'lucide-react'
+import { git, type Commit, type GraphRow, type RefLabel } from '../lib/git'
+import { hideLines } from '../lib/lines'
 import { relativeTime } from '../lib/time'
 import { useVirtualRows } from '../lib/virtual'
+import { copyText } from '../lib/copy'
+import {
+  readFlag,
+  readHiddenLines,
+  writeFlag,
+  writeHiddenLines,
+} from '../lib/prefs'
+import { useContextMenu, type MenuItem } from './ContextMenu'
 import type { Selection } from './RepoView'
 
 interface Props {
+  /** Remembers hidden branch lines per repository. */
+  repoPath: string
   commits: Commit[]
   selection: Selection | null
   onSelect: (s: Selection) => void
@@ -38,82 +56,247 @@ const LANE_COLORS = [
 const laneColor = (i: number) => LANE_COLORS[i % LANE_COLORS.length]
 
 export default function HistoryPanel({
-  commits,
+  repoPath,
+  commits: allCommits,
   selection,
   onSelect,
   onRebaseFrom,
   onLoadMore,
 }: Props) {
+  const [hidden, setHidden] = useState(() => readHiddenLines(repoPath))
+  useEffect(() => setHidden(readHiddenLines(repoPath)), [repoPath])
+  const updateHidden = (next: string[]) => {
+    setHidden(next)
+    writeHiddenLines(repoPath, next)
+  }
+
+  const { visible, layoutInput, lines, canHide } = useMemo(
+    () => hideLines(allCommits, hidden),
+    [allCommits, hidden],
+  )
+
+  // With lines hidden the rest is laid out again so it moves into the room.
+  const [relaid, setRelaid] = useState<{
+    input: unknown
+    rows: GraphRow[]
+  } | null>(null)
+  useEffect(() => {
+    if (!layoutInput) return
+    let cancelled = false
+    git
+      .graphLayout(layoutInput)
+      .then((rows) => !cancelled && setRelaid({ input: layoutInput, rows }))
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [layoutInput])
+
+  const commits = useMemo(() => {
+    if (!layoutInput || relaid?.input !== layoutInput) return visible
+    // Keep each line's original color, so hiding one doesn't repaint others.
+    const colorOf = new Map<number, number>()
+    // A line's newest commit decides; older shared history can carry
+    // another line's color.
+    relaid.rows.forEach((r, i) => {
+      if (!colorOf.has(r.color)) colorOf.set(r.color, visible[i].graph.color)
+    })
+    const recolor = (c: number) => colorOf.get(c) ?? c
+    return visible.map((c, i) => {
+      const row = relaid.rows[i]
+      return {
+        ...c,
+        graph: {
+          ...row,
+          color: recolor(row.color),
+          segments: row.segments.map((s) => ({
+            ...s,
+            color: recolor(s.color),
+          })),
+        },
+      }
+    })
+  }, [visible, layoutInput, relaid])
+
+  const hideLineOf = (c: Commit) => updateHidden([...hidden, c.hash].slice(-50))
+  // Any commit stored for that line could be the one that identifies it.
+  const showLine = (color: number) =>
+    updateHidden(
+      hidden.filter(
+        (h) => allCommits.find((c) => c.hash === h)?.graph.color !== color,
+      ),
+    )
+
   const lanes = useMemo(
     () =>
       Math.min(MAX_LANES, Math.max(1, ...commits.map((c) => c.graph.width))),
     [commits],
   )
 
+  const { menu, open } = useContextMenu()
+  const [collapsed, setCollapsed] = useState(() => readFlag('graphCollapsed'))
+  const toggleGraph = () => {
+    writeFlag('graphCollapsed', !collapsed)
+    setCollapsed(!collapsed)
+  }
   const rows = useVirtualRows<HTMLUListElement>(commits.length, ROW_HEIGHT)
+
+  function menuFor(c: Commit): MenuItem[] {
+    const items: MenuItem[] = [
+      {
+        label: 'Copy commit hash',
+        icon: Copy,
+        onClick: () => copyText(c.hash),
+      },
+      {
+        label: 'Copy short hash',
+        icon: Copy,
+        onClick: () => copyText(c.shortHash),
+      },
+      {
+        label: 'Copy message',
+        icon: GitCommitHorizontal,
+        onClick: () => copyText(c.subject),
+      },
+    ]
+    if (canHide(c))
+      items.push('separator', {
+        label: 'Hide this branch line',
+        icon: EyeOff,
+        onClick: () => hideLineOf(c),
+      })
+    if (onRebaseFrom && c.parents.length <= 1)
+      items.push('separator', {
+        label: 'Edit history from here…',
+        icon: PencilLine,
+        onClick: () => onRebaseFrom(c),
+      })
+    return items
+  }
   const nearEnd = rows.end + LOAD_MORE_BEFORE >= commits.length
   useEffect(() => {
     if (nearEnd && commits.length > 0) onLoadMore?.()
   }, [nearEnd, commits.length, onLoadMore])
 
-  if (commits.length === 0)
+  if (allCommits.length === 0)
     return <p className="p-6 text-center text-muted">No commits yet</p>
 
-  const graphWidth = lanes * LANE_WIDTH + GRAPH_PADDING
+  // Collapsed, the graph is a single line of dots so messages get the room.
+  const graphWidth = (collapsed ? 1 : lanes) * LANE_WIDTH + GRAPH_PADDING
 
   return (
-    <ul ref={rows.ref} className="min-h-0 flex-1 overflow-auto">
-      <li aria-hidden style={{ height: rows.top }} />
-      {commits.slice(rows.start, rows.end).map((c) => {
-        const selected =
-          selection?.kind === 'commit' && selection.commit.hash === c.hash
-        const isHead = c.refs.some((r) => r.kind === 'head')
-        return (
-          <li
-            key={c.hash}
-            onClick={() => onSelect({ kind: 'commit', commit: c })}
-            style={{ height: ROW_HEIGHT }}
-            className={`group flex cursor-default items-center pr-3 ${
-              selected ? 'bg-hover' : 'hover:bg-hover/60'
-            }`}
+    <>
+      <div className="flex shrink-0 items-center gap-1 border-b border-line px-1 py-0.5 text-xs text-muted">
+        <button
+          onClick={toggleGraph}
+          title={collapsed ? 'Show branch lines' : 'Hide branch lines'}
+          aria-expanded={!collapsed}
+          className="flex items-center gap-1.5 rounded px-1.5 py-0.5 hover:bg-hover hover:text-fg"
+        >
+          {collapsed ? (
+            <Plus className="size-3.5" />
+          ) : (
+            <Minus className="size-3.5" />
+          )}
+          Graph
+        </button>
+        {lines.map((l) => (
+          <button
+            key={l.color}
+            onClick={() => showLine(l.color)}
+            title={`Show ${l.label} again (${l.count} commit${l.count > 1 ? 's' : ''})`}
+            className="flex max-w-40 items-center gap-1 rounded border border-line px-1.5 py-0.5 hover:bg-hover hover:text-fg"
           >
-            <GraphCell row={c.graph} width={graphWidth} isHead={isHead} />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                {c.refs.map((r) => (
-                  <RefBadge key={`${r.kind}:${r.name}`} label={r} />
-                ))}
-                <span className="truncate font-medium" title={c.subject}>
-                  {c.subject}
-                </span>
+            <Plus className="size-3 shrink-0" />
+            <span
+              className="size-2 shrink-0 rounded-full"
+              style={{ background: laneColor(l.color) }}
+            />
+            <span className="truncate">{l.label}</span>
+          </button>
+        ))}
+        {lines.length > 1 && (
+          <button
+            onClick={() => updateHidden([])}
+            className="rounded px-1.5 py-0.5 hover:bg-hover hover:text-fg"
+          >
+            Show all
+          </button>
+        )}
+      </div>
+      <ul ref={rows.ref} className="min-h-0 flex-1 overflow-auto">
+        <li aria-hidden style={{ height: rows.top }} />
+        {commits.slice(rows.start, rows.end).map((c) => {
+          const selected =
+            selection?.kind === 'commit' && selection.commit.hash === c.hash
+          const isHead = c.refs.some((r) => r.kind === 'head')
+          return (
+            <li
+              key={c.hash}
+              onClick={() => onSelect({ kind: 'commit', commit: c })}
+              onContextMenu={(e) => {
+                onSelect({ kind: 'commit', commit: c })
+                open(e, menuFor(c))
+              }}
+              style={{ height: ROW_HEIGHT }}
+              className={`group flex cursor-default items-center pr-3 ${
+                selected ? 'bg-hover' : 'hover:bg-hover/60'
+              }`}
+            >
+              {collapsed ? (
+                <DotCell
+                  row={c.graph}
+                  width={graphWidth}
+                  isHead={isHead}
+                  first={c === commits[0]}
+                  last={c === commits[commits.length - 1]}
+                />
+              ) : (
+                <GraphCell
+                  row={c.graph}
+                  width={graphWidth}
+                  isHead={isHead}
+                  onHide={canHide(c) ? () => hideLineOf(c) : undefined}
+                />
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  {c.refs.map((r) => (
+                    <RefBadge key={`${r.kind}:${r.name}`} label={r} />
+                  ))}
+                  <span className="truncate font-medium" title={c.subject}>
+                    {c.subject}
+                  </span>
+                </div>
+                <div className="mt-0.5 flex gap-2 text-xs text-muted">
+                  <span className="truncate">{c.author}</span>
+                  <span>·</span>
+                  <span className="shrink-0">{relativeTime(c.time)}</span>
+                  <span className="ml-auto shrink-0 font-mono">
+                    {c.shortHash}
+                  </span>
+                  {onRebaseFrom && c.parents.length <= 1 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onRebaseFrom(c)
+                      }}
+                      title="Edit history from this commit: reorder, squash, reword or drop"
+                      className="hidden shrink-0 items-center gap-1 rounded px-1 text-muted group-hover:flex hover:bg-line hover:text-fg"
+                    >
+                      <PencilLine className="size-3" />
+                      Edit from here
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="mt-0.5 flex gap-2 text-xs text-muted">
-                <span className="truncate">{c.author}</span>
-                <span>·</span>
-                <span className="shrink-0">{relativeTime(c.time)}</span>
-                <span className="ml-auto shrink-0 font-mono">
-                  {c.shortHash}
-                </span>
-                {onRebaseFrom && c.parents.length <= 1 && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onRebaseFrom(c)
-                    }}
-                    title="Edit history from this commit: reorder, squash, reword or drop"
-                    className="hidden shrink-0 items-center gap-1 rounded px-1 text-muted group-hover:flex hover:bg-line hover:text-fg"
-                  >
-                    <PencilLine className="size-3" />
-                    Edit from here
-                  </button>
-                )}
-              </div>
-            </div>
-          </li>
-        )
-      })}
-      <li aria-hidden style={{ height: rows.bottom }} />
-    </ul>
+            </li>
+          )
+        })}
+        <li aria-hidden style={{ height: rows.bottom }} />
+      </ul>
+      {menu}
+    </>
   )
 }
 
@@ -121,22 +304,20 @@ function GraphCell({
   row,
   width,
   isHead,
+  onHide,
 }: {
   row: GraphRow
   width: number
   isHead: boolean
+  /** Shows a "−" on the dot while the row is hovered. */
+  onHide?: () => void
 }) {
   const x = (lane: number) =>
     GRAPH_PADDING / 2 + lane * LANE_WIDTH + LANE_WIDTH / 2
   const y = (level: number) => (level * ROW_HEIGHT) / 2
 
   return (
-    <svg
-      width={width}
-      height={ROW_HEIGHT}
-      className="shrink-0 overflow-hidden"
-      aria-hidden
-    >
+    <svg width={width} height={ROW_HEIGHT} className="shrink-0 overflow-hidden">
       {row.segments.map((s, i) => {
         const [x1, y1, x2, y2] = [x(s.x1), y(s.y1), x(s.x2), y(s.y2)]
         const mid = (y1 + y2) / 2
@@ -163,12 +344,81 @@ function GraphCell({
         stroke={isHead ? laneColor(row.color) : 'var(--app-panel)'}
         strokeWidth={isHead ? 3 : 2}
       />
+      {onHide && (
+        <g
+          className="hidden cursor-pointer group-hover:inline"
+          onClick={(e) => {
+            e.stopPropagation()
+            onHide()
+          }}
+        >
+          <title>Hide this branch line</title>
+          <circle
+            cx={x(row.lane)}
+            cy={y(1)}
+            r={6.5}
+            fill={laneColor(row.color)}
+            stroke="var(--app-panel)"
+            strokeWidth={1.5}
+          />
+          <path
+            d={`M ${x(row.lane) - 3.5} ${y(1)} H ${x(row.lane) + 3.5}`}
+            stroke="white"
+            strokeWidth={2}
+            strokeLinecap="round"
+          />
+        </g>
+      )}
+    </svg>
+  )
+}
+
+/** The collapsed graph: every commit on one straight line, its dot still
+ *  in the color of its branch line. */
+function DotCell({
+  row,
+  width,
+  isHead,
+  first,
+  last,
+}: {
+  row: GraphRow
+  width: number
+  isHead: boolean
+  first: boolean
+  last: boolean
+}) {
+  const x = GRAPH_PADDING / 2 + LANE_WIDTH / 2
+  const mid = ROW_HEIGHT / 2
+  return (
+    <svg
+      width={width}
+      height={ROW_HEIGHT}
+      className="shrink-0 overflow-hidden"
+      aria-hidden
+    >
+      <line
+        x1={x}
+        x2={x}
+        y1={first ? mid : 0}
+        y2={last ? mid : ROW_HEIGHT}
+        stroke="var(--app-line)"
+        strokeWidth={2}
+      />
+      <circle
+        cx={x}
+        cy={mid}
+        r={isHead ? 5.5 : 4.5}
+        fill={isHead ? 'var(--app-panel)' : laneColor(row.color)}
+        stroke={isHead ? laneColor(row.color) : 'var(--app-panel)'}
+        strokeWidth={isHead ? 3 : 2}
+      />
     </svg>
   )
 }
 
 const BADGE: Record<RefLabel['kind'], string> = {
-  head: 'bg-accent text-white',
+  head: 'bg-accent text-on-accent',
   branch: 'border border-accent text-accent',
   remote: 'border border-line text-muted',
   tag: 'border border-modified text-modified',

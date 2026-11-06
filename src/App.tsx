@@ -109,7 +109,10 @@ export default function App() {
         <p className="mt-1 text-muted">Open a Git repository to get started.</p>
       </div>
       <div className="flex gap-3">
-        <button onClick={pickRepo} className={`${button} bg-accent text-white`}>
+        <button
+          onClick={pickRepo}
+          className={`${button} bg-accent text-on-accent`}
+        >
           <FolderOpen className="size-4" />
           Open repository
         </button>

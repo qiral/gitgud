@@ -103,7 +103,7 @@ export default function UpdateNotice({
       <button
         onClick={install}
         disabled={installing}
-        className="mt-3 flex w-full items-center justify-center gap-2 rounded bg-accent py-1.5 font-medium text-white hover:opacity-90 disabled:opacity-60"
+        className="mt-3 flex w-full items-center justify-center gap-2 rounded bg-accent py-1.5 font-medium text-on-accent hover:opacity-90 disabled:opacity-60"
       >
         {installing && <Loader2 className="size-4 animate-spin" />}
         {installing ? `Downloading… ${percent}%` : 'Update and restart'}
