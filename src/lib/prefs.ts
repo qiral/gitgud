@@ -187,3 +187,18 @@ export function readFlag(key: string) {
 export function writeFlag(key: string, on: boolean) {
   write(`gitgud.${key}`, on ? '1' : '0')
 }
+
+/** Commits whose branch lines are hidden in a repository's history graph;
+ *  see src/lib/lines.ts. */
+export function readHiddenLines(repo: string): string[] {
+  try {
+    const list = JSON.parse(read(`gitgud.hiddenLines:${repo}`) ?? '[]')
+    return Array.isArray(list) ? list.filter((h) => typeof h === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+export function writeHiddenLines(repo: string, hashes: string[]) {
+  write(`gitgud.hiddenLines:${repo}`, JSON.stringify(hashes))
+}

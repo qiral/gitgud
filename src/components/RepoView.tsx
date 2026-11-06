@@ -312,6 +312,7 @@ export default function RepoView({
             />
           ) : tab === 'history' ? (
             <HistoryPanel
+              repoPath={repo.path}
               commits={commits}
               selection={selection}
               onSelect={setSelection}

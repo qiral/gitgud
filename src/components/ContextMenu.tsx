@@ -55,13 +55,15 @@ function Menu({ x, y, items, onClose }: Open & { onClose: () => void }) {
     }
     const key = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('mousedown', away, true)
-    window.addEventListener('scroll', away, true)
+    // Wheel rather than scroll: panes reset their own scroll position when
+    // the right-click selects something, which mustn't close the menu.
+    window.addEventListener('wheel', away, true)
     window.addEventListener('blur', onClose)
     window.addEventListener('resize', onClose)
     window.addEventListener('keydown', key)
     return () => {
       window.removeEventListener('mousedown', away, true)
-      window.removeEventListener('scroll', away, true)
+      window.removeEventListener('wheel', away, true)
       window.removeEventListener('blur', onClose)
       window.removeEventListener('resize', onClose)
       window.removeEventListener('keydown', key)

@@ -43,7 +43,7 @@ GitGud aims to be as approachable as GitHub Desktop while exposing more of Git's
 - Publish a local repository to GitHub in one step
 - Tells you when a new version is out and updates itself after you click (AppImage, Windows and macOS)
 - Themes: Light, Dark, Solarized, Catppuccin, Nord, Dracula and Gruvbox, or follow your system
-- Drag panel edges to resize them (double-click to reset), and collapse the history graph to a single line
+- Drag panel edges to resize them (double-click to reset), collapse the history graph to a single line, or hide just the branch lines you don't care about
 - Recent repositories on the start screen and in the Repository menu
 
 ## Screenshots

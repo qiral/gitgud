@@ -196,6 +196,8 @@ interface ToolbarButtonProps {
   disabled?: boolean
   title?: string
   trailing?: React.ReactNode
+  /** Tints the button so where you are (repo, branch) stands out. */
+  emphasis?: boolean
 }
 
 function ToolbarButton({
@@ -206,18 +208,25 @@ function ToolbarButton({
   disabled,
   title,
   trailing,
+  emphasis,
 }: ToolbarButtonProps) {
   return (
     <button
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className="flex min-w-36 items-center gap-3 border-r border-line px-4 text-left hover:bg-hover disabled:opacity-50 disabled:hover:bg-transparent"
+      className={`flex min-w-36 items-center gap-3 border-r border-line px-4 text-left disabled:opacity-50 disabled:hover:bg-transparent ${
+        emphasis ? 'bg-accent/[0.07] hover:bg-accent/15' : 'hover:bg-hover'
+      }`}
     >
-      <span className="text-muted">{icon}</span>
+      <span className={emphasis ? 'text-accent' : 'text-muted'}>{icon}</span>
       <span className="flex min-w-0 flex-1 flex-col leading-tight">
         <span className="text-xs text-muted">{label}</span>
-        <span className="truncate font-medium">{value}</span>
+        <span
+          className={`truncate ${emphasis ? 'font-semibold text-fg' : 'font-medium'}`}
+        >
+          {value}
+        </span>
       </span>
       {trailing}
     </button>
@@ -258,6 +267,7 @@ function RepoMenu({
         onClick={() => setOpen((o) => !o)}
         label="Repository"
         value={repo.name}
+        emphasis
         icon={<FolderGit2 className="size-4" />}
         title={repo.path}
         trailing={<ChevronDown className="size-4 text-muted" />}
@@ -504,6 +514,7 @@ function BranchMenu({
         onClick={() => setOpen((o) => !o)}
         label="Current branch"
         value={status?.branch ?? 'Detached HEAD'}
+        emphasis
         icon={<GitBranch className="size-4" />}
         trailing={<ChevronDown className="size-4 text-muted" />}
       />

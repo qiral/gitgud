@@ -1,20 +1,29 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   Copy,
+  EyeOff,
   GitCommitHorizontal,
   Minus,
   PencilLine,
   Plus,
 } from 'lucide-react'
-import type { Commit, GraphRow, RefLabel } from '../lib/git'
+import { git, type Commit, type GraphRow, type RefLabel } from '../lib/git'
+import { hideLines } from '../lib/lines'
 import { relativeTime } from '../lib/time'
 import { useVirtualRows } from '../lib/virtual'
 import { copyText } from '../lib/copy'
-import { readFlag, writeFlag } from '../lib/prefs'
+import {
+  readFlag,
+  readHiddenLines,
+  writeFlag,
+  writeHiddenLines,
+} from '../lib/prefs'
 import { useContextMenu, type MenuItem } from './ContextMenu'
 import type { Selection } from './RepoView'
 
 interface Props {
+  /** Remembers hidden branch lines per repository. */
+  repoPath: string
   commits: Commit[]
   selection: Selection | null
   onSelect: (s: Selection) => void
@@ -47,12 +56,77 @@ const LANE_COLORS = [
 const laneColor = (i: number) => LANE_COLORS[i % LANE_COLORS.length]
 
 export default function HistoryPanel({
-  commits,
+  repoPath,
+  commits: allCommits,
   selection,
   onSelect,
   onRebaseFrom,
   onLoadMore,
 }: Props) {
+  const [hidden, setHidden] = useState(() => readHiddenLines(repoPath))
+  useEffect(() => setHidden(readHiddenLines(repoPath)), [repoPath])
+  const updateHidden = (next: string[]) => {
+    setHidden(next)
+    writeHiddenLines(repoPath, next)
+  }
+
+  const { visible, layoutInput, lines, canHide } = useMemo(
+    () => hideLines(allCommits, hidden),
+    [allCommits, hidden],
+  )
+
+  // With lines hidden the rest is laid out again so it moves into the room.
+  const [relaid, setRelaid] = useState<{
+    input: unknown
+    rows: GraphRow[]
+  } | null>(null)
+  useEffect(() => {
+    if (!layoutInput) return
+    let cancelled = false
+    git
+      .graphLayout(layoutInput)
+      .then((rows) => !cancelled && setRelaid({ input: layoutInput, rows }))
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [layoutInput])
+
+  const commits = useMemo(() => {
+    if (!layoutInput || relaid?.input !== layoutInput) return visible
+    // Keep each line's original color, so hiding one doesn't repaint others.
+    const colorOf = new Map<number, number>()
+    // A line's newest commit decides; older shared history can carry
+    // another line's color.
+    relaid.rows.forEach((r, i) => {
+      if (!colorOf.has(r.color)) colorOf.set(r.color, visible[i].graph.color)
+    })
+    const recolor = (c: number) => colorOf.get(c) ?? c
+    return visible.map((c, i) => {
+      const row = relaid.rows[i]
+      return {
+        ...c,
+        graph: {
+          ...row,
+          color: recolor(row.color),
+          segments: row.segments.map((s) => ({
+            ...s,
+            color: recolor(s.color),
+          })),
+        },
+      }
+    })
+  }, [visible, layoutInput, relaid])
+
+  const hideLineOf = (c: Commit) => updateHidden([...hidden, c.hash].slice(-50))
+  // Any commit stored for that line could be the one that identifies it.
+  const showLine = (color: number) =>
+    updateHidden(
+      hidden.filter(
+        (h) => allCommits.find((c) => c.hash === h)?.graph.color !== color,
+      ),
+    )
+
   const lanes = useMemo(
     () =>
       Math.min(MAX_LANES, Math.max(1, ...commits.map((c) => c.graph.width))),
@@ -85,6 +159,12 @@ export default function HistoryPanel({
         onClick: () => copyText(c.subject),
       },
     ]
+    if (canHide(c))
+      items.push('separator', {
+        label: 'Hide this branch line',
+        icon: EyeOff,
+        onClick: () => hideLineOf(c),
+      })
     if (onRebaseFrom && c.parents.length <= 1)
       items.push('separator', {
         label: 'Edit history from here…',
@@ -98,7 +178,7 @@ export default function HistoryPanel({
     if (nearEnd && commits.length > 0) onLoadMore?.()
   }, [nearEnd, commits.length, onLoadMore])
 
-  if (commits.length === 0)
+  if (allCommits.length === 0)
     return <p className="p-6 text-center text-muted">No commits yet</p>
 
   // Collapsed, the graph is a single line of dots so messages get the room.
@@ -120,6 +200,29 @@ export default function HistoryPanel({
           )}
           Graph
         </button>
+        {lines.map((l) => (
+          <button
+            key={l.color}
+            onClick={() => showLine(l.color)}
+            title={`Show ${l.label} again (${l.count} commit${l.count > 1 ? 's' : ''})`}
+            className="flex max-w-40 items-center gap-1 rounded border border-line px-1.5 py-0.5 hover:bg-hover hover:text-fg"
+          >
+            <Plus className="size-3 shrink-0" />
+            <span
+              className="size-2 shrink-0 rounded-full"
+              style={{ background: laneColor(l.color) }}
+            />
+            <span className="truncate">{l.label}</span>
+          </button>
+        ))}
+        {lines.length > 1 && (
+          <button
+            onClick={() => updateHidden([])}
+            className="rounded px-1.5 py-0.5 hover:bg-hover hover:text-fg"
+          >
+            Show all
+          </button>
+        )}
       </div>
       <ul ref={rows.ref} className="min-h-0 flex-1 overflow-auto">
         <li aria-hidden style={{ height: rows.top }} />
@@ -149,7 +252,12 @@ export default function HistoryPanel({
                   last={c === commits[commits.length - 1]}
                 />
               ) : (
-                <GraphCell row={c.graph} width={graphWidth} isHead={isHead} />
+                <GraphCell
+                  row={c.graph}
+                  width={graphWidth}
+                  isHead={isHead}
+                  onHide={canHide(c) ? () => hideLineOf(c) : undefined}
+                />
               )}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
@@ -196,22 +304,20 @@ function GraphCell({
   row,
   width,
   isHead,
+  onHide,
 }: {
   row: GraphRow
   width: number
   isHead: boolean
+  /** Shows a "−" on the dot while the row is hovered. */
+  onHide?: () => void
 }) {
   const x = (lane: number) =>
     GRAPH_PADDING / 2 + lane * LANE_WIDTH + LANE_WIDTH / 2
   const y = (level: number) => (level * ROW_HEIGHT) / 2
 
   return (
-    <svg
-      width={width}
-      height={ROW_HEIGHT}
-      className="shrink-0 overflow-hidden"
-      aria-hidden
-    >
+    <svg width={width} height={ROW_HEIGHT} className="shrink-0 overflow-hidden">
       {row.segments.map((s, i) => {
         const [x1, y1, x2, y2] = [x(s.x1), y(s.y1), x(s.x2), y(s.y2)]
         const mid = (y1 + y2) / 2
@@ -238,6 +344,31 @@ function GraphCell({
         stroke={isHead ? laneColor(row.color) : 'var(--app-panel)'}
         strokeWidth={isHead ? 3 : 2}
       />
+      {onHide && (
+        <g
+          className="hidden cursor-pointer group-hover:inline"
+          onClick={(e) => {
+            e.stopPropagation()
+            onHide()
+          }}
+        >
+          <title>Hide this branch line</title>
+          <circle
+            cx={x(row.lane)}
+            cy={y(1)}
+            r={6.5}
+            fill={laneColor(row.color)}
+            stroke="var(--app-panel)"
+            strokeWidth={1.5}
+          />
+          <path
+            d={`M ${x(row.lane) - 3.5} ${y(1)} H ${x(row.lane) + 3.5}`}
+            stroke="white"
+            strokeWidth={2}
+            strokeLinecap="round"
+          />
+        </g>
+      )}
     </svg>
   )
 }
