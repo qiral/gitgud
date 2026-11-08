@@ -901,27 +901,65 @@ fn parse_refs(raw: &str) -> Vec<RefLabel> {
         .collect()
 }
 
-pub fn log(repo: &Path, limit: u32) -> Result<Vec<Commit>> {
+/// What [`parse_log`] reads.
+const LOG_FORMAT: &str = "--format=%H%x1f%h%x1f%an%x1f%ae%x1f%at%x1f%P%x1f%D%x1f%s%x1e";
+/// Every branch, remote branch and tag, so the graph shows how they relate.
+const ALL_REFS: [&str; 4] = ["--branches", "--remotes", "--tags", "HEAD"];
+
+/// `git log` with `args` added, parsed.
+fn log_with(repo: &Path, limit: u32, args: &[&str]) -> Result<Vec<Commit>> {
     if !has_head(repo)? {
         return Ok(Vec::new());
     }
     let limit = format!("-n{limit}");
-    let raw = run(
-        repo,
-        &[
-            "log",
-            "--date-order",
-            "--decorate=full",
-            &limit,
-            "--format=%H%x1f%h%x1f%an%x1f%ae%x1f%at%x1f%P%x1f%D%x1f%s%x1e",
-            // Every branch, remote branch and tag, so the graph shows how they relate.
-            "--branches",
-            "--remotes",
-            "--tags",
-            "HEAD",
-        ],
-    )?;
-    Ok(parse_log(&raw))
+    let mut all = vec!["log", "--date-order", "--decorate=full", &limit, LOG_FORMAT];
+    all.extend_from_slice(args);
+    Ok(parse_log(&run(repo, &all)?))
+}
+
+pub fn log(repo: &Path, limit: u32) -> Result<Vec<Commit>> {
+    log_with(repo, limit, &ALL_REFS)
+}
+
+/// Commits on any branch whose message or author contains `query`, ignoring
+/// case, plus the commit `query` is a hash of. Newest first.
+pub fn search_log(repo: &Path, query: &str, limit: u32) -> Result<Vec<Commit>> {
+    let query = query.trim();
+    if query.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut found = Vec::new();
+    if query.len() >= 4 && query.chars().all(|c| c.is_ascii_hexdigit()) {
+        let spec = format!("{query}^{{commit}}");
+        if ref_exists(repo, &spec)? {
+            found.extend(log_with(repo, 1, &[&spec])?);
+        }
+    }
+    // `--grep` and `--author` together only match commits with both, so
+    // they're asked separately.
+    for field in ["--grep", "--author"] {
+        let pattern = format!("{field}={query}");
+        let mut args = vec!["-i", "-F", &pattern];
+        args.extend_from_slice(&ALL_REFS);
+        found.extend(log_with(repo, limit, &args)?);
+    }
+    let mut seen = std::collections::HashSet::new();
+    found.retain(|c| seen.insert(c.hash.clone()));
+    // Stable, so the hash match stays first among same-time commits.
+    found.sort_by_key(|c| std::cmp::Reverse(c.time));
+    found.truncate(limit as usize);
+    relayout(&mut found);
+    Ok(found)
+}
+
+/// Commits on the current branch that changed `path`, following renames.
+pub fn file_log(repo: &Path, path: &str, limit: u32) -> Result<Vec<Commit>> {
+    if path.is_empty() {
+        return Err(GitError::Failed("No file given".into()));
+    }
+    // `:(literal)` so characters like `*` in the name aren't patterns.
+    let spec = format!(":(literal){path}");
+    log_with(repo, limit, &["--follow", "HEAD", "--", &spec])
 }
 
 /// Full patch for a single commit, with a short header.
@@ -960,6 +998,11 @@ fn parse_log(raw: &str) -> Vec<Commit> {
         })
         .collect();
 
+    relayout(&mut commits);
+    commits
+}
+
+fn relayout(commits: &mut [Commit]) {
     let graph_input: Vec<(String, Vec<String>)> = commits
         .iter()
         .map(|c| (c.hash.clone(), c.parents.clone()))
@@ -967,7 +1010,6 @@ fn parse_log(raw: &str) -> Vec<Commit> {
     for (commit, row) in commits.iter_mut().zip(graph::layout(&graph_input)) {
         commit.graph = row;
     }
-    commits
 }
 
 // ---------------------------------------------------------------------------
@@ -1629,6 +1671,73 @@ mod tests {
         push_tag(repo, "v1.1", &[]).unwrap();
         assert!(run(&remote, &["tag", "-l"]).unwrap().contains("v1.1"));
         std::fs::remove_dir_all(&remote).unwrap();
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn searches_history_and_follows_files() {
+        let dir = std::env::temp_dir().join(format!("gitgud-search-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = dir.as_path();
+        run(repo, &["init", "-q", "-b", "main"]).unwrap();
+        for (k, v) in [
+            ("user.name", "Ada Lovelace"),
+            ("user.email", "ada@x"),
+            ("commit.gpgsign", "false"),
+        ] {
+            run(repo, &["config", k, v]).unwrap();
+        }
+        assert!(search_log(repo, "x", 10).unwrap().is_empty());
+        let commit_file = |file: &str, content: &str, message: &str| {
+            std::fs::write(dir.join(file), content).unwrap();
+            stage(repo, &[file.to_string()]).unwrap();
+            commit(repo, message).unwrap();
+        };
+        commit_file("notes [draft].txt", "one\n", "Add notes");
+        commit_file("other.txt", "x\n", "Fix the BUG in parser");
+        commit_file("notes [draft].txt", "two\n", "Update notes");
+        run(repo, &["mv", "notes [draft].txt", "notes.txt"]).unwrap();
+        commit(repo, "Rename notes").unwrap();
+        // A commit by someone else, on another branch.
+        create_branch(repo, "side").unwrap();
+        commit_file("side.txt", "s\n", "side quest");
+        run(
+            repo,
+            &["commit", "--amend", "--no-edit", "--author=Bob <bob@x>"],
+        )
+        .unwrap();
+        switch_branch(repo, "main").unwrap();
+
+        let subjects = |c: Vec<Commit>| c.into_iter().map(|c| c.subject).collect::<Vec<_>>();
+        assert_eq!(
+            subjects(search_log(repo, "bug", 10).unwrap()),
+            ["Fix the BUG in parser"]
+        );
+        assert_eq!(
+            subjects(search_log(repo, "bob", 10).unwrap()),
+            ["side quest"]
+        );
+        assert_eq!(search_log(repo, "ada", 10).unwrap().len(), 4);
+        assert_eq!(search_log(repo, "ada", 2).unwrap().len(), 2);
+        // Not a regex.
+        assert!(search_log(repo, "n.tes", 10).unwrap().is_empty());
+        let notes = search_log(repo, "notes", 10).unwrap();
+        assert_eq!(
+            subjects(notes),
+            ["Rename notes", "Update notes", "Add notes"]
+        );
+        let hash = log(repo, 10).unwrap().last().unwrap().hash.clone();
+        let by_hash = search_log(repo, &hash[..7], 10).unwrap();
+        assert_eq!(by_hash[0].hash, hash);
+
+        assert_eq!(
+            subjects(file_log(repo, "notes.txt", 10).unwrap()),
+            ["Rename notes", "Update notes", "Add notes"]
+        );
+        // Brackets are part of the old name, not a pattern; the rename removed it.
+        assert_eq!(file_log(repo, "notes [draft].txt", 10).unwrap().len(), 3);
+        assert!(file_log(repo, "missing.txt", 10).unwrap().is_empty());
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

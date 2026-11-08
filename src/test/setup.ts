@@ -15,6 +15,13 @@ window.matchMedia ??= (query: string) =>
     dispatchEvent: () => false,
   }) as MediaQueryList
 
+// jsdom has no ResizeObserver either; virtual lists only need it to exist.
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+} as unknown as typeof ResizeObserver
+
 afterEach(() => {
   cleanup()
   clearMocks()

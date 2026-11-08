@@ -30,6 +30,7 @@ interface Props {
   onSelect: (s: Selection) => void
   busy: boolean
   onStash: () => void
+  onFileHistory?: (path: string) => void
   act: (label: string, action: () => Promise<unknown>) => Promise<boolean>
 }
 
@@ -44,6 +45,7 @@ export default function ChangesPanel({
   onSelect,
   busy,
   onStash,
+  onFileHistory,
   act,
 }: Props) {
   const [message, setMessage] = useState('')
@@ -176,7 +178,11 @@ export default function ChangesPanel({
       items.push('separator')
     }
     const deleted = f.worktree === 'D' || f.index === 'D'
-    return [...items, ...fileMenuItems(repo.path, f.path, !deleted)]
+    const history =
+      onFileHistory && !f.untracked && f.index !== 'A'
+        ? () => onFileHistory(f.path)
+        : undefined
+    return [...items, ...fileMenuItems(repo.path, f.path, !deleted, history)]
   }
 
   const isSelected = (f: FileChange, inStaged: boolean) =>
