@@ -33,6 +33,7 @@ Pick a commit to browse its changed files one by one, right-click anything to co
 - Stage, unstage or discard individual lines and hunks right from the diff
 - Merge branches and resolve conflicts block by block, or abort the merge
 - Edit history: reorder commits by dragging, squash, fixup, reword or drop them
+- Right-click a commit in History to cherry-pick or revert it, reset the current branch to it (soft, mixed or hard), or start a branch or tag there; tags can be pushed or deleted from the same menu
 - Inline diff viewer with line numbers
 - Commit (`Ctrl+Enter` in the message box), or amend the last commit to fix its message or add forgotten files
 - Stash changes (optionally with untracked files), then apply, pop, preview or delete stashes

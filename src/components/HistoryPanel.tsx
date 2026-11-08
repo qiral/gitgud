@@ -1,11 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  CirclePlus,
   Copy,
   EyeOff,
+  GitBranchPlus,
   GitCommitHorizontal,
   Minus,
   PencilLine,
   Plus,
+  RotateCcw,
+  Tag,
+  Trash2,
+  Undo2,
+  Upload,
 } from 'lucide-react'
 import { git, type Commit, type GraphRow, type RefLabel } from '../lib/git'
 import { hideLines } from '../lib/lines'
@@ -20,6 +27,7 @@ import {
 } from '../lib/prefs'
 import { useContextMenu, type MenuItem } from './ContextMenu'
 import type { Selection } from './RepoView'
+import type { CommitActions } from './CommitActions'
 
 interface Props {
   /** Remembers hidden branch lines per repository. */
@@ -31,6 +39,8 @@ interface Props {
   onRebaseFrom?: (commit: Commit) => void
   /** Asks for older commits; called when scrolling near the end. */
   onLoadMore?: () => void
+  /** Cherry-pick, revert, reset, branches and tags in the right-click menu. */
+  actions?: CommitActions
 }
 
 const ROW_HEIGHT = 52
@@ -62,6 +72,7 @@ export default function HistoryPanel({
   onSelect,
   onRebaseFrom,
   onLoadMore,
+  actions,
 }: Props) {
   const [hidden, setHidden] = useState(() => readHiddenLines(repoPath))
   useEffect(() => setHidden(readHiddenLines(repoPath)), [repoPath])
@@ -159,6 +170,58 @@ export default function HistoryPanel({
         onClick: () => copyText(c.subject),
       },
     ]
+    if (actions) {
+      const isHead = c.refs.some((r) => r.kind === 'head')
+      items.push(
+        'separator',
+        {
+          label: 'Create branch here…',
+          icon: GitBranchPlus,
+          onClick: () => actions.createBranch(c),
+        },
+        {
+          label: 'Create tag here…',
+          icon: Tag,
+          onClick: () => actions.createTag(c),
+        },
+      )
+      for (const t of c.refs.filter((r) => r.kind === 'tag'))
+        items.push(
+          {
+            label: `Push tag ${t.name}`,
+            icon: Upload,
+            onClick: () => actions.pushTag(t.name),
+          },
+          {
+            label: `Delete tag ${t.name}…`,
+            icon: Trash2,
+            danger: true,
+            onClick: () => actions.deleteTag(t.name),
+          },
+        )
+      const branchItems: MenuItem[] = []
+      if (actions.cherryPick)
+        branchItems.push({
+          label: 'Cherry-pick onto current branch',
+          icon: CirclePlus,
+          disabled: isHead,
+          onClick: () => actions.cherryPick!(c),
+        })
+      if (actions.revert)
+        branchItems.push({
+          label: 'Revert this commit…',
+          icon: Undo2,
+          onClick: () => actions.revert!(c),
+        })
+      if (actions.reset)
+        branchItems.push({
+          label: 'Reset current branch to here…',
+          icon: RotateCcw,
+          disabled: isHead,
+          onClick: () => actions.reset!(c),
+        })
+      if (branchItems.length > 0) items.push('separator', ...branchItems)
+    }
     if (canHide(c))
       items.push('separator', {
         label: 'Hide this branch line',

@@ -29,6 +29,7 @@ import SignInDialog from './SignInDialog'
 import HostsDialog from './HostsDialog'
 import PublishDialog from './PublishDialog'
 import { useResizable } from './Resizable'
+import { useCommitActions } from './CommitActions'
 
 type Tab = 'changes' | 'history' | 'stashes'
 
@@ -214,8 +215,11 @@ export default function RepoView({
     [refresh],
   )
 
+  const commitActions = useCommitActions(repo.path, status, act)
+
   return (
     <div className="flex h-full flex-col">
+      {commitActions.dialogs}
       <Toolbar
         repo={repo}
         status={status}
@@ -303,6 +307,7 @@ export default function RepoView({
               repo={repo}
               files={status?.files ?? []}
               merging={status?.merging ?? null}
+              operation={status?.operation ?? null}
               rebasing={status?.rebasing ?? null}
               hasCommits={commits.length > 0}
               selection={selection}
@@ -318,6 +323,7 @@ export default function RepoView({
               selection={selection}
               onSelect={setSelection}
               onLoadMore={loadMoreHistory}
+              actions={commitActions.actions}
               onRebaseFrom={
                 status?.branch && !status.merging && !status.rebasing
                   ? setRebaseFrom
