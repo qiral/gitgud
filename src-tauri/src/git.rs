@@ -151,8 +151,11 @@ pub struct Status {
     pub ahead: u32,
     pub behind: u32,
     pub files: Vec<FileChange>,
-    /// While a merge is in progress: its message, e.g. "Merge branch 'x'".
+    /// While a merge, cherry-pick or revert is in progress: what it is,
+    /// e.g. "Merge branch 'x'". It ends with a commit or an abort.
     pub merging: Option<String>,
+    /// Which of those it is, alongside `merging`.
+    pub operation: Option<Operation>,
     /// While an interactive rebase is stopped (e.g. for conflicts).
     pub rebasing: Option<crate::rebase::RebaseProgress>,
 }
@@ -169,8 +172,16 @@ pub fn status(repo: &Path) -> Result<Status> {
         ],
     )?;
     let mut status = parse_status(&raw);
-    status.merging = merge_message(repo)?;
     status.rebasing = crate::rebase::progress(repo)?;
+    if let Some(message) = merge_message(repo)? {
+        status.merging = Some(message);
+        status.operation = Some(Operation::Merge);
+    } else if status.rebasing.is_none() {
+        if let Some((op, message)) = pick_state(repo)? {
+            status.merging = Some(message);
+            status.operation = Some(op);
+        }
+    }
     Ok(status)
 }
 
@@ -318,13 +329,189 @@ pub fn merge(repo: &Path, branch: &str) -> Result<MergeOutcome> {
     ))
 }
 
+/// Aborts whatever `status().operation` says is going on.
 pub fn merge_abort(repo: &Path) -> Result<()> {
-    run(repo, &["merge", "--abort"]).map(drop)
+    let command = if merge_message(repo)?.is_some() {
+        "merge"
+    } else {
+        match pick_state(repo)? {
+            Some((Operation::CherryPick, _)) => "cherry-pick",
+            Some((Operation::Revert, _)) => "revert",
+            _ => "merge",
+        }
+    };
+    run(repo, &[command, "--abort"]).map(drop)
 }
 
-/// Concludes a merge with git's prepared message.
+/// Concludes a merge, cherry-pick or revert with git's prepared message.
 pub fn merge_commit(repo: &Path) -> Result<()> {
     run(repo, &["commit", "--no-edit"]).map(drop)
+}
+
+// ---------------------------------------------------------------------------
+// Commit actions: cherry-pick, revert, reset, branches and tags at a commit
+
+#[derive(Debug, Serialize, Clone, Copy, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum Operation {
+    Merge,
+    CherryPick,
+    Revert,
+}
+
+fn ref_exists(repo: &Path, name: &str) -> Result<bool> {
+    Ok(output(repo, &["rev-parse", "-q", "--verify", name])?
+        .status
+        .success())
+}
+
+/// A cherry-pick or revert stopped for conflicts, with a line describing it.
+fn pick_state(repo: &Path) -> Result<Option<(Operation, String)>> {
+    let (op, head, verb) = if ref_exists(repo, "CHERRY_PICK_HEAD")? {
+        (Operation::CherryPick, "CHERRY_PICK_HEAD", "Cherry-picking")
+    } else if ref_exists(repo, "REVERT_HEAD")? {
+        (Operation::Revert, "REVERT_HEAD", "Reverting")
+    } else {
+        return Ok(None);
+    };
+    let subject = run(repo, &["log", "-1", "--format=%h %s", head])?;
+    Ok(Some((op, format!("{verb} {}", subject.trim()))))
+}
+
+fn check_hash(hash: &str) -> Result<()> {
+    if hash.is_empty() || !hash.chars().all(|c| c.is_ascii_hexdigit()) {
+        return Err(GitError::Failed(format!("invalid commit hash: {hash}")));
+    }
+    Ok(())
+}
+
+fn is_merge_commit(repo: &Path, hash: &str) -> Result<bool> {
+    let line = run(repo, &["rev-list", "--parents", "-n1", hash])?;
+    Ok(line.split_whitespace().count() > 2)
+}
+
+/// Runs a cherry-pick or revert of one commit. Conflicts leave it in
+/// progress for the user to resolve, like a merge.
+fn pick(repo: &Path, command: &str, hash: &str) -> Result<MergeOutcome> {
+    check_hash(hash)?;
+    let mut args = vec![command];
+    if command == "revert" {
+        args.push("--no-edit");
+    }
+    // For a merge commit, replay what it brought into its first parent.
+    if is_merge_commit(repo, hash)? {
+        args.extend(["-m", "1"]);
+    }
+    args.push(hash);
+    let out = output(repo, &args)?;
+    if out.status.success() {
+        return Ok(MergeOutcome { conflicts: false });
+    }
+    if pick_state(repo)?.is_some() {
+        let unmerged = run(repo, &["diff", "--name-only", "--diff-filter=U"])?;
+        if !unmerged.trim().is_empty() {
+            return Ok(MergeOutcome { conflicts: true });
+        }
+        // Stopped without conflicts: the change is already there.
+        run(repo, &[command, "--abort"])?;
+        return Err(GitError::Failed(
+            "Nothing to do: this branch already has those changes".into(),
+        ));
+    }
+    Err(GitError::Failed(
+        String::from_utf8_lossy(&out.stderr).trim().to_string(),
+    ))
+}
+
+/// Applies the changes of commit `hash` onto the current branch.
+pub fn cherry_pick(repo: &Path, hash: &str) -> Result<MergeOutcome> {
+    pick(repo, "cherry-pick", hash)
+}
+
+/// Adds a commit that undoes `hash`.
+pub fn revert(repo: &Path, hash: &str) -> Result<MergeOutcome> {
+    pick(repo, "revert", hash)
+}
+
+#[derive(Debug, serde::Deserialize, Clone, Copy, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum ResetMode {
+    /// Keep the changes staged.
+    Soft,
+    /// Keep the changes, unstaged.
+    Mixed,
+    /// Throw the changes away.
+    Hard,
+}
+
+/// Moves the current branch to `hash`.
+pub fn reset(repo: &Path, hash: &str, mode: ResetMode) -> Result<()> {
+    check_hash(hash)?;
+    let flag = match mode {
+        ResetMode::Soft => "--soft",
+        ResetMode::Mixed => "--mixed",
+        ResetMode::Hard => "--hard",
+    };
+    run(repo, &["reset", "-q", flag, hash]).map(drop)
+}
+
+/// Creates a branch at `hash` and switches to it.
+pub fn create_branch_at(repo: &Path, name: &str, hash: &str) -> Result<()> {
+    check_hash(hash)?;
+    check_branch_name(repo, name)?;
+    run(repo, &["switch", "-c", name, hash]).map(drop)
+}
+
+fn check_tag_name(repo: &Path, name: &str) -> Result<()> {
+    if name.starts_with('-')
+        || run(repo, &["check-ref-format", &format!("refs/tags/{name}")]).is_err()
+    {
+        return Err(GitError::Failed(format!(
+            "'{name}' is not a valid tag name"
+        )));
+    }
+    Ok(())
+}
+
+/// Tags `hash`; with a message the tag is annotated.
+pub fn create_tag(repo: &Path, name: &str, hash: &str, message: &str) -> Result<()> {
+    check_hash(hash)?;
+    check_tag_name(repo, name)?;
+    if message.trim().is_empty() {
+        run(repo, &["tag", "--", name, hash]).map(drop)
+    } else {
+        run(repo, &["tag", "-a", "-m", message, "--", name, hash]).map(drop)
+    }
+}
+
+pub fn delete_tag(repo: &Path, name: &str) -> Result<()> {
+    check_tag_name(repo, name)?;
+    run(repo, &["tag", "-d", "--", name]).map(drop)
+}
+
+/// The remote to push tags to: the current branch's, else `origin`.
+fn push_remote(repo: &Path) -> Result<String> {
+    if let Some(branch) = run(repo, &["symbolic-ref", "-q", "--short", "HEAD"])
+        .ok()
+        .map(|b| b.trim().to_string())
+    {
+        // Not `config()`: remote names are case-sensitive.
+        let key = format!("branch.{branch}.remote");
+        if let Ok(remote) = run(repo, &["config", "--get", &key]) {
+            let remote = remote.trim();
+            if !remote.is_empty() && remote != "." {
+                return Ok(remote.to_string());
+            }
+        }
+    }
+    Ok("origin".into())
+}
+
+pub fn push_tag(repo: &Path, name: &str, env: &[(String, String)]) -> Result<()> {
+    check_tag_name(repo, name)?;
+    let remote = push_remote(repo)?;
+    let refspec = format!("refs/tags/{name}");
+    run_with_env(repo, &["push", &remote, &refspec], env).map(drop)
 }
 
 /// `path` inside `repo`, refusing anything that could point outside it.
@@ -739,9 +926,7 @@ pub fn log(repo: &Path, limit: u32) -> Result<Vec<Commit>> {
 
 /// Full patch for a single commit, with a short header.
 pub fn show_commit(repo: &Path, hash: &str) -> Result<String> {
-    if hash.is_empty() || !hash.chars().all(|c| c.is_ascii_hexdigit()) {
-        return Err(GitError::Failed(format!("invalid commit hash: {hash}")));
-    }
+    check_hash(hash)?;
     run(
         repo,
         &[
@@ -1349,6 +1534,101 @@ mod tests {
             open(&std::env::temp_dir()),
             Err(GitError::NotARepo(_))
         ));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn cherry_picks_reverts_resets_and_tags() {
+        let dir = std::env::temp_dir().join(format!("gitgud-actions-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = dir.as_path();
+        run(repo, &["init", "-q", "-b", "main"]).unwrap();
+        for (k, v) in [
+            ("user.name", "T"),
+            ("user.email", "t@x"),
+            ("commit.gpgsign", "false"),
+            ("tag.gpgsign", "false"),
+            ("core.autocrlf", "false"),
+        ] {
+            run(repo, &["config", k, v]).unwrap();
+        }
+        let write_commit = |file: &str, content: &str, message: &str| {
+            std::fs::write(dir.join(file), content).unwrap();
+            stage(repo, &[file.to_string()]).unwrap();
+            commit(repo, message).unwrap();
+            log(repo, 1).unwrap()[0].hash.clone()
+        };
+        let base = write_commit("a.txt", "one\n", "base");
+
+        // Cherry-pick a commit from another branch.
+        create_branch_at(repo, "side", &base).unwrap();
+        let side = write_commit("b.txt", "side\n", "side work");
+        switch_branch(repo, "main").unwrap();
+        assert!(!cherry_pick(repo, &side).unwrap().conflicts);
+        assert_eq!(log(repo, 1).unwrap()[0].subject, "side work");
+        // Again: nothing left to pick, and nothing left in progress.
+        assert!(cherry_pick(repo, &side).is_err());
+        assert_eq!(status(repo).unwrap().operation, None);
+
+        // Revert it.
+        let picked = log(repo, 1).unwrap()[0].hash.clone();
+        assert!(!revert(repo, &picked).unwrap().conflicts);
+        assert!(!dir.join("b.txt").exists());
+        assert!(log(repo, 1).unwrap()[0].subject.starts_with("Revert"));
+
+        // A conflicting cherry-pick stops, shows up in status and aborts.
+        create_branch_at(repo, "clash", &base).unwrap();
+        let clash = write_commit("a.txt", "theirs\n", "clash");
+        switch_branch(repo, "main").unwrap();
+        write_commit("a.txt", "ours\n", "ours");
+        assert!(cherry_pick(repo, &clash).unwrap().conflicts);
+        let s = status(repo).unwrap();
+        assert_eq!(s.operation, Some(Operation::CherryPick));
+        assert!(s.merging.unwrap().starts_with("Cherry-picking"));
+        merge_abort(repo).unwrap();
+        assert_eq!(status(repo).unwrap().operation, None);
+        // Or gets resolved and committed.
+        assert!(cherry_pick(repo, &clash).unwrap().conflicts);
+        resolve_file(repo, "a.txt", Side::Theirs).unwrap();
+        merge_commit(repo).unwrap();
+        assert_eq!(log(repo, 1).unwrap()[0].subject, "clash");
+        assert_eq!(status(repo).unwrap().operation, None);
+
+        // Reset modes.
+        let head = log(repo, 1).unwrap()[0].hash.clone();
+        reset(repo, &base, ResetMode::Soft).unwrap();
+        assert!(status(repo).unwrap().files.iter().any(|f| f.index != '.'));
+        reset(repo, &head, ResetMode::Hard).unwrap();
+        reset(repo, &base, ResetMode::Mixed).unwrap();
+        let s = status(repo).unwrap();
+        assert!(s.files.iter().all(|f| f.index == '.' || f.untracked));
+        assert!(!s.files.is_empty());
+        reset(repo, &base, ResetMode::Hard).unwrap();
+        assert!(status(repo).unwrap().files.is_empty());
+        assert!(reset(repo, "HEAD~1", ResetMode::Hard).is_err());
+
+        // Tags.
+        create_tag(repo, "v1", &base, "").unwrap();
+        create_tag(repo, "v1.1", &base, "annotated").unwrap();
+        assert!(create_tag(repo, "-f", &base, "").is_err());
+        assert!(create_tag(repo, "bad..tag", &base, "").is_err());
+        let tags = run(repo, &["tag", "-l", "-n1"]).unwrap();
+        assert!(tags.contains("v1.1") && tags.contains("annotated"));
+        delete_tag(repo, "v1").unwrap();
+        assert!(!run(repo, &["tag", "-l"])
+            .unwrap()
+            .lines()
+            .any(|t| t == "v1"));
+
+        // Pushing a tag to a local bare remote.
+        let remote = dir.with_extension("remote.git");
+        let _ = std::fs::remove_dir_all(&remote);
+        run(repo, &["init", "-q", "--bare", remote.to_str().unwrap()]).unwrap();
+        run(repo, &["remote", "add", "origin", remote.to_str().unwrap()]).unwrap();
+        push_tag(repo, "v1.1", &[]).unwrap();
+        assert!(run(&remote, &["tag", "-l"]).unwrap().contains("v1.1"));
+        std::fs::remove_dir_all(&remote).unwrap();
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
