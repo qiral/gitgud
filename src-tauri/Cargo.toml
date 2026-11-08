@@ -1,6 +1,6 @@
 [package]
 name = "gitgud"
-version = "0.6.2"
+version = "0.7.0"
 description = "A fast, open-source Git GUI"
 authors = ["GitGud contributors"]
 edition = "2021"
