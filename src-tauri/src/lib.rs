@@ -8,8 +8,8 @@ mod rebase;
 
 use conflict::{Choice, Part};
 use git::{
-    Branch, CloneCancel, Commit, DeleteBranchOutcome, GitError, LineAction, MergeOutcome, PullMode,
-    PullOutcome, RepoInfo, Result, Side, Stash, Status,
+    Branch, CloneCancel, Commit, DeleteBranchOutcome, GitError, LastCommit, LineAction,
+    MergeOutcome, PullMode, PullOutcome, RepoInfo, Result, Side, Stash, Status,
 };
 use github::{Account, CreatedRepo, DeviceCode, PollResult, RemoteRepo};
 use hosts::{Host, HostKind};
@@ -59,6 +59,16 @@ fn apply_lines(repo: String, diff: String, lines: Vec<usize>, action: LineAction
 #[tauri::command(async)]
 fn commit(repo: String, message: String) -> Result<()> {
     git::commit(Path::new(&repo), &message)
+}
+
+#[tauri::command(async)]
+fn amend(repo: String, message: String) -> Result<()> {
+    git::amend(Path::new(&repo), &message)
+}
+
+#[tauri::command(async)]
+fn last_commit(repo: String) -> Result<Option<LastCommit>> {
+    git::last_commit(Path::new(&repo))
 }
 
 #[tauri::command(async)]
@@ -323,6 +333,8 @@ pub fn run() {
             discard,
             apply_lines,
             commit,
+            amend,
+            last_commit,
             diff,
             branches,
             switch_branch,

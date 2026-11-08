@@ -441,6 +441,50 @@ pub fn commit(repo: &Path, message: &str) -> Result<()> {
     run(repo, &["commit", "-m", message]).map(drop)
 }
 
+#[derive(Debug, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct LastCommit {
+    /// Full message, subject and body.
+    pub message: String,
+    /// Some remote branch already has it, so amending needs a force push.
+    pub pushed: bool,
+}
+
+/// The commit HEAD points at, or `None` on an unborn branch.
+pub fn last_commit(repo: &Path) -> Result<Option<LastCommit>> {
+    if !has_head(repo)? {
+        return Ok(None);
+    }
+    let message = run(repo, &["log", "-1", "--format=%B", "HEAD"])?
+        .trim_end()
+        .to_string();
+    let pushed = !run(
+        repo,
+        &[
+            "for-each-ref",
+            "--count=1",
+            "--contains=HEAD",
+            "--format=%(refname)",
+            "refs/remotes",
+        ],
+    )?
+    .trim()
+    .is_empty();
+    Ok(Some(LastCommit { message, pushed }))
+}
+
+/// Replaces the last commit with the staged changes and `message`. Works
+/// with nothing staged too, to only fix the message.
+pub fn amend(repo: &Path, message: &str) -> Result<()> {
+    if message.trim().is_empty() {
+        return Err(GitError::Failed("Commit message cannot be empty".into()));
+    }
+    if !has_head(repo)? {
+        return Err(GitError::Failed("There is no commit to amend yet".into()));
+    }
+    run(repo, &["commit", "--amend", "-m", message]).map(drop)
+}
+
 // ---------------------------------------------------------------------------
 // Diff
 
@@ -1305,6 +1349,48 @@ mod tests {
             open(&std::env::temp_dir()),
             Err(GitError::NotARepo(_))
         ));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn amends_the_last_commit() {
+        let dir = std::env::temp_dir().join(format!("gitgud-amend-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = dir.as_path();
+        run(repo, &["init", "-q", "-b", "main"]).unwrap();
+        for (k, v) in [
+            ("user.name", "T"),
+            ("user.email", "t@x"),
+            ("commit.gpgsign", "false"),
+        ] {
+            run(repo, &["config", k, v]).unwrap();
+        }
+        assert_eq!(last_commit(repo).unwrap(), None);
+        assert!(amend(repo, "nothing yet").is_err());
+
+        std::fs::write(dir.join("a.txt"), "a\n").unwrap();
+        stage(repo, &["a.txt".into()]).unwrap();
+        commit(repo, "frist\n\nbody text").unwrap();
+        let last = last_commit(repo).unwrap().unwrap();
+        assert_eq!(last.message, "frist\n\nbody text");
+        assert!(!last.pushed);
+
+        // Message only, nothing staged.
+        amend(repo, "first").unwrap();
+        // Then with a forgotten file.
+        std::fs::write(dir.join("b.txt"), "b\n").unwrap();
+        stage(repo, &["b.txt".into()]).unwrap();
+        amend(repo, "first").unwrap();
+        let commits = log(repo, 10).unwrap();
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].subject, "first");
+        assert!(show_commit(repo, &commits[0].hash).unwrap().contains("+b"));
+        assert!(amend(repo, "  ").is_err());
+
+        // A remote branch containing HEAD makes it "pushed".
+        run(repo, &["update-ref", "refs/remotes/origin/main", "HEAD"]).unwrap();
+        assert!(last_commit(repo).unwrap().unwrap().pushed);
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { confirm } from '@tauri-apps/plugin-dialog'
 import { Archive, GitMerge, Minus, Plus, Undo2 } from 'lucide-react'
 import {
@@ -21,6 +21,8 @@ interface Props {
   merging: string | null
   /** Set while an interactive rebase is stopped. */
   rebasing: Status['rebasing']
+  /** False on an unborn branch, where there is nothing to amend. */
+  hasCommits: boolean
   selection: Selection | null
   onSelect: (s: Selection) => void
   busy: boolean
@@ -33,6 +35,7 @@ export default function ChangesPanel({
   files,
   merging,
   rebasing,
+  hasCommits,
   selection,
   onSelect,
   busy,
@@ -40,6 +43,16 @@ export default function ChangesPanel({
   act,
 }: Props) {
   const [message, setMessage] = useState('')
+  // While amending, the message being typed before is kept to put back.
+  const [amending, setAmending] = useState<{
+    draft: string
+    pushed: boolean
+  } | null>(null)
+  const canAmend = hasCommits && !merging && !rebasing
+  // A merge or rebase starting meanwhile ends amending.
+  useEffect(() => {
+    if (!canAmend) setAmending(null)
+  }, [canAmend])
   const { menu, open } = useContextMenu()
   const conflicts = files.filter((f) => f.conflicted)
   const staged = files.filter(isStaged)
@@ -51,12 +64,43 @@ export default function ChangesPanel({
   const canCommit =
     merging || rebasing
       ? conflicts.length === 0
-      : message.trim() !== '' && staged.length > 0
+      : message.trim() !== '' && (staged.length > 0 || amending !== null)
+
+  async function toggleAmend(on: boolean) {
+    if (!on) {
+      setMessage(amending?.draft ?? '')
+      setAmending(null)
+      return
+    }
+    let last: Awaited<ReturnType<typeof git.lastCommit>> = null
+    await act('amend', async () => {
+      last = await git.lastCommit(repo.path)
+    })
+    if (!last) return
+    const { message: previous, pushed } = last
+    setAmending({ draft: message, pushed })
+    setMessage(previous)
+  }
 
   async function commit() {
     if (!canCommit) return
     if (rebasing) {
       await act('rebase', () => git.rebaseContinue(repo.path))
+      return
+    }
+    if (amending) {
+      if (
+        amending.pushed &&
+        !(await confirm(
+          'The last commit is already pushed. After amending it, your branch and the remote have different histories, and only a force push can update the remote.',
+          { title: 'Amend pushed commit', kind: 'warning', okLabel: 'Amend' },
+        ))
+      )
+        return
+      if (await act('commit', () => git.amend(repo.path, message))) {
+        setAmending(null)
+        setMessage('')
+      }
       return
     }
     const done = await act('commit', () =>
@@ -223,6 +267,21 @@ export default function ChangesPanel({
           rows={3}
           className="w-full resize-none rounded border border-line bg-bg p-2 outline-none select-text focus:border-accent"
         />
+        {canAmend && (
+          <label
+            className="mt-1 flex items-center gap-2 text-xs text-muted"
+            title="Replace the last commit with these changes and this message"
+          >
+            <input
+              type="checkbox"
+              checked={amending !== null}
+              disabled={busy}
+              onChange={(e) => toggleAmend(e.target.checked)}
+              className="accent-accent"
+            />
+            Amend last commit
+          </label>
+        )}
         <div className="mt-2 flex gap-2">
           <button
             onClick={commit}
@@ -234,7 +293,9 @@ export default function ChangesPanel({
               ? 'Continue rebase'
               : merging
                 ? 'Commit merge'
-                : `Commit${staged.length > 0 ? ` ${staged.length} file${staged.length > 1 ? 's' : ''}` : ''}`}
+                : amending
+                  ? `Amend last commit${staged.length > 0 ? ` with ${staged.length} file${staged.length > 1 ? 's' : ''}` : ''}`
+                  : `Commit${staged.length > 0 ? ` ${staged.length} file${staged.length > 1 ? 's' : ''}` : ''}`}
           </button>
           <button
             onClick={onStash}
