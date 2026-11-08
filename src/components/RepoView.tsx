@@ -16,7 +16,7 @@ import {
 import { splitDiff } from '../lib/diff'
 import Toolbar from './Toolbar'
 import ChangesPanel from './ChangesPanel'
-import HistoryPanel from './HistoryPanel'
+import HistoryPanel, { type HistoryFilter } from './HistoryPanel'
 import StashPanel from './StashPanel'
 import StashDialog from './StashDialog'
 import DiffView from './DiffView'
@@ -86,6 +86,8 @@ export default function RepoView({
   >(null)
   const [rebaseFrom, setRebaseFrom] = useState<Commit | null>(null)
   const [selection, setSelection] = useState<Selection | null>(null)
+  const [historyFilter, setHistoryFilter] = useState<HistoryFilter | null>(null)
+  const [filtered, setFiltered] = useState<Commit[] | null>(null)
   const [logLimit, setLogLimit] = useState(HISTORY_PAGE)
   const [diff, setDiff] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
@@ -115,6 +117,52 @@ export default function RepoView({
   const loadMoreHistory = useCallback(() => {
     if (commits.length >= logLimit) setLogLimit((l) => l + HISTORY_PAGE)
   }, [commits.length, logLimit])
+
+  // Runs the history search or file history; again whenever the log
+  // reloads, so new commits show up in it too.
+  useEffect(() => {
+    if (!historyFilter) return
+    let cancelled = false
+    const timer = setTimeout(
+      () => {
+        const load =
+          historyFilter.kind === 'search'
+            ? git.searchLog(repo.path, historyFilter.query)
+            : git.fileLog(repo.path, historyFilter.path)
+        load
+          .then((c) => !cancelled && setFiltered(c))
+          .catch((e) => {
+            if (cancelled) return
+            setFiltered([])
+            setError(errorMessage(e))
+          })
+      },
+      // Wait for a pause in typing before searching.
+      historyFilter.kind === 'search' ? 250 : 0,
+    )
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [repo.path, historyFilter, commits])
+
+  /** Results of the last filter stay up while a new one loads, except
+   *  when it's a different kind of filter. */
+  const changeFilter = useCallback((f: HistoryFilter | null) => {
+    setHistoryFilter((old) => {
+      if (old?.kind !== f?.kind || f?.kind === 'file') setFiltered(null)
+      return f
+    })
+    setSelection(null)
+  }, [])
+
+  const showFileHistory = useCallback(
+    (path: string) => {
+      setTab('history')
+      changeFilter({ kind: 'file', path })
+    },
+    [changeFilter],
+  )
 
   // Pick up changes made outside the app (editor saves, terminal commands).
   useEffect(() => {
@@ -314,6 +362,7 @@ export default function RepoView({
               onSelect={setSelection}
               busy={busy !== null}
               onStash={() => setDialog('stash')}
+              onFileHistory={showFileHistory}
               act={act}
             />
           ) : tab === 'history' ? (
@@ -324,6 +373,9 @@ export default function RepoView({
               onSelect={setSelection}
               onLoadMore={loadMoreHistory}
               actions={commitActions.actions}
+              filter={historyFilter}
+              onFilter={changeFilter}
+              filtered={filtered}
               onRebaseFrom={
                 status?.branch && !status.merging && !status.rebasing
                   ? setRebaseFrom
@@ -356,6 +408,10 @@ export default function RepoView({
             <PatchView
               repo={repo.path}
               patch={diff}
+              focusPath={
+                historyFilter?.kind === 'file' ? historyFilter.path : undefined
+              }
+              onFileHistory={showFileHistory}
               header={
                 <CommitHeader
                   commit={selection.commit}
@@ -374,6 +430,9 @@ export default function RepoView({
               <FileHeader
                 repo={repo.path}
                 path={selection.file.path}
+                onHistory={
+                  selection.file.untracked ? undefined : showFileHistory
+                }
                 additions={fileStats.additions}
                 deletions={fileStats.deletions}
                 exists={

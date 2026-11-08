@@ -13,13 +13,22 @@ interface Props {
   patch: string
   /** Shown above the file list, e.g. the commit's message and author. */
   header: React.ReactNode
+  /** Selects this file first when the patch has it, e.g. in file history. */
+  focusPath?: string
+  onFileHistory?: (path: string) => void
 }
 
 /**
  * A commit or stash: the files it changed on the left and the selected
  * file's diff on the right.
  */
-export default function PatchView({ repo, patch, header }: Props) {
+export default function PatchView({
+  repo,
+  patch,
+  header,
+  focusPath,
+  onFileHistory,
+}: Props) {
   const { files } = useMemo(() => splitDiff(patch), [patch])
   const [selected, setSelected] = useState(0)
   const { menu, open } = useContextMenu()
@@ -32,7 +41,10 @@ export default function PatchView({ repo, patch, header }: Props) {
   })
 
   // Another commit has other files; start again from the first one.
-  useEffect(() => setSelected(0), [patch])
+  useEffect(() => {
+    const i = focusPath ? files.findIndex((f) => f.path === focusPath) : -1
+    setSelected(Math.max(0, i))
+  }, [patch, files, focusPath])
   useEffect(() => {
     if (diffPane.current) diffPane.current.scrollTop = 0
   }, [patch, selected])
@@ -74,7 +86,15 @@ export default function PatchView({ repo, patch, header }: Props) {
                     key={`${i}:${f.path}`}
                     onClick={() => setSelected(i)}
                     onContextMenu={(e) =>
-                      open(e, fileMenuItems(repo, f.path, exists(f.status)))
+                      open(
+                        e,
+                        fileMenuItems(
+                          repo,
+                          f.path,
+                          exists(f.status),
+                          onFileHistory && (() => onFileHistory(f.path)),
+                        ),
+                      )
                     }
                     title={f.oldPath ? `${f.oldPath} → ${f.path}` : f.path}
                     className={`flex cursor-default items-center gap-2 px-3 py-1 ${
@@ -106,6 +126,7 @@ export default function PatchView({ repo, patch, header }: Props) {
               additions={file.additions}
               deletions={file.deletions}
               exists={exists(file.status)}
+              onHistory={onFileHistory}
             />
             <div ref={diffPane} className="min-h-0 flex-1 overflow-auto">
               <DiffView diff={file.diff} />

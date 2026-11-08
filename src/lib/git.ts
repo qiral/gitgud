@@ -238,6 +238,12 @@ export const git = {
   renameBranch: (repo: string, old: string, newName: string) =>
     invoke<void>('rename_branch', { repo, old, new: newName }),
   log: (repo: string, limit = 200) => invoke<Commit[]>('log', { repo, limit }),
+  /** Commits whose message or author contains `query`, or with that hash. */
+  searchLog: (repo: string, query: string, limit = 500) =>
+    invoke<Commit[]>('search_log', { repo, query, limit }),
+  /** Commits on the current branch that changed `path`, across renames. */
+  fileLog: (repo: string, path: string, limit = 1000) =>
+    invoke<Commit[]>('file_log', { repo, path, limit }),
   /** Graph rows for `commits` (hash and parents, newest first). */
   graphLayout: (commits: [string, string[]][]) =>
     invoke<GraphRow[]>('graph_layout', { commits }),

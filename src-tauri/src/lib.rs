@@ -106,6 +106,16 @@ fn log(repo: String, limit: u32) -> Result<Vec<Commit>> {
     git::log(Path::new(&repo), limit)
 }
 
+#[tauri::command(async)]
+fn search_log(repo: String, query: String, limit: u32) -> Result<Vec<Commit>> {
+    git::search_log(Path::new(&repo), &query, limit)
+}
+
+#[tauri::command(async)]
+fn file_log(repo: String, path: String, limit: u32) -> Result<Vec<Commit>> {
+    git::file_log(Path::new(&repo), &path, limit)
+}
+
 /// Lays out the graph again for a subset of the history, e.g. with some
 /// branch lines hidden. `commits` are (hash, parent hashes), newest first.
 #[tauri::command(async)]
@@ -377,6 +387,8 @@ pub fn run() {
             delete_branch,
             rename_branch,
             log,
+            search_log,
+            file_log,
             graph_layout,
             show_commit,
             merge,

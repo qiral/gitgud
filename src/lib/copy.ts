@@ -1,6 +1,6 @@
 import { message } from '@tauri-apps/plugin-dialog'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
-import { Copy, FileText, FolderOpen } from 'lucide-react'
+import { Copy, FileText, FolderOpen, History } from 'lucide-react'
 import type { MenuItem } from '../components/ContextMenu'
 import { errorMessage } from './git'
 import { absolutePath, basename } from './paths'
@@ -28,14 +28,23 @@ async function reveal(path: string) {
 }
 
 /** Copy and reveal actions for a file in the repo. `exists` hides "Show in
- *  folder" for files that aren't on disk, like deleted ones. */
+ *  folder" for files that aren't on disk, like deleted ones; `onHistory`
+ *  adds "Show file history". */
 export function fileMenuItems(
   repo: string,
   path: string,
   exists = true,
+  onHistory?: () => void,
 ): MenuItem[] {
   const full = absolutePath(repo, path)
+  const history: MenuItem[] = onHistory
+    ? [
+        { label: 'Show file history', icon: History, onClick: onHistory },
+        'separator',
+      ]
+    : []
   return [
+    ...history,
     {
       label: 'Copy file name',
       icon: FileText,

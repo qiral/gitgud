@@ -33,6 +33,8 @@ interface Props {
   deletions: number
   /** Whether the file is on disk, so it can be shown in its folder. */
   exists: boolean
+  /** Opens the file's history; unset to leave it out of the menu. */
+  onHistory?: (path: string) => void
 }
 
 /** The bar above a diff naming the file, with ways to copy its path. */
@@ -43,9 +45,11 @@ export default function FileHeader({
   additions,
   deletions,
   exists,
+  onHistory,
 }: Props) {
   const { menu, open } = useContextMenu()
-  const items = () => fileMenuItems(repo, path, exists)
+  const items = () =>
+    fileMenuItems(repo, path, exists, onHistory && (() => onHistory(path)))
   const dir = dirname(path)
 
   return (
