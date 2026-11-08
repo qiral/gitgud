@@ -561,10 +561,46 @@ pub fn switch_branch(repo: &Path, name: &str) -> Result<()> {
     run(repo, &["switch", "--", name]).map(drop)
 }
 
-pub fn create_branch(repo: &Path, name: &str) -> Result<()> {
+fn check_branch_name(repo: &Path, name: &str) -> Result<()> {
     run(repo, &["check-ref-format", "--branch", name])
-        .map_err(|_| GitError::Failed(format!("'{name}' is not a valid branch name")))?;
+        .map(drop)
+        .map_err(|_| GitError::Failed(format!("'{name}' is not a valid branch name")))
+}
+
+pub fn create_branch(repo: &Path, name: &str) -> Result<()> {
+    check_branch_name(repo, name)?;
     run(repo, &["switch", "-c", name]).map(drop)
+}
+
+#[derive(Debug, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct DeleteBranchOutcome {
+    /// Nothing was deleted: the branch has commits that aren't merged
+    /// anywhere, so deleting it needs `force`.
+    pub not_merged: bool,
+}
+
+/// Deletes a local branch. Without `force`, a branch with unmerged commits
+/// is left alone and reported, so the user can be asked first.
+pub fn delete_branch(repo: &Path, name: &str, force: bool) -> Result<DeleteBranchOutcome> {
+    check_branch_name(repo, name)?;
+    let flag = if force { "-D" } else { "-d" };
+    let out = output(repo, &["branch", flag, "--", name])?;
+    if out.status.success() {
+        return Ok(DeleteBranchOutcome { not_merged: false });
+    }
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    if !force && stderr.contains("not fully merged") {
+        return Ok(DeleteBranchOutcome { not_merged: true });
+    }
+    Err(GitError::Failed(stderr.trim().to_string()))
+}
+
+/// Renames a local branch; its upstream (if any) is kept as it is.
+pub fn rename_branch(repo: &Path, old: &str, new: &str) -> Result<()> {
+    check_branch_name(repo, old)?;
+    check_branch_name(repo, new)?;
+    run(repo, &["branch", "-m", "--", old, new]).map(drop)
 }
 
 // ---------------------------------------------------------------------------
@@ -1269,6 +1305,55 @@ mod tests {
             open(&std::env::temp_dir()),
             Err(GitError::NotARepo(_))
         ));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn deletes_and_renames_branches() {
+        let dir = std::env::temp_dir().join(format!("gitgud-branches-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = dir.as_path();
+        run(repo, &["init", "-q", "-b", "main"]).unwrap();
+        for (k, v) in [
+            ("user.name", "T"),
+            ("user.email", "t@x"),
+            ("commit.gpgsign", "false"),
+        ] {
+            run(repo, &["config", k, v]).unwrap();
+        }
+        std::fs::write(dir.join("a.txt"), "a\n").unwrap();
+        stage(repo, &["a.txt".into()]).unwrap();
+        commit(repo, "first").unwrap();
+
+        // Merged: goes without asking.
+        run(repo, &["branch", "merged"]).unwrap();
+        assert!(!delete_branch(repo, "merged", false).unwrap().not_merged);
+
+        // Unmerged: kept until forced.
+        create_branch(repo, "wip").unwrap();
+        std::fs::write(dir.join("b.txt"), "b\n").unwrap();
+        stage(repo, &["b.txt".into()]).unwrap();
+        commit(repo, "wip work").unwrap();
+        switch_branch(repo, "main").unwrap();
+        assert!(delete_branch(repo, "wip", false).unwrap().not_merged);
+        assert!(branches(repo).unwrap().iter().any(|b| b.name == "wip"));
+
+        rename_branch(repo, "wip", "feature/wip").unwrap();
+        assert!(rename_branch(repo, "feature/wip", "bad..name").is_err());
+        let names: Vec<_> = branches(repo)
+            .unwrap()
+            .into_iter()
+            .map(|b| b.name)
+            .collect();
+        assert!(names.contains(&"feature/wip".to_string()));
+        assert!(!names.contains(&"wip".to_string()));
+
+        assert!(!delete_branch(repo, "feature/wip", true).unwrap().not_merged);
+        assert_eq!(branches(repo).unwrap().len(), 1);
+        // The current branch can't go.
+        assert!(delete_branch(repo, "main", true).is_err());
+        assert!(delete_branch(repo, "-D", true).is_err());
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

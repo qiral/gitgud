@@ -215,6 +215,11 @@ export const git = {
     invoke<void>('switch_branch', { repo, name }),
   createBranch: (repo: string, name: string) =>
     invoke<void>('create_branch', { repo, name }),
+  /** Without `force`, a branch with unmerged commits is kept and reported. */
+  deleteBranch: (repo: string, name: string, force = false) =>
+    invoke<{ notMerged: boolean }>('delete_branch', { repo, name, force }),
+  renameBranch: (repo: string, old: string, newName: string) =>
+    invoke<void>('rename_branch', { repo, old, new: newName }),
   log: (repo: string, limit = 200) => invoke<Commit[]>('log', { repo, limit }),
   /** Graph rows for `commits` (hash and parents, newest first). */
   graphLayout: (commits: [string, string[]][]) =>
