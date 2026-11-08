@@ -13,16 +13,21 @@ import {
   GitBranch,
   Loader2,
   LogOut,
+  MoreHorizontal,
   Palette,
+  Pencil,
   Plus,
   RefreshCw,
   Server,
   SunMoon,
+  Trash2,
 } from 'lucide-react'
 import GithubIcon from './GithubIcon'
 import { useUpdates } from '../lib/updates'
 import { readTheme, setTheme, THEMES, type ThemeInfo } from '../lib/prefs'
 import PullDialog from './PullDialog'
+import PromptDialog from './PromptDialog'
+import { useContextMenu, type MenuItem } from './ContextMenu'
 import {
   git,
   type Account,
@@ -510,7 +515,9 @@ function BranchMenu({
 }: Pick<Props, 'repo' | 'status' | 'branches' | 'act'>) {
   const [open, setOpen] = useState(false)
   const [newName, setNewName] = useState('')
+  const [renaming, setRenaming] = useState<Branch | null>(null)
   const ref = useRef<HTMLDivElement>(null)
+  const { menu, open: openMenu } = useContextMenu()
   useClickOutside(ref, open, () => setOpen(false))
 
   async function mergeIn(name: string) {
@@ -526,6 +533,69 @@ function BranchMenu({
   async function switchTo(name: string) {
     setOpen(false)
     await act('switch', () => git.switchBranch(repo.path, name))
+  }
+
+  async function remove(b: Branch) {
+    const remote = b.upstream
+      ? `\n\nThe remote branch ${b.upstream} is not deleted.`
+      : ''
+    const ok = await confirm(`Delete the branch ${b.name}?${remote}`, {
+      title: 'Delete branch',
+      kind: 'warning',
+      okLabel: 'Delete',
+    })
+    if (!ok) return
+    let notMerged = false
+    await act('branch', async () => {
+      notMerged = (await git.deleteBranch(repo.path, b.name)).notMerged
+    })
+    if (!notMerged) return
+    const force = await confirm(
+      `${b.name} has commits that aren't merged into ${status?.branch ?? 'the current branch'} or its upstream. ` +
+        'Deleting it anyway loses those commits.',
+      {
+        title: 'Delete unmerged branch',
+        kind: 'warning',
+        okLabel: 'Delete anyway',
+      },
+    )
+    if (force)
+      await act('branch', () => git.deleteBranch(repo.path, b.name, true))
+  }
+
+  function menuFor(b: Branch): MenuItem[] {
+    const items: MenuItem[] = []
+    if (!b.current)
+      items.push({
+        label: 'Switch to branch',
+        icon: GitBranch,
+        onClick: () => switchTo(b.name),
+      })
+    if (!b.current && status?.branch)
+      items.push({
+        label: `Merge into ${status.branch}…`,
+        icon: GitMerge,
+        onClick: () => mergeIn(b.name),
+      })
+    if (items.length > 0) items.push('separator')
+    items.push(
+      {
+        label: 'Rename…',
+        icon: Pencil,
+        onClick: () => {
+          setOpen(false)
+          setRenaming(b)
+        },
+      },
+      {
+        label: 'Delete…',
+        icon: Trash2,
+        danger: true,
+        disabled: b.current,
+        onClick: () => remove(b),
+      },
+    )
+    return items
   }
 
   const query = newName.trim().toLowerCase()
@@ -561,7 +631,7 @@ function BranchMenu({
         trailing={<ChevronDown className="size-4 text-muted" />}
       />
       {open && (
-        <div className="absolute top-full left-0 z-10 mt-1 w-72 overflow-hidden rounded-md border border-line bg-panel shadow-lg">
+        <div className="absolute top-full left-0 z-10 mt-1 w-80 overflow-hidden rounded-md border border-line bg-panel shadow-lg">
           <form
             onSubmit={create}
             className="flex gap-1 border-b border-line p-2"
@@ -588,7 +658,11 @@ function BranchMenu({
               </li>
             )}
             {shown.map((b) => (
-              <li key={b.name} className="group flex hover:bg-hover">
+              <li
+                key={b.name}
+                onContextMenu={(e) => openMenu(e, menuFor(b))}
+                className="group flex hover:bg-hover"
+              >
                 <button
                   onClick={() => !b.current && switchTo(b.name)}
                   className="flex min-w-0 flex-1 items-center gap-2 px-3 py-1.5 text-left"
@@ -602,16 +676,43 @@ function BranchMenu({
                   <button
                     onClick={() => mergeIn(b.name)}
                     title={`Merge ${b.name} into ${status.branch}`}
-                    className="invisible mr-1 flex items-center gap-1 rounded px-1.5 text-xs text-muted group-hover:visible hover:bg-line hover:text-fg"
+                    className="invisible flex items-center gap-1 rounded px-1.5 text-xs text-muted group-hover:visible hover:bg-line hover:text-fg"
                   >
                     <GitMerge className="size-3.5" />
                     Merge
                   </button>
                 )}
+                <button
+                  onClick={(e) => openMenu(e, menuFor(b))}
+                  title="More"
+                  className="invisible mr-1 rounded px-1 text-muted group-hover:visible hover:bg-line hover:text-fg"
+                >
+                  <MoreHorizontal className="size-4" />
+                </button>
               </li>
             ))}
           </ul>
         </div>
+      )}
+      {menu}
+      {renaming && (
+        <PromptDialog
+          title="Rename branch"
+          label="New name"
+          initial={renaming.name}
+          submitLabel="Rename"
+          description={
+            renaming.upstream
+              ? `The remote branch ${renaming.upstream} keeps its name; this only renames your local branch.`
+              : undefined
+          }
+          onSubmit={(name) =>
+            act('branch', () =>
+              git.renameBranch(repo.path, renaming.name, name),
+            )
+          }
+          onClose={() => setRenaming(null)}
+        />
       )}
     </div>
   )

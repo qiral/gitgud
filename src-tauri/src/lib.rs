@@ -8,8 +8,8 @@ mod rebase;
 
 use conflict::{Choice, Part};
 use git::{
-    Branch, CloneCancel, Commit, GitError, LineAction, MergeOutcome, PullMode, PullOutcome,
-    RepoInfo, Result, Side, Stash, Status,
+    Branch, CloneCancel, Commit, DeleteBranchOutcome, GitError, LineAction, MergeOutcome, PullMode,
+    PullOutcome, RepoInfo, Result, Side, Stash, Status,
 };
 use github::{Account, CreatedRepo, DeviceCode, PollResult, RemoteRepo};
 use hosts::{Host, HostKind};
@@ -79,6 +79,16 @@ fn switch_branch(repo: String, name: String) -> Result<()> {
 #[tauri::command(async)]
 fn create_branch(repo: String, name: String) -> Result<()> {
     git::create_branch(Path::new(&repo), &name)
+}
+
+#[tauri::command(async)]
+fn delete_branch(repo: String, name: String, force: bool) -> Result<DeleteBranchOutcome> {
+    git::delete_branch(Path::new(&repo), &name, force)
+}
+
+#[tauri::command(async)]
+fn rename_branch(repo: String, old: String, new: String) -> Result<()> {
+    git::rename_branch(Path::new(&repo), &old, &new)
 }
 
 #[tauri::command(async)]
@@ -317,6 +327,8 @@ pub fn run() {
             branches,
             switch_branch,
             create_branch,
+            delete_branch,
+            rename_branch,
             log,
             graph_layout,
             show_commit,
