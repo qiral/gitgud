@@ -13,6 +13,9 @@ import {
   Trash2,
   Undo2,
   Upload,
+  FileClock,
+  Search,
+  X,
 } from 'lucide-react'
 import { git, type Commit, type GraphRow, type RefLabel } from '../lib/git'
 import { hideLines } from '../lib/lines'
@@ -29,6 +32,10 @@ import { useContextMenu, type MenuItem } from './ContextMenu'
 import type { Selection } from './RepoView'
 import type { CommitActions } from './CommitActions'
 
+/** Narrows History to a search or to one file's commits. */
+export type HistoryFilter =
+  { kind: 'search'; query: string } | { kind: 'file'; path: string }
+
 interface Props {
   /** Remembers hidden branch lines per repository. */
   repoPath: string
@@ -41,6 +48,10 @@ interface Props {
   onLoadMore?: () => void
   /** Cherry-pick, revert, reset, branches and tags in the right-click menu. */
   actions?: CommitActions
+  filter?: HistoryFilter | null
+  onFilter?: (f: HistoryFilter | null) => void
+  /** The filter's results; null while they load. */
+  filtered?: Commit[] | null
 }
 
 const ROW_HEIGHT = 52
@@ -73,7 +84,12 @@ export default function HistoryPanel({
   onRebaseFrom,
   onLoadMore,
   actions,
+  filter = null,
+  onFilter,
+  filtered = null,
 }: Props) {
+  // Filtered commits aren't connected, so they're listed without lines.
+  const flat = filter !== null
   const [hidden, setHidden] = useState(() => readHiddenLines(repoPath))
   useEffect(() => setHidden(readHiddenLines(repoPath)), [repoPath])
   const updateHidden = (next: string[]) => {
@@ -81,10 +97,14 @@ export default function HistoryPanel({
     writeHiddenLines(repoPath, next)
   }
 
-  const { visible, layoutInput, lines, canHide } = useMemo(
-    () => hideLines(allCommits, hidden),
-    [allCommits, hidden],
+  const source = flat ? (filtered ?? []) : allCommits
+  const lineView = useMemo(
+    () => hideLines(source, flat ? [] : hidden),
+    [source, flat, hidden],
   )
+  const { visible, layoutInput } = lineView
+  const lines = flat ? [] : lineView.lines
+  const canHide = (c: Commit) => !flat && lineView.canHide(c)
 
   // With lines hidden the rest is laid out again so it moves into the room.
   const [relaid, setRelaid] = useState<{
@@ -238,128 +258,205 @@ export default function HistoryPanel({
   }
   const nearEnd = rows.end + LOAD_MORE_BEFORE >= commits.length
   useEffect(() => {
-    if (nearEnd && commits.length > 0) onLoadMore?.()
-  }, [nearEnd, commits.length, onLoadMore])
+    if (!flat && nearEnd && commits.length > 0) onLoadMore?.()
+  }, [flat, nearEnd, commits.length, onLoadMore])
 
-  if (allCommits.length === 0)
-    return <p className="p-6 text-center text-muted">No commits yet</p>
-
+  const dots = collapsed || flat
   // Collapsed, the graph is a single line of dots so messages get the room.
-  const graphWidth = (collapsed ? 1 : lanes) * LANE_WIDTH + GRAPH_PADDING
+  const graphWidth = (dots ? 1 : lanes) * LANE_WIDTH + GRAPH_PADDING
+  const empty = flat
+    ? filtered === null
+      ? 'Searching…'
+      : filter.kind === 'search'
+        ? 'No commits match'
+        : 'No commits changed this file on this branch'
+    : 'No commits yet'
 
   return (
     <>
-      <div className="flex shrink-0 items-center gap-1 border-b border-line px-1 py-0.5 text-xs text-muted">
-        <button
-          onClick={toggleGraph}
-          title={collapsed ? 'Show branch lines' : 'Hide branch lines'}
-          aria-expanded={!collapsed}
-          className="flex items-center gap-1.5 rounded px-1.5 py-0.5 hover:bg-hover hover:text-fg"
-        >
-          {collapsed ? (
-            <Plus className="size-3.5" />
-          ) : (
-            <Minus className="size-3.5" />
-          )}
-          Graph
-        </button>
-        {lines.map((l) => (
-          <button
-            key={l.color}
-            onClick={() => showLine(l.color)}
-            title={`Show ${l.label} again (${l.count} commit${l.count > 1 ? 's' : ''})`}
-            className="flex max-w-40 items-center gap-1 rounded border border-line px-1.5 py-0.5 hover:bg-hover hover:text-fg"
-          >
-            <Plus className="size-3 shrink-0" />
-            <span
-              className="size-2 shrink-0 rounded-full"
-              style={{ background: laneColor(l.color) }}
-            />
-            <span className="truncate">{l.label}</span>
-          </button>
-        ))}
-        {lines.length > 1 && (
-          <button
-            onClick={() => updateHidden([])}
-            className="rounded px-1.5 py-0.5 hover:bg-hover hover:text-fg"
-          >
-            Show all
-          </button>
-        )}
-      </div>
-      <ul ref={rows.ref} className="min-h-0 flex-1 overflow-auto">
-        <li aria-hidden style={{ height: rows.top }} />
-        {commits.slice(rows.start, rows.end).map((c) => {
-          const selected =
-            selection?.kind === 'commit' && selection.commit.hash === c.hash
-          const isHead = c.refs.some((r) => r.kind === 'head')
-          return (
-            <li
-              key={c.hash}
-              onClick={() => onSelect({ kind: 'commit', commit: c })}
-              onContextMenu={(e) => {
-                onSelect({ kind: 'commit', commit: c })
-                open(e, menuFor(c))
-              }}
-              style={{ height: ROW_HEIGHT }}
-              className={`group flex cursor-default items-center pr-3 ${
-                selected ? 'bg-hover' : 'hover:bg-hover/60'
-              }`}
-            >
-              {collapsed ? (
-                <DotCell
-                  row={c.graph}
-                  width={graphWidth}
-                  isHead={isHead}
-                  first={c === commits[0]}
-                  last={c === commits[commits.length - 1]}
-                />
-              ) : (
-                <GraphCell
-                  row={c.graph}
-                  width={graphWidth}
-                  isHead={isHead}
-                  onHide={canHide(c) ? () => hideLineOf(c) : undefined}
-                />
+      {onFilter && allCommits.length > 0 && (
+        <FilterBar filter={filter} onFilter={onFilter} />
+      )}
+      {commits.length === 0 ? (
+        <p className="p-6 text-center text-muted">{empty}</p>
+      ) : (
+        <>
+          {!flat && (
+            <div className="flex shrink-0 items-center gap-1 border-b border-line px-1 py-0.5 text-xs text-muted">
+              <button
+                onClick={toggleGraph}
+                title={collapsed ? 'Show branch lines' : 'Hide branch lines'}
+                aria-expanded={!collapsed}
+                className="flex items-center gap-1.5 rounded px-1.5 py-0.5 hover:bg-hover hover:text-fg"
+              >
+                {collapsed ? (
+                  <Plus className="size-3.5" />
+                ) : (
+                  <Minus className="size-3.5" />
+                )}
+                Graph
+              </button>
+              {lines.map((l) => (
+                <button
+                  key={l.color}
+                  onClick={() => showLine(l.color)}
+                  title={`Show ${l.label} again (${l.count} commit${l.count > 1 ? 's' : ''})`}
+                  className="flex max-w-40 items-center gap-1 rounded border border-line px-1.5 py-0.5 hover:bg-hover hover:text-fg"
+                >
+                  <Plus className="size-3 shrink-0" />
+                  <span
+                    className="size-2 shrink-0 rounded-full"
+                    style={{ background: laneColor(l.color) }}
+                  />
+                  <span className="truncate">{l.label}</span>
+                </button>
+              ))}
+              {lines.length > 1 && (
+                <button
+                  onClick={() => updateHidden([])}
+                  className="rounded px-1.5 py-0.5 hover:bg-hover hover:text-fg"
+                >
+                  Show all
+                </button>
               )}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  {c.refs.map((r) => (
-                    <RefBadge key={`${r.kind}:${r.name}`} label={r} />
-                  ))}
-                  <span className="truncate font-medium" title={c.subject}>
-                    {c.subject}
-                  </span>
-                </div>
-                <div className="mt-0.5 flex gap-2 text-xs text-muted">
-                  <span className="truncate">{c.author}</span>
-                  <span>·</span>
-                  <span className="shrink-0">{relativeTime(c.time)}</span>
-                  <span className="ml-auto shrink-0 font-mono">
-                    {c.shortHash}
-                  </span>
-                  {onRebaseFrom && c.parents.length <= 1 && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onRebaseFrom(c)
-                      }}
-                      title="Edit history from this commit: reorder, squash, reword or drop"
-                      className="hidden shrink-0 items-center gap-1 rounded px-1 text-muted group-hover:flex hover:bg-line hover:text-fg"
-                    >
-                      <PencilLine className="size-3" />
-                      Edit from here
-                    </button>
+            </div>
+          )}
+          <ul ref={rows.ref} className="min-h-0 flex-1 overflow-auto">
+            <li aria-hidden style={{ height: rows.top }} />
+            {commits.slice(rows.start, rows.end).map((c) => {
+              const selected =
+                selection?.kind === 'commit' && selection.commit.hash === c.hash
+              const isHead = c.refs.some((r) => r.kind === 'head')
+              return (
+                <li
+                  key={c.hash}
+                  onClick={() => onSelect({ kind: 'commit', commit: c })}
+                  onContextMenu={(e) => {
+                    onSelect({ kind: 'commit', commit: c })
+                    open(e, menuFor(c))
+                  }}
+                  style={{ height: ROW_HEIGHT }}
+                  className={`group flex cursor-default items-center pr-3 ${
+                    selected ? 'bg-hover' : 'hover:bg-hover/60'
+                  }`}
+                >
+                  {dots ? (
+                    <DotCell
+                      row={c.graph}
+                      width={graphWidth}
+                      isHead={isHead}
+                      first={c === commits[0]}
+                      last={c === commits[commits.length - 1]}
+                    />
+                  ) : (
+                    <GraphCell
+                      row={c.graph}
+                      width={graphWidth}
+                      isHead={isHead}
+                      onHide={canHide(c) ? () => hideLineOf(c) : undefined}
+                    />
                   )}
-                </div>
-              </div>
-            </li>
-          )
-        })}
-        <li aria-hidden style={{ height: rows.bottom }} />
-      </ul>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      {c.refs.map((r) => (
+                        <RefBadge key={`${r.kind}:${r.name}`} label={r} />
+                      ))}
+                      <span className="truncate font-medium" title={c.subject}>
+                        {c.subject}
+                      </span>
+                    </div>
+                    <div className="mt-0.5 flex gap-2 text-xs text-muted">
+                      <span className="truncate">{c.author}</span>
+                      <span>·</span>
+                      <span className="shrink-0">{relativeTime(c.time)}</span>
+                      <span className="ml-auto shrink-0 font-mono">
+                        {c.shortHash}
+                      </span>
+                      {onRebaseFrom && c.parents.length <= 1 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onRebaseFrom(c)
+                          }}
+                          title="Edit history from this commit: reorder, squash, reword or drop"
+                          className="hidden shrink-0 items-center gap-1 rounded px-1 text-muted group-hover:flex hover:bg-line hover:text-fg"
+                        >
+                          <PencilLine className="size-3" />
+                          Edit from here
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              )
+            })}
+            <li aria-hidden style={{ height: rows.bottom }} />
+          </ul>
+        </>
+      )}
       {menu}
     </>
+  )
+}
+
+function FilterBar({
+  filter,
+  onFilter,
+}: {
+  filter: HistoryFilter | null
+  onFilter: (f: HistoryFilter | null) => void
+}) {
+  // Typed text updates right away; the search itself waits a moment.
+  const [text, setText] = useState(
+    filter?.kind === 'search' ? filter.query : '',
+  )
+  useEffect(() => {
+    if (filter?.kind !== 'search') setText('')
+  }, [filter])
+
+  if (filter?.kind === 'file')
+    return (
+      <div className="flex shrink-0 items-center gap-2 border-b border-line px-3 py-1.5">
+        <FileClock className="size-4 shrink-0 text-muted" />
+        <span className="min-w-0 flex-1 truncate" title={filter.path}>
+          <span className="text-muted">History of </span>
+          <span className="font-medium">{filter.path}</span>
+        </span>
+        <button
+          onClick={() => onFilter(null)}
+          title="Show all commits"
+          className="shrink-0 rounded p-0.5 text-muted hover:bg-hover hover:text-fg"
+        >
+          <X className="size-4" />
+        </button>
+      </div>
+    )
+
+  const change = (value: string) => {
+    setText(value)
+    onFilter(value.trim() ? { kind: 'search', query: value.trim() } : null)
+  }
+  return (
+    <div className="flex shrink-0 items-center gap-2 border-b border-line px-3 py-1.5">
+      <Search className="size-4 shrink-0 text-muted" />
+      <input
+        value={text}
+        onChange={(e) => change(e.target.value)}
+        onKeyDown={(e) => e.key === 'Escape' && change('')}
+        placeholder="Search messages, authors or hashes"
+        aria-label="Search commits"
+        className="min-w-0 flex-1 bg-transparent outline-none"
+      />
+      {text && (
+        <button
+          onClick={() => change('')}
+          title="Clear search"
+          className="shrink-0 rounded p-0.5 text-muted hover:bg-hover hover:text-fg"
+        >
+          <X className="size-4" />
+        </button>
+      )}
+    </div>
   )
 }
 
