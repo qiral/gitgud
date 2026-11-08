@@ -21,8 +21,10 @@ export interface Status {
   ahead: number
   behind: number
   files: FileChange[]
-  /** While a merge is in progress: its message, e.g. "Merge branch 'x'". */
+  /** While a merge, cherry-pick or revert is in progress: what it is,
+   *  e.g. "Merge branch 'x'". */
   merging: string | null
+  operation: Operation | null
   /** While a rebase is stopped, e.g. for conflicts. */
   rebasing: {
     step: number
@@ -38,6 +40,10 @@ export interface LastCommit {
   /** A remote branch has it, so amending it needs a force push. */
   pushed: boolean
 }
+
+export type Operation = 'merge' | 'cherryPick' | 'revert'
+
+export type ResetMode = 'soft' | 'mixed' | 'hard'
 
 export interface Branch {
   name: string
@@ -241,6 +247,22 @@ export const git = {
     invoke<{ conflicts: boolean }>('merge', { repo, branch }),
   mergeAbort: (repo: string) => invoke<void>('merge_abort', { repo }),
   mergeCommit: (repo: string) => invoke<void>('merge_commit', { repo }),
+  cherryPick: (repo: string, hash: string) =>
+    invoke<{ conflicts: boolean }>('cherry_pick', { repo, hash }),
+  revert: (repo: string, hash: string) =>
+    invoke<{ conflicts: boolean }>('revert', { repo, hash }),
+  reset: (repo: string, hash: string, mode: ResetMode) =>
+    invoke<void>('reset', { repo, hash, mode }),
+  /** Creates a branch at `hash` and switches to it. */
+  createBranchAt: (repo: string, name: string, hash: string) =>
+    invoke<void>('create_branch_at', { repo, name, hash }),
+  /** With a message the tag is annotated. */
+  createTag: (repo: string, name: string, hash: string, message = '') =>
+    invoke<void>('create_tag', { repo, name, hash, message }),
+  deleteTag: (repo: string, name: string) =>
+    invoke<void>('delete_tag', { repo, name }),
+  pushTag: (repo: string, name: string) =>
+    invoke<void>('push_tag', { repo, name }),
   conflictParts: (repo: string, path: string) =>
     invoke<ConflictPart[]>('conflict_parts', { repo, path }),
   resolveBlock: (

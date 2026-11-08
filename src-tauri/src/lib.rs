@@ -9,7 +9,7 @@ mod rebase;
 use conflict::{Choice, Part};
 use git::{
     Branch, CloneCancel, Commit, DeleteBranchOutcome, GitError, LastCommit, LineAction,
-    MergeOutcome, PullMode, PullOutcome, RepoInfo, Result, Side, Stash, Status,
+    MergeOutcome, PullMode, PullOutcome, RepoInfo, ResetMode, Result, Side, Stash, Status,
 };
 use github::{Account, CreatedRepo, DeviceCode, PollResult, RemoteRepo};
 use hosts::{Host, HostKind};
@@ -131,6 +131,41 @@ fn merge_abort(repo: String) -> Result<()> {
 #[tauri::command(async)]
 fn merge_commit(repo: String) -> Result<()> {
     git::merge_commit(Path::new(&repo))
+}
+
+#[tauri::command(async)]
+fn cherry_pick(repo: String, hash: String) -> Result<MergeOutcome> {
+    git::cherry_pick(Path::new(&repo), &hash)
+}
+
+#[tauri::command(async)]
+fn revert(repo: String, hash: String) -> Result<MergeOutcome> {
+    git::revert(Path::new(&repo), &hash)
+}
+
+#[tauri::command(async)]
+fn reset(repo: String, hash: String, mode: ResetMode) -> Result<()> {
+    git::reset(Path::new(&repo), &hash, mode)
+}
+
+#[tauri::command(async)]
+fn create_branch_at(repo: String, name: String, hash: String) -> Result<()> {
+    git::create_branch_at(Path::new(&repo), &name, &hash)
+}
+
+#[tauri::command(async)]
+fn create_tag(repo: String, name: String, hash: String, message: String) -> Result<()> {
+    git::create_tag(Path::new(&repo), &name, &hash, &message)
+}
+
+#[tauri::command(async)]
+fn delete_tag(repo: String, name: String) -> Result<()> {
+    git::delete_tag(Path::new(&repo), &name)
+}
+
+#[tauri::command(async)]
+fn push_tag(repo: String, name: String) -> Result<()> {
+    git::push_tag(Path::new(&repo), &name, &hosts::git_env())
 }
 
 #[tauri::command(async)]
@@ -347,6 +382,13 @@ pub fn run() {
             merge,
             merge_abort,
             merge_commit,
+            cherry_pick,
+            revert,
+            reset,
+            create_branch_at,
+            create_tag,
+            delete_tag,
+            push_tag,
             conflict_parts,
             resolve_block,
             resolve_file,

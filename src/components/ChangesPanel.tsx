@@ -6,6 +6,7 @@ import {
   isStaged,
   isUnstaged,
   type FileChange,
+  type Operation,
   type RepoInfo,
   type Status,
 } from '../lib/git'
@@ -17,8 +18,10 @@ import type { Selection } from './RepoView'
 interface Props {
   repo: RepoInfo
   files: FileChange[]
-  /** Set while a merge is in progress, e.g. "Merge branch 'feature'". */
+  /** Set while a merge, cherry-pick or revert is in progress, e.g.
+   *  "Merge branch 'feature'". */
   merging: string | null
+  operation?: Operation | null
   /** Set while an interactive rebase is stopped. */
   rebasing: Status['rebasing']
   /** False on an unborn branch, where there is nothing to amend. */
@@ -34,6 +37,7 @@ export default function ChangesPanel({
   repo,
   files,
   merging,
+  operation = 'merge',
   rebasing,
   hasCommits,
   selection,
@@ -111,10 +115,17 @@ export default function ChangesPanel({
     if (done) setMessage('')
   }
 
+  const what =
+    operation === 'cherryPick'
+      ? 'cherry-pick'
+      : operation === 'revert'
+        ? 'revert'
+        : 'merge'
+
   async function abortMerge() {
     const ok = await confirm(
-      'Abort the merge? Your branch goes back to how it was before merging, and conflict resolutions are lost.',
-      { title: 'Abort merge', kind: 'warning' },
+      `Abort the ${what}? Your branch goes back to how it was before, and conflict resolutions are lost.`,
+      { title: `Abort ${what}`, kind: 'warning' },
     )
     if (ok) act('merge', () => git.mergeAbort(repo.path))
   }
@@ -192,7 +203,7 @@ export default function ChangesPanel({
               {conflicts.length > 0
                 ? `${conflicts.length} conflicted file${conflicts.length > 1 ? 's' : ''} to resolve`
                 : merging
-                  ? 'All conflicts resolved. Commit to finish the merge.'
+                  ? `All conflicts resolved. Commit to finish the ${what}.`
                   : 'All conflicts resolved. Continue to apply the next commits.'}
             </span>
             <button
@@ -200,7 +211,7 @@ export default function ChangesPanel({
               disabled={busy}
               className="rounded border border-line px-2 py-0.5 text-fg hover:bg-hover disabled:opacity-40"
             >
-              {merging ? 'Abort merge' : 'Abort'}
+              {merging ? `Abort ${what}` : 'Abort'}
             </button>
           </div>
         </div>
@@ -261,7 +272,7 @@ export default function ChangesPanel({
             rebasing
               ? 'Commits keep their messages while rebasing'
               : merging
-                ? 'Merge message (optional)'
+                ? `${what === 'merge' ? 'Merge' : 'Commit'} message (optional)`
                 : 'Commit message'
           }
           rows={3}
@@ -292,7 +303,7 @@ export default function ChangesPanel({
             {rebasing
               ? 'Continue rebase'
               : merging
-                ? 'Commit merge'
+                ? `Commit ${what}`
                 : amending
                   ? `Amend last commit${staged.length > 0 ? ` with ${staged.length} file${staged.length > 1 ? 's' : ''}` : ''}`
                   : `Commit${staged.length > 0 ? ` ${staged.length} file${staged.length > 1 ? 's' : ''}` : ''}`}
