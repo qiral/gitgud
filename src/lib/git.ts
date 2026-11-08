@@ -33,6 +33,12 @@ export interface Status {
   } | null
 }
 
+export interface LastCommit {
+  message: string
+  /** A remote branch has it, so amending it needs a force push. */
+  pushed: boolean
+}
+
 export interface Branch {
   name: string
   current: boolean
@@ -208,6 +214,11 @@ export const git = {
   ) => invoke<void>('apply_lines', { repo, diff, lines, action }),
   commit: (repo: string, message: string) =>
     invoke<void>('commit', { repo, message }),
+  /** Replaces the last commit; nothing needs to be staged. */
+  amend: (repo: string, message: string) =>
+    invoke<void>('amend', { repo, message }),
+  lastCommit: (repo: string) =>
+    invoke<LastCommit | null>('last_commit', { repo }),
   diff: (repo: string, path: string, staged: boolean, untracked: boolean) =>
     invoke<string>('diff', { repo, path, staged, untracked }),
   branches: (repo: string) => invoke<Branch[]>('branches', { repo }),

@@ -304,6 +304,7 @@ export default function RepoView({
               files={status?.files ?? []}
               merging={status?.merging ?? null}
               rebasing={status?.rebasing ?? null}
+              hasCommits={commits.length > 0}
               selection={selection}
               onSelect={setSelection}
               busy={busy !== null}
