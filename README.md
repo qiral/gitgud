@@ -34,7 +34,7 @@ Pick a commit to browse its changed files one by one, right-click anything to co
 - Merge branches and resolve conflicts block by block, or abort the merge
 - Edit history: reorder commits by dragging, squash, fixup, reword or drop them
 - Inline diff viewer with line numbers
-- Commit (`Ctrl+Enter` in the message box)
+- Commit (`Ctrl+Enter` in the message box), or amend the last commit to fix its message or add forgotten files
 - Stash changes (optionally with untracked files), then apply, pop, preview or delete stashes
 - Create, filter, switch, rename and delete branches (right-click a branch or use its "…" button; unmerged branches ask before they go)
 - History with a commit graph across all branches, remote branches and tags; pick a commit or stash to browse its changed files one by one
