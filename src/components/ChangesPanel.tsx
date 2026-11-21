@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react'
 import { confirm } from '@tauri-apps/plugin-dialog'
-import { Archive, GitMerge, Minus, Plus, Undo2 } from 'lucide-react'
+import {
+  Archive,
+  GitMerge,
+  Loader2,
+  Minus,
+  Plus,
+  Sparkles,
+  Undo2,
+} from 'lucide-react'
 import {
   git,
   isStaged,
@@ -31,6 +39,8 @@ interface Props {
   busy: boolean
   onStash: () => void
   onFileHistory?: (path: string) => void
+  /** Asks Copilot for a message for the staged changes; null on failure. */
+  onGenerateMessage?: () => Promise<string | null>
   act: (label: string, action: () => Promise<unknown>) => Promise<boolean>
 }
 
@@ -46,9 +56,11 @@ export default function ChangesPanel({
   busy,
   onStash,
   onFileHistory,
+  onGenerateMessage,
   act,
 }: Props) {
   const [message, setMessage] = useState('')
+  const [generating, setGenerating] = useState(false)
   // While amending, the message being typed before is kept to put back.
   const [amending, setAmending] = useState<{
     draft: string
@@ -86,6 +98,17 @@ export default function ChangesPanel({
     const { message: previous, pushed } = last
     setAmending({ draft: message, pushed })
     setMessage(previous)
+  }
+
+  async function generateMessage() {
+    if (!onGenerateMessage) return
+    setGenerating(true)
+    try {
+      const generated = await onGenerateMessage()
+      if (generated !== null) setMessage(generated)
+    } finally {
+      setGenerating(false)
+    }
   }
 
   async function commit() {
@@ -267,23 +290,46 @@ export default function ChangesPanel({
       {menu}
 
       <div className="border-t border-line p-3">
-        <textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) commit()
-          }}
-          disabled={rebasing !== null}
-          placeholder={
-            rebasing
-              ? 'Commits keep their messages while rebasing'
-              : merging
-                ? `${what === 'merge' ? 'Merge' : 'Commit'} message (optional)`
-                : 'Commit message'
-          }
-          rows={3}
-          className="w-full resize-none rounded border border-line bg-bg p-2 outline-none select-text focus:border-accent"
-        />
+        <div className="relative">
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) commit()
+            }}
+            disabled={rebasing !== null}
+            placeholder={
+              rebasing
+                ? 'Commits keep their messages while rebasing'
+                : merging
+                  ? `${what === 'merge' ? 'Merge' : 'Commit'} message (optional)`
+                  : 'Commit message'
+            }
+            rows={3}
+            className="w-full resize-none rounded border border-line bg-bg p-2 pr-8 outline-none select-text focus:border-accent"
+          />
+          {onGenerateMessage && (
+            <button
+              onClick={generateMessage}
+              disabled={
+                busy ||
+                generating ||
+                staged.length === 0 ||
+                merging !== null ||
+                rebasing !== null
+              }
+              title="Generate commit message with Copilot"
+              aria-label="Generate commit message with Copilot"
+              className="absolute top-1.5 right-1.5 rounded p-1 text-muted hover:bg-hover hover:text-fg disabled:opacity-40"
+            >
+              {generating ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Sparkles className="size-4" />
+              )}
+            </button>
+          )}
+        </div>
         {canAmend && (
           <label
             className="mt-1 flex items-center gap-2 text-xs text-muted"

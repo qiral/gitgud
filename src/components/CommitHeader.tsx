@@ -1,3 +1,4 @@
+import { Sparkles } from 'lucide-react'
 import type { Commit, Stash } from '../lib/git'
 import { relativeTime } from '../lib/time'
 import CopyButton from './CopyButton'
@@ -9,10 +10,13 @@ const fullDate = (unixSeconds: number) =>
 export function CommitHeader({
   commit,
   message,
+  onExplain,
 }: {
   commit: Commit
   /** The full message, as `git show --format=%B` prints it. */
   message: string
+  /** Asks Copilot to explain the commit; unset to hide the button. */
+  onExplain?: () => void
 }) {
   const body = message.split('\n').slice(1).join('\n').trim()
   return (
@@ -35,6 +39,15 @@ export function CommitHeader({
         <span>·</span>
         <span title={fullDate(commit.time)}>{relativeTime(commit.time)}</span>
         <span className="flex-1" />
+        {onExplain && (
+          <button
+            onClick={onExplain}
+            className="flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-hover hover:text-fg"
+          >
+            <Sparkles className="size-3.5" />
+            Explain with Copilot
+          </button>
+        )}
         <CopyButton
           text={commit.hash}
           label={commit.shortHash}

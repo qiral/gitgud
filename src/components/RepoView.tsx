@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
+  copilot,
   errorMessage,
   git,
   github,
@@ -28,8 +29,10 @@ import RebaseDialog from './RebaseDialog'
 import SignInDialog from './SignInDialog'
 import HostsDialog from './HostsDialog'
 import PublishDialog from './PublishDialog'
+import ExplainDialog from './ExplainDialog'
 import { useResizable } from './Resizable'
 import { useCommitActions } from './CommitActions'
+import { useCopilot } from '../lib/copilot'
 
 type Tab = 'changes' | 'history' | 'stashes'
 
@@ -264,10 +267,36 @@ export default function RepoView({
   )
 
   const commitActions = useCommitActions(repo.path, status, act)
+  const openSignIn = useCallback(() => setDialog('signIn'), [])
+  const ai = useCopilot(setError, account !== null, openSignIn)
+  const [explaining, setExplaining] = useState<{
+    title: string
+    text: string | null
+  } | null>(null)
+
+  /** Shows Copilot's explanation of a diff; closes again if it fails. */
+  const explain = useCallback(
+    async (title: string, load: () => Promise<string>) => {
+      setExplaining({ title, text: null })
+      const text = await ai.run(async () => copilot.explain(await load()))
+      setExplaining((shown) =>
+        shown?.title !== title ? shown : text === null ? null : { title, text },
+      )
+    },
+    [ai.run],
+  )
 
   return (
     <div className="flex h-full flex-col">
       {commitActions.dialogs}
+      {ai.dialog}
+      {explaining && (
+        <ExplainDialog
+          title={explaining.title}
+          explanation={explaining.text}
+          onClose={() => setExplaining(null)}
+        />
+      )}
       <Toolbar
         repo={repo}
         status={status}
@@ -363,6 +392,9 @@ export default function RepoView({
               busy={busy !== null}
               onStash={() => setDialog('stash')}
               onFileHistory={showFileHistory}
+              onGenerateMessage={() =>
+                ai.run(() => copilot.commitMessage(repo.path))
+              }
               act={act}
             />
           ) : tab === 'history' ? (
@@ -376,6 +408,9 @@ export default function RepoView({
               filter={historyFilter}
               onFilter={changeFilter}
               filtered={filtered}
+              onExplain={(c) =>
+                explain(c.shortHash, () => git.showCommit(repo.path, c.hash))
+              }
               onRebaseFrom={
                 status?.branch && !status.merging && !status.rebasing
                   ? setRebaseFrom
@@ -402,6 +437,11 @@ export default function RepoView({
                 file={conflictedSelection}
                 version={status}
                 act={act}
+                onAsk={(index) =>
+                  ai.run(() =>
+                    copilot.resolve(repo.path, conflictedSelection.path, index),
+                  )
+                }
               />
             </div>
           ) : selection?.kind === 'commit' ? (
@@ -416,6 +456,9 @@ export default function RepoView({
                 <CommitHeader
                   commit={selection.commit}
                   message={parts.preamble}
+                  onExplain={() =>
+                    explain(selection.commit.shortHash, async () => diff)
+                  }
                 />
               }
             />
@@ -435,6 +478,11 @@ export default function RepoView({
                 }
                 additions={fileStats.additions}
                 deletions={fileStats.deletions}
+                onExplain={
+                  diff
+                    ? () => explain(selection.file.path, async () => diff)
+                    : undefined
+                }
                 exists={
                   selection.file.worktree !== 'D' &&
                   selection.file.index !== 'D'

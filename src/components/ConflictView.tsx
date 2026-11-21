@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, Loader2 } from 'lucide-react'
+import { Check, Loader2, Sparkles } from 'lucide-react'
 import {
   errorMessage,
   git,
@@ -14,12 +14,40 @@ interface Props {
   /** Changes whenever the repo is refreshed, so the file is re-read. */
   version: unknown
   act: (label: string, action: () => Promise<unknown>) => Promise<boolean>
+  /** Asks Copilot for merged code for a conflict; null on failure. */
+  onAsk?: (index: number) => Promise<string | null>
 }
 
 /** Resolve a conflicted file block by block, or take one side entirely. */
-export default function ConflictView({ repo, file, version, act }: Props) {
+export default function ConflictView({
+  repo,
+  file,
+  version,
+  act,
+  onAsk,
+}: Props) {
   const [parts, setParts] = useState<ConflictPart[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  // Keyed by file and block content: indexes shift as blocks get resolved,
+  // and an answer can arrive after that.
+  const [suggestions, setSuggestions] = useState<Record<string, string>>({})
+  const [asking, setAsking] = useState<string | null>(null)
+
+  async function ask(index: number, key: string) {
+    if (!onAsk) return
+    setAsking(key)
+    try {
+      const suggestion = await onAsk(index)
+      if (suggestion !== null)
+        setSuggestions((s) => ({ ...s, [key]: suggestion }))
+    } finally {
+      setAsking(null)
+    }
+  }
+
+  function dismiss(key: string) {
+    setSuggestions(({ [key]: _, ...rest }) => rest)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -110,6 +138,25 @@ export default function ConflictView({ repo, file, version, act }: Props) {
                     ),
                   )
                 }
+                suggestion={suggestions[blockKey(file.path, part)] ?? null}
+                asking={asking === blockKey(file.path, part)}
+                onAsk={
+                  onAsk && asking === null
+                    ? () =>
+                        ask(conflictIndex(parts, i), blockKey(file.path, part))
+                    : undefined
+                }
+                onUse={(text) =>
+                  act('resolve', () =>
+                    git.resolveBlockText(
+                      repo.path,
+                      file.path,
+                      conflictIndex(parts, i),
+                      text,
+                    ),
+                  )
+                }
+                onDismiss={() => dismiss(blockKey(file.path, part))}
               />
             ),
           )}
@@ -117,6 +164,13 @@ export default function ConflictView({ repo, file, version, act }: Props) {
       )}
     </div>
   )
+}
+
+function blockKey(
+  path: string,
+  part: Extract<ConflictPart, { kind: 'conflict' }>,
+) {
+  return JSON.stringify([path, part.ours, part.base, part.theirs])
 }
 
 /** Position of parts[i] among the conflicts only, as the backend counts. */
@@ -127,9 +181,20 @@ function conflictIndex(parts: ConflictPart[], i: number) {
 function ConflictBlock({
   part,
   onChoose,
+  suggestion,
+  asking,
+  onAsk,
+  onUse,
+  onDismiss,
 }: {
   part: Extract<ConflictPart, { kind: 'conflict' }>
   onChoose: (choice: 'ours' | 'theirs' | 'both') => void
+  suggestion: string | null
+  asking: boolean
+  /** Unset while Copilot is busy, or when it isn't offered. */
+  onAsk?: () => void
+  onUse: (text: string) => void
+  onDismiss: () => void
 }) {
   return (
     <div className="my-2 overflow-hidden border-y border-line">
@@ -138,7 +203,31 @@ function ConflictBlock({
         <Button onClick={() => onChoose('ours')}>Use ours</Button>
         <Button onClick={() => onChoose('theirs')}>Use theirs</Button>
         <Button onClick={() => onChoose('both')}>Use both</Button>
+        {(onAsk || asking) && (
+          <Button disabled={!onAsk} onClick={() => onAsk?.()}>
+            {asking ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="size-3.5" />
+            )}
+            Ask Copilot
+          </Button>
+        )}
       </div>
+      {suggestion !== null && (
+        <div className={`border-l-4 ${TONE.copilot}`}>
+          <div className="flex items-center gap-2 px-3 pt-1 font-sans">
+            <span className="flex-1 text-[11px] font-semibold text-muted">
+              Copilot's suggestion
+            </span>
+            <Button primary onClick={() => onUse(suggestion)}>
+              Use this
+            </Button>
+            <Button onClick={onDismiss}>Dismiss</Button>
+          </div>
+          <Lines lines={suggestion.split('\n')} />
+        </div>
+      )}
       <Side label={`Ours (${part.oursLabel})`} tone="ours" lines={part.ours} />
       {part.base && <Side label="Original" tone="base" lines={part.base} />}
       <Side
@@ -154,6 +243,7 @@ const TONE = {
   ours: 'border-accent bg-accent/10',
   base: 'border-line bg-panel',
   theirs: 'border-modified bg-modified/10',
+  copilot: 'border-added bg-added/10',
 }
 
 function Side({
