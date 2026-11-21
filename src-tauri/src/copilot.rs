@@ -5,7 +5,7 @@
 //! into its app data folder and checks it against the hashes below.
 
 use std::borrow::Cow;
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -53,6 +53,21 @@ fn io_error(e: std::io::Error) -> GitError {
 
 // ---------------------------------------------------------------------------
 // Finding and installing the CLI
+
+/// `PATH` plus the folders Homebrew and GitHub's install script put
+/// `copilot` in: apps opened from Finder or the Dock only get
+/// `/usr/bin:/bin:/usr/sbin:/sbin`.
+// ponytail: fixed folders rather than the login shell's PATH, so nvm/asdf
+// installs still fall back to GitGud's own download.
+fn search_path(path_var: &OsStr) -> OsString {
+    let mut dirs: Vec<PathBuf> = std::env::split_paths(path_var).collect();
+    #[cfg(unix)]
+    {
+        dirs.extend(std::env::home_dir().map(|home| home.join(".local/bin")));
+        dirs.extend(["/opt/homebrew/bin", "/usr/local/bin"].map(PathBuf::from));
+    }
+    std::env::join_paths(dirs).unwrap_or_else(|_| path_var.to_owned())
+}
 
 /// The npm package suffix for this system, e.g. `darwin-arm64`.
 fn platform() -> Option<&'static str> {
@@ -232,17 +247,62 @@ pub const COPILOT_MISSING: &str = "Copilot CLI not installed";
 
 const TIMEOUT: Duration = Duration::from_secs(120);
 
+const SIGN_IN: &str = "Sign in to GitHub to use Copilot";
+const SIGNED_OUT: &str =
+    "GitHub didn't accept GitGud's sign-in for Copilot. Sign out and sign in again.";
+const NO_ACCESS: &str = "This GitHub account can't use Copilot. Check that it has a Copilot \
+                         plan (Copilot Free works too) and that your organization allows it.";
+const LIMIT: &str =
+    "You've reached your Copilot usage limit. Try again later, or check your plan on github.com.";
+const OFFLINE: &str = "Couldn't reach GitHub. Check your internet connection and try again.";
+const CRASHED: &str = "Copilot stopped unexpectedly. Try again.";
+
 fn error_message(e: &SdkError) -> String {
+    let message = e.message().map_or_else(|| e.to_string(), str::to_string);
+    // ponytail: the CLI only reports these as text, so match on it; switch to
+    // typed errors if the SDK starts exposing them.
+    let has = |needles: &[&str]| needles.iter().any(|n| message.contains(n));
     match e.kind() {
         ErrorKind::BinaryNotFound { .. } => COPILOT_MISSING.into(),
         ErrorKind::Session(SessionErrorKind::Timeout(_)) => {
             "Copilot took too long to answer. Try again.".into()
         }
-        _ => format!(
-            "Copilot failed: {}",
-            e.message().map_or_else(|| e.to_string(), str::to_string)
-        ),
+        _ if e.is_transport_failure() => CRASHED.into(),
+        _ if has(&["No GitHub OAuth token"]) => SIGN_IN.into(),
+        _ if has(&["401 Unauthorized", "Bad credentials"]) => SIGNED_OUT.into(),
+        _ if has(&["403 Forbidden", "404 Not Found"]) => NO_ACCESS.into(),
+        _ if has(&[
+            "429 Too Many Requests",
+            "402 Payment Required",
+            "rate limit",
+            "quota",
+        ]) =>
+        {
+            LIMIT.into()
+        }
+        _ if has(&[
+            "fetch failed",
+            "ENOTFOUND",
+            "ECONNREFUSED",
+            "ETIMEDOUT",
+            "EAI_AGAIN",
+        ]) =>
+        {
+            OFFLINE.into()
+        }
+        _ => format!("Copilot failed: {}", detail(&message)),
     }
+}
+
+/// The CLI's own words, without the RPC wrapping around them.
+fn detail(message: &str) -> &str {
+    let message = message
+        .split_once("failed with message: ")
+        .map_or(message, |(_, m)| m);
+    message
+        .strip_prefix("Execution failed: ")
+        .and_then(|m| m.split_once(", "))
+        .map_or(message, |(_, m)| m)
 }
 
 fn sdk_error(e: SdkError) -> GitError {
@@ -258,7 +318,7 @@ fn work_dir(app_data: &Path) -> Result<PathBuf> {
 
 /// GitGud gives the CLI its own settings folder, so the user's MCP servers,
 /// plugins and instructions never load, and only the GitGud token signs it in.
-fn client_options(bin: PathBuf, app_data: &Path) -> Result<ClientOptions> {
+fn client_options(bin: PathBuf, app_data: &Path, path_var: &OsStr) -> Result<ClientOptions> {
     let home = app_data.join("copilot").join("home");
     std::fs::create_dir_all(&home).map_err(io_error)?;
     let mut options = ClientOptions::default();
@@ -269,7 +329,11 @@ fn client_options(bin: PathBuf, app_data: &Path) -> Result<ClientOptions> {
     // Otherwise the CLI looks for a `gh` login in the system keychain.
     options.use_logged_in_user = Some(false);
     options.working_directory = work_dir(app_data)?;
-    options.env = vec![("COPILOT_AUTO_UPDATE".into(), "false".into())];
+    // The same PATH it was found with, so an npm install can find `node`.
+    options.env = vec![
+        ("COPILOT_AUTO_UPDATE".into(), "false".into()),
+        ("PATH".into(), path_var.into()),
+    ];
     options.disable_client_telemetry = true;
     Ok(options)
 }
@@ -279,13 +343,13 @@ fn client_options(bin: PathBuf, app_data: &Path) -> Result<ClientOptions> {
 async fn start(app_data: &Path, path_var: &OsStr) -> Result<Client> {
     let mut path_error = None;
     if let Some(bin) = find_on_path(path_var) {
-        match Client::start(client_options(bin, app_data)?).await {
+        match Client::start(client_options(bin, app_data, path_var)?).await {
             Ok(client) => return Ok(client),
             Err(e) => path_error = Some(e),
         }
     }
     match installed(app_data) {
-        Some(bin) => Client::start(client_options(bin, app_data)?)
+        Some(bin) => Client::start(client_options(bin, app_data, path_var)?)
             .await
             .map_err(sdk_error),
         None => match path_error {
@@ -301,7 +365,7 @@ async fn run(
     work_dir: PathBuf,
     prompt: String,
     token: Option<String>,
-) -> std::result::Result<String, SdkError> {
+) -> std::result::Result<Option<String>, SdkError> {
     let mut config = SessionConfig::default().deny_all_permissions();
     config.available_tools = Some(Vec::new());
     config.enable_config_discovery = Some(false);
@@ -317,21 +381,46 @@ async fn run(
     let _ = session.disconnect().await;
     // Sessions are saved with the prompt, i.e. the user's code; keep nothing.
     let _ = client.delete_session(session.id()).await;
-    let content = reply?.and_then(|event| event.data["content"].as_str().map(str::to_string));
-    content.ok_or_else(|| {
-        SdkError::with_message(ErrorKind::InvalidConfig, "Copilot returned no answer")
-    })
+    Ok(reply?.and_then(|event| event.data["content"].as_str().map(str::to_string)))
+}
+
+fn answer(content: Option<String>) -> Result<String> {
+    content.ok_or_else(|| GitError::Failed("Copilot didn't answer. Try again.".into()))
+}
+
+/// The running client, numbered so a request that saw it fail only drops
+/// that one and not a newer client another request already started.
+struct Slot<C = Client> {
+    generation: u64,
+    client: Option<C>,
+}
+
+impl<C> Default for Slot<C> {
+    fn default() -> Self {
+        Slot {
+            generation: 0,
+            client: None,
+        }
+    }
+}
+
+impl<C> Slot<C> {
+    fn forget(&mut self, generation: u64) {
+        if self.generation == generation {
+            self.client = None;
+        }
+    }
 }
 
 /// The SDK client, started on first use and kept for later requests.
 #[derive(Default)]
 pub struct Copilot {
-    client: Mutex<Option<Client>>,
+    slot: Mutex<Slot>,
 }
 
 impl Copilot {
     pub async fn ask(&self, app_data: &Path, prompt: String) -> Result<String> {
-        let path_var = std::env::var_os("PATH").unwrap_or_default();
+        let path_var = search_path(&std::env::var_os("PATH").unwrap_or_default());
         self.ask_with_path(app_data, prompt, &path_var).await
     }
 
@@ -341,28 +430,30 @@ impl Copilot {
         prompt: String,
         path_var: &OsStr,
     ) -> Result<String> {
-        let client = {
-            let mut client = self.client.lock().await;
-            if client.is_none() {
-                *client = Some(start(app_data, path_var).await?);
+        let (generation, client) = {
+            let mut slot = self.slot.lock().await;
+            if slot.client.is_none() {
+                slot.client = Some(start(app_data, path_var).await?);
+                slot.generation += 1;
             }
-            client.clone().expect("started above")
+            (slot.generation, slot.client.clone().expect("started above"))
         };
         let token = blocking(github::token)
             .await
-            .map_err(|_| GitError::Failed("Sign in to GitHub to use Copilot".into()))?;
-        run(&client, work_dir(app_data)?, prompt, Some(token))
-            .await
-            .map_err(|e| {
+            .map_err(|_| GitError::Failed(SIGN_IN.into()))?;
+        match run(&client, work_dir(app_data)?, prompt, Some(token)).await {
+            Ok(content) => answer(content),
+            Err(e) => {
                 if e.is_transport_failure() {
-                    self.client.try_lock().map(|mut c| c.take()).ok();
+                    self.slot.lock().await.forget(generation);
                 }
-                sdk_error(e)
-            })
+                Err(sdk_error(e))
+            }
+        }
     }
 
     pub async fn stop(&self) {
-        if let Some(client) = self.client.lock().await.take() {
+        if let Some(client) = self.slot.lock().await.client.take() {
             let _ = client.stop().await;
         }
     }
@@ -688,12 +779,13 @@ mod tests {
     #[test]
     fn client_uses_gitgud_s_own_copilot_folder() {
         let app_data = temp_dir("home");
-        let options = client_options("copilot".into(), &app_data).unwrap();
+        let options = client_options("copilot".into(), &app_data, OsStr::new("/a:/b")).unwrap();
         let home = app_data.join("copilot").join("home");
         assert_eq!(options.base_directory, Some(home.clone()));
         assert!(home.is_dir());
         assert!(options.env_remove.is_empty());
         assert_eq!(options.use_logged_in_user, Some(false));
+        assert!(options.env.contains(&("PATH".into(), "/a:/b".into())));
     }
 
     #[test]
@@ -721,6 +813,111 @@ mod tests {
         assert!(result.is_err());
         assert!(started.elapsed() < Duration::from_secs(5));
         drop(listener);
+    }
+
+    #[test]
+    fn a_failed_client_is_forgotten_only_if_still_current() {
+        let mut slot = Slot {
+            generation: 2,
+            client: Some("restarted"),
+        };
+        slot.forget(1);
+        assert_eq!(slot.client, Some("restarted"));
+        slot.forget(2);
+        assert_eq!(slot.client, None);
+    }
+
+    #[test]
+    fn an_empty_reply_says_so_plainly() {
+        assert_eq!(answer(Some("hi".into())).unwrap(), "hi");
+        assert_eq!(
+            answer(None).unwrap_err().to_string(),
+            "Copilot didn't answer. Try again."
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_copilot_that_wont_start_falls_back_to_setup() {
+        use std::os::unix::fs::PermissionsExt;
+        let app_data = temp_dir("broken");
+        let bin = temp_dir("broken-bin");
+        let script = bin.join(BINARY);
+        std::fs::write(&script, "#!/usr/bin/env gitgud-no-such-node\n").unwrap();
+        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let path = std::env::join_paths([&bin]).unwrap();
+        let err = tauri::async_runtime::block_on(Copilot::default().ask_with_path(
+            &app_data,
+            "hi".into(),
+            &path,
+        ))
+        .unwrap_err();
+        assert_eq!(err.to_string(), COPILOT_MISSING);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn searches_where_copilot_usually_lives() {
+        let path = search_path(OsStr::new("/first:/second"));
+        let dirs: Vec<PathBuf> = std::env::split_paths(&path).collect();
+        assert_eq!(
+            dirs[..2],
+            [PathBuf::from("/first"), PathBuf::from("/second")]
+        );
+        for dir in ["/opt/homebrew/bin", "/usr/local/bin"] {
+            assert!(dirs.contains(&PathBuf::from(dir)), "missing {dir}");
+        }
+        let local = std::env::home_dir().unwrap().join(".local/bin");
+        assert!(dirs.contains(&local));
+    }
+
+    #[test]
+    fn explains_common_copilot_errors() {
+        use github_copilot_sdk::{Error, ErrorKind};
+        let rpc = |message: &str| {
+            Error::with_message(ErrorKind::Rpc { code: -32603 }, message.to_string())
+        };
+        let failed = "Request session.create failed with message: GitHub token validation failed: \
+                      Failed to fetch Copilot user info:";
+        assert_eq!(
+            error_message(&rpc(&format!(
+                "{failed} 401 Unauthorized: {{\"message\":\"Bad credentials\"}}"
+            ))),
+            SIGNED_OUT
+        );
+        assert_eq!(
+            error_message(&rpc(&format!("{failed} 403 Forbidden"))),
+            NO_ACCESS
+        );
+        assert_eq!(
+            error_message(&rpc(&format!("{failed} 404 Not Found"))),
+            NO_ACCESS
+        );
+        assert_eq!(
+            error_message(&rpc("429 Too Many Requests: rate limit exceeded")),
+            LIMIT
+        );
+        assert_eq!(
+            error_message(&rpc(
+                "TypeError: fetch failed (getaddrinfo ENOTFOUND api.github.com)"
+            )),
+            OFFLINE
+        );
+        assert_eq!(
+            error_message(&Error::with_message(ErrorKind::Io, "broken pipe")),
+            CRASHED
+        );
+        assert_eq!(
+            error_message(&rpc("Request session.create failed with message: boom")),
+            "Copilot failed: boom"
+        );
+        assert_eq!(
+            error_message(&Error::with_message(
+                ErrorKind::Session(SessionErrorKind::AgentError),
+                "Execution failed: InvalidArg, something odd"
+            )),
+            "Copilot failed: something odd"
+        );
     }
 
     #[test]
