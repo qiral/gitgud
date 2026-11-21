@@ -10,7 +10,10 @@
     "tauri": "tauri",
     "format": "prettier --write src",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test --project functional",
+    "test:visual": "playwright test --project visual",
+    "test:visual:update": "playwright test --project visual --update-snapshots"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -23,6 +26,7 @@
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "@tailwindcss/vite": "^4.3.3",
     "@tauri-apps/cli": "^2",
     "@testing-library/dom": "^10.4.2",

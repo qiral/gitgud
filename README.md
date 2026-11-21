@@ -108,7 +108,11 @@ Other commands:
 | `npm run tauri build`                             | Build a release bundle for your OS |
 | `cargo test --manifest-path src-tauri/Cargo.toml` | Run the Rust tests                 |
 | `npm run build`                                   | Type-check and build the frontend  |
+| `npm test`                                        | Run the frontend unit tests        |
+| `npm run test:e2e`                                | Drive the web UI in a real browser |
 | `npm run format`                                  | Format the frontend with Prettier  |
+
+The browser tests and the advisory visual baselines are explained in [docs/TESTING.md](docs/TESTING.md).
 
 ## Project layout
 
@@ -138,7 +142,7 @@ Update bundles are signed with the updater key; the release workflow reads it fr
 Contributions are welcome. Open an issue to discuss larger changes before starting on them.
 
 1. Fork the repository and create a branch: `git switch -c feature/my-feature`
-2. Make your change; run `cargo test` and `npm run build`
+2. Make your change; run `cargo test`, `npm test` and `npm run build`, plus `npm run test:e2e` if you touched the UI
 3. Open a pull request
 
 ## License

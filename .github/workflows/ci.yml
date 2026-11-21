@@ -65,3 +65,81 @@ jobs:
 
       - name: Test
         run: cargo test --manifest-path src-tauri/Cargo.toml
+
+  # The web UI in a real browser, without the Rust shell. It runs inside the
+  # Playwright image the baselines were made in, so fonts and rendering match
+  # and no system packages have to be installed here.
+  e2e:
+    name: e2e (chromium, linux)
+    runs-on: ubuntu-24.04
+    container:
+      # Pinned, not `latest`: the baselines were generated in this exact
+      # image, and fonts and rendering move between tags.
+      image: mcr.microsoft.com/playwright:v1.65.1-noble
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # DOM assertions and the console/pageerror fixture: this one is a gate.
+      - name: Functional specs
+        run: npm run test:e2e
+        env:
+          PLAYWRIGHT_HTML_OUTPUT_DIR: e2e/playwright-report/functional
+
+      # Pixel comparisons are advisory: a diff is reported and uploaded, not
+      # fatal. See docs/TESTING.md.
+      - name: Visual specs (advisory)
+        id: visual
+        continue-on-error: true
+        run: npm run test:visual
+        env:
+          PLAYWRIGHT_HTML_OUTPUT_DIR: e2e/playwright-report/visual
+          PLAYWRIGHT_JSON_OUTPUT_FILE: e2e/test-results/visual.json
+
+      - name: Visual diff count
+        if: always()
+        env:
+          VISUAL_OUTCOME: ${{ steps.visual.outcome }}
+        run: |
+          node -e '
+            const fs = require("node:fs")
+            const path = "e2e/test-results/visual.json"
+            const summary = process.env.GITHUB_STEP_SUMMARY
+            if (!fs.existsSync(path)) {
+              fs.appendFileSync(summary, `Visual diffs: no report, the visual step ended ${process.env.VISUAL_OUTCOME}\n`)
+              process.exit(0)
+            }
+            const { stats } = JSON.parse(fs.readFileSync(path, "utf8"))
+            const total = stats.expected + stats.unexpected + stats.flaky
+            const line = stats.unexpected
+              ? `Visual diffs: ${stats.unexpected} of ${total} screenshots, advisory only, see the artifacts`
+              : `Visual diffs: none, ${total} screenshots match their baselines`
+            fs.appendFileSync(summary, line + "\n")
+          '
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
+          retention-days: 14
+
+      # The diffs and failures, so a red run or an advisory diff can be read
+      # without rerunning anything.
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: e2e/test-results/
+          retention-days: 7
