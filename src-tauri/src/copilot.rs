@@ -60,13 +60,17 @@ fn io_error(e: std::io::Error) -> GitError {
 // ponytail: fixed folders rather than the login shell's PATH, so nvm/asdf
 // installs still fall back to GitGud's own download.
 fn search_path(path_var: &OsStr) -> OsString {
-    let mut dirs: Vec<PathBuf> = std::env::split_paths(path_var).collect();
-    #[cfg(unix)]
-    {
-        dirs.extend(std::env::home_dir().map(|home| home.join(".local/bin")));
-        dirs.extend(["/opt/homebrew/bin", "/usr/local/bin"].map(PathBuf::from));
-    }
-    std::env::join_paths(dirs).unwrap_or_else(|_| path_var.to_owned())
+    let extra: Vec<PathBuf> = if cfg!(unix) {
+        std::env::home_dir()
+            .map(|home| home.join(".local/bin"))
+            .into_iter()
+            .chain(["/opt/homebrew/bin", "/usr/local/bin"].map(PathBuf::from))
+            .collect()
+    } else {
+        Vec::new()
+    };
+    std::env::join_paths(std::env::split_paths(path_var).chain(extra))
+        .unwrap_or_else(|_| path_var.to_owned())
 }
 
 /// The npm package suffix for this system, e.g. `darwin-arm64`.
