@@ -429,7 +429,7 @@ export default function RepoView({
           )}
         </aside>
 
-        <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <section className="isolate flex min-w-0 flex-1 flex-col overflow-hidden">
           {selection?.kind === 'file' && conflictedSelection ? (
             <div className="min-h-0 flex-1 overflow-auto">
               <ConflictView

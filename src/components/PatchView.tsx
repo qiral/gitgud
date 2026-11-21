@@ -118,7 +118,7 @@ export default function PatchView({
               })}
             </ul>
           </div>
-          <div className="flex min-w-0 flex-1 flex-col">
+          <div className="isolate flex min-w-0 flex-1 flex-col">
             <FileHeader
               repo={repo}
               path={file.path}
