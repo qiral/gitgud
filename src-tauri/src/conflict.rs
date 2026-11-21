@@ -140,8 +140,45 @@ pub fn has_conflicts(content: &str) -> bool {
 /// Replaces the `index`-th conflict (counting conflicts only) with the chosen
 /// side. Returns `None` if there is no such conflict.
 pub fn resolve(content: &str, index: usize, choice: Choice) -> Option<String> {
+    rewrite(content, index, |ours, theirs, out| match choice {
+        Choice::Ours => out.extend(ours),
+        Choice::Theirs => out.extend(theirs),
+        Choice::Both => {
+            let ours_ends_cleanly = ours.last().is_none_or(|l| l.ends_with('\n'));
+            out.extend(ours);
+            if !ours_ends_cleanly && !theirs.is_empty() {
+                out.push('\n');
+            }
+            out.extend(theirs);
+        }
+    })
+}
+
+/// Replaces the `index`-th conflict with `text`, written with the file's
+/// line endings. Returns `None` if there is no such conflict.
+pub fn replace(content: &str, index: usize, text: &str) -> Option<String> {
+    let eol = if content.contains("\r\n") {
+        "\r\n"
+    } else {
+        "\n"
+    };
+    rewrite(content, index, |_, _, out| {
+        for line in text.lines() {
+            out.push_str(line);
+            out.push_str(eol);
+        }
+    })
+}
+
+/// Copies `content`, letting `write` fill in the `index`-th conflict from its
+/// ours and theirs lines.
+fn rewrite(
+    content: &str,
+    index: usize,
+    write: impl FnOnce(Vec<String>, Vec<String>, &mut String),
+) -> Option<String> {
     let mut seen = 0;
-    let mut found = false;
+    let mut write = Some(write);
     let mut out = String::with_capacity(content.len());
     for part in parse(content) {
         match part {
@@ -149,29 +186,16 @@ pub fn resolve(content: &str, index: usize, choice: Choice) -> Option<String> {
             Part::Conflict {
                 ours, theirs, raw, ..
             } => {
-                if seen == index {
-                    found = true;
-                    match choice {
-                        Choice::Ours => out.extend(ours),
-                        Choice::Theirs => out.extend(theirs),
-                        Choice::Both => {
-                            let ours_ends_cleanly = ours.last().is_none_or(|l| l.ends_with('\n'));
-                            out.extend(ours);
-                            if !ours_ends_cleanly && !theirs.is_empty() {
-                                out.push('\n');
-                            }
-                            out.extend(theirs);
-                        }
-                    }
-                } else {
+                match write.take_if(|_| seen == index) {
+                    Some(write) => write(ours, theirs, &mut out),
                     // Other conflicts go back exactly as they were.
-                    out.push_str(&raw);
+                    None => out.push_str(&raw),
                 }
                 seen += 1;
             }
         }
     }
-    found.then_some(out)
+    write.is_none().then_some(out)
 }
 
 #[cfg(test)]
@@ -195,6 +219,27 @@ fn main() {
 >>>>>>> feature
 }
 ";
+
+    #[test]
+    fn replace_swaps_one_block() {
+        let replaced = replace(FILE, 1, "    merged();").unwrap();
+        let first_block_end = FILE.find("    shared();").unwrap();
+        assert_eq!(
+            replaced,
+            format!(
+                "{}    shared();\n    merged();\n}}\n",
+                &FILE[..first_block_end]
+            )
+        );
+        assert_eq!(replace(FILE, 2, "x"), None);
+    }
+
+    #[test]
+    fn replace_keeps_the_files_line_endings() {
+        let crlf = FILE.replace('\n', "\r\n");
+        let replaced = replace(&crlf, 0, "a\nb\n").unwrap();
+        assert!(replaced.starts_with("fn main() {\r\na\r\nb\r\n    shared();\r\n"));
+    }
 
     #[test]
     fn parses_blocks_and_text() {

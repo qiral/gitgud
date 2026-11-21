@@ -106,7 +106,7 @@ function ResizeHandle({
         e.preventDefault()
         onChange(width + step, true)
       }}
-      className="absolute top-0 -right-[3px] z-20 h-full w-[5px] cursor-col-resize outline-none hover:bg-accent/50 focus-visible:bg-accent/50 active:bg-accent"
+      className="absolute top-0 -right-[3px] z-1 h-full w-[5px] cursor-col-resize outline-none hover:bg-accent/50 focus-visible:bg-accent/50 active:bg-accent"
     />
   )
 }

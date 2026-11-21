@@ -1,6 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { confirm } from '@tauri-apps/plugin-dialog'
-import { Archive, GitMerge, Minus, Plus, Undo2 } from 'lucide-react'
+import {
+  Archive,
+  GitMerge,
+  Loader2,
+  Minus,
+  Plus,
+  Sparkles,
+  Undo2,
+} from 'lucide-react'
 import {
   git,
   isStaged,
@@ -13,6 +21,7 @@ import {
 import { fileMenuItems } from '../lib/copy'
 import { basename, dirname } from '../lib/paths'
 import { useContextMenu, type MenuItem } from './ContextMenu'
+import SuggestionDiff from './SuggestionDiff'
 import type { Selection } from './RepoView'
 
 interface Props {
@@ -31,6 +40,8 @@ interface Props {
   busy: boolean
   onStash: () => void
   onFileHistory?: (path: string) => void
+  /** Asks Copilot for a message for the staged changes; null on failure. */
+  onGenerateMessage?: () => Promise<string | null>
   act: (label: string, action: () => Promise<unknown>) => Promise<boolean>
 }
 
@@ -46,9 +57,16 @@ export default function ChangesPanel({
   busy,
   onStash,
   onFileHistory,
+  onGenerateMessage,
   act,
 }: Props) {
   const [message, setMessage] = useState('')
+  const [generating, setGenerating] = useState(false)
+  // Copilot's message while it waits to be accepted over what was typed.
+  const [suggested, setSuggested] = useState<string | null>(null)
+  // What's typed by the time Copilot answers, not when it was asked.
+  const typed = useRef(message)
+  typed.current = message
   // While amending, the message being typed before is kept to put back.
   const [amending, setAmending] = useState<{
     draft: string
@@ -86,6 +104,19 @@ export default function ChangesPanel({
     const { message: previous, pushed } = last
     setAmending({ draft: message, pushed })
     setMessage(previous)
+  }
+
+  async function generateMessage() {
+    if (!onGenerateMessage) return
+    setGenerating(true)
+    try {
+      const generated = await onGenerateMessage()
+      if (generated === null) return
+      if (typed.current.trim()) setSuggested(generated)
+      else setMessage(generated)
+    } finally {
+      setGenerating(false)
+    }
   }
 
   async function commit() {
@@ -267,23 +298,60 @@ export default function ChangesPanel({
       {menu}
 
       <div className="border-t border-line p-3">
-        <textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) commit()
-          }}
-          disabled={rebasing !== null}
-          placeholder={
-            rebasing
-              ? 'Commits keep their messages while rebasing'
-              : merging
-                ? `${what === 'merge' ? 'Merge' : 'Commit'} message (optional)`
-                : 'Commit message'
-          }
-          rows={3}
-          className="w-full resize-none rounded border border-line bg-bg p-2 outline-none select-text focus:border-accent"
-        />
+        <div className="relative">
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) commit()
+            }}
+            disabled={rebasing !== null}
+            placeholder={
+              rebasing
+                ? 'Commits keep their messages while rebasing'
+                : merging
+                  ? `${what === 'merge' ? 'Merge' : 'Commit'} message (optional)`
+                  : 'Commit message'
+            }
+            rows={3}
+            className="w-full resize-none rounded border border-line bg-bg p-2 pr-8 outline-none select-text focus:border-accent"
+          />
+          {onGenerateMessage && (
+            <button
+              onClick={generateMessage}
+              disabled={
+                busy ||
+                generating ||
+                staged.length === 0 ||
+                merging !== null ||
+                rebasing !== null
+              }
+              title="Generate commit message with Copilot"
+              aria-label="Generate commit message with Copilot"
+              className="absolute top-1.5 right-1.5 rounded p-1 text-muted hover:bg-hover hover:text-fg disabled:opacity-40"
+            >
+              {generating ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Sparkles className="size-4" />
+              )}
+            </button>
+          )}
+        </div>
+        {suggested !== null && (
+          <div className="mt-2">
+            <SuggestionDiff
+              label="Copilot's message"
+              before={message}
+              after={suggested}
+              onAccept={() => {
+                setMessage(suggested)
+                setSuggested(null)
+              }}
+              onReject={() => setSuggested(null)}
+            />
+          </div>
+        )}
         {canAmend && (
           <label
             className="mt-1 flex items-center gap-2 text-xs text-muted"
@@ -302,7 +370,7 @@ export default function ChangesPanel({
         <div className="mt-2 flex gap-2">
           <button
             onClick={commit}
-            disabled={busy || !canCommit}
+            disabled={busy || !canCommit || suggested !== null}
             title="Ctrl+Enter"
             className="flex-1 rounded bg-accent py-1.5 font-medium text-on-accent hover:opacity-90 disabled:opacity-40"
           >

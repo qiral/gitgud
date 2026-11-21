@@ -17,7 +17,7 @@ export default function Dialog({ title, onClose, children, wide }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-20 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-40 flex items-center justify-center bg-black/50"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <div

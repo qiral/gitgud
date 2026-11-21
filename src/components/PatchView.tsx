@@ -16,6 +16,8 @@ interface Props {
   /** Selects this file first when the patch has it, e.g. in file history. */
   focusPath?: string
   onFileHistory?: (path: string) => void
+  /** Asks Copilot to explain one file's diff; unset to hide the button. */
+  onExplainFile?: (path: string, diff: string) => void
 }
 
 /**
@@ -28,6 +30,7 @@ export default function PatchView({
   header,
   focusPath,
   onFileHistory,
+  onExplainFile,
 }: Props) {
   const { files } = useMemo(() => splitDiff(patch), [patch])
   const [selected, setSelected] = useState(0)
@@ -118,7 +121,7 @@ export default function PatchView({
               })}
             </ul>
           </div>
-          <div className="flex min-w-0 flex-1 flex-col">
+          <div className="isolate flex min-w-0 flex-1 flex-col">
             <FileHeader
               repo={repo}
               path={file.path}
@@ -127,6 +130,9 @@ export default function PatchView({
               deletions={file.deletions}
               exists={exists(file.status)}
               onHistory={onFileHistory}
+              onExplain={
+                onExplainFile && (() => onExplainFile(file.path, file.diff))
+              }
             />
             <div ref={diffPane} className="min-h-0 flex-1 overflow-auto">
               <DiffView diff={file.diff} />

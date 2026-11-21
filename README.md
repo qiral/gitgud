@@ -45,6 +45,7 @@ Pick a commit to browse its changed files one by one, right-click anything to co
 - Sign in with GitHub (device flow, token kept in the OS keychain) to push over HTTPS
 - Sign in to GitLab, Gitea, Forgejo or any other HTTPS host with a personal access token; each token is only sent to its own host
 - Publish a local repository to GitHub in one step
+- With a GitHub Copilot plan, once signed in with GitHub: generate commit messages, explain commits and changes, and get a suggested merge for each conflict block. GitGud runs the [Copilot CLI](https://github.com/github/copilot-cli) you already have, or downloads it once into its own folder, with its own settings so your Copilot MCP servers and plugins aren't loaded. It sends only the diff or conflict you asked about, so organization content exclusions don't apply to it
 - Tells you when a new version is out and updates itself after you click (AppImage, Windows and macOS); an Update button stays in the toolbar until you do, and "Check for updates" sits in the account menu and on the start screen
 - Themes: Light, Dark, Solarized, Catppuccin, Nord, Dracula and Gruvbox, or follow your system
 - Drag panel edges to resize them (double-click to reset), collapse the history graph to a single line, or hide just the branch lines you don't care about
@@ -82,7 +83,7 @@ Pick a commit to browse its changed files one by one, right-click anything to co
 
 Prerequisites:
 
-- [Rust](https://www.rust-lang.org/tools/install) (stable)
+- [Rust](https://www.rust-lang.org/tools/install) (stable, 1.94 or newer)
 - [Node.js](https://nodejs.org) 20+
 - `git` on your `PATH`
 - Tauri's system dependencies for your OS: see [tauri.app/start/prerequisites](https://tauri.app/start/prerequisites/)

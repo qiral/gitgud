@@ -142,6 +142,20 @@ export interface CloneProgress {
   percent: number
 }
 
+/** Error text when the Copilot CLI isn't installed; see src-tauri/src/copilot.rs. */
+export const COPILOT_MISSING = 'Copilot CLI not installed'
+
+export const copilot = {
+  /** Downloads the CLI, emitting `copilot-progress` events. */
+  install: () => invoke<void>('copilot_install'),
+  commitMessage: (repo: string) =>
+    invoke<string>('copilot_commit_message', { repo }),
+  explain: (diff: string) => invoke<string>('copilot_explain', { diff }),
+  /** Merged code for the `index`-th conflict block of `path`. */
+  resolve: (repo: string, path: string, index: number) =>
+    invoke<string>('copilot_resolve', { repo, path, index }),
+}
+
 export const github = {
   repos: () => invoke<RemoteRepo[]>('github_repos'),
   account: () => invoke<Account | null>('github_account'),
@@ -277,6 +291,8 @@ export const git = {
     index: number,
     choice: 'ours' | 'theirs' | 'both',
   ) => invoke<void>('resolve_block', { repo, path, index, choice }),
+  resolveBlockText: (repo: string, path: string, index: number, text: string) =>
+    invoke<void>('resolve_block_text', { repo, path, index, text }),
   resolveFile: (repo: string, path: string, side: 'ours' | 'theirs') =>
     invoke<void>('resolve_file', { repo, path, side }),
   markResolved: (repo: string, path: string) =>

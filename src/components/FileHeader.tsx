@@ -1,4 +1,4 @@
-import { MoreHorizontal } from 'lucide-react'
+import { MoreHorizontal, Sparkles } from 'lucide-react'
 import type { FileStatus } from '../lib/diff'
 import { fileMenuItems } from '../lib/copy'
 import { basename, dirname } from '../lib/paths'
@@ -35,6 +35,8 @@ interface Props {
   exists: boolean
   /** Opens the file's history; unset to leave it out of the menu. */
   onHistory?: (path: string) => void
+  /** Asks Copilot to explain the diff; unset to hide the button. */
+  onExplain?: () => void
 }
 
 /** The bar above a diff naming the file, with ways to copy its path. */
@@ -46,6 +48,7 @@ export default function FileHeader({
   deletions,
   exists,
   onHistory,
+  onExplain,
 }: Props) {
   const { menu, open } = useContextMenu()
   const items = () =>
@@ -66,6 +69,15 @@ export default function FileHeader({
       </div>
       <LineCounts add={additions} del={deletions} />
       <CopyButton text={path} title="Copy path" />
+      {onExplain && (
+        <button
+          title="Explain with Copilot"
+          onClick={onExplain}
+          className="shrink-0 rounded p-0.5 text-muted hover:bg-hover hover:text-fg"
+        >
+          <Sparkles className="size-4" />
+        </button>
+      )}
       <button
         title="More"
         onClick={(e) => open(e, items())}

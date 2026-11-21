@@ -192,7 +192,7 @@ fn fetch_account(token: &str) -> Result<Account> {
         .map_err(http_error)
 }
 
-fn token() -> Result<String> {
+pub(crate) fn token() -> Result<String> {
     load()?
         .map(|s| s.token)
         .ok_or_else(|| GitError::Failed("Sign in to GitHub first".into()))

@@ -1,4 +1,5 @@
 mod conflict;
+mod copilot;
 mod git;
 mod github;
 mod graph;
@@ -7,6 +8,7 @@ mod patch;
 mod rebase;
 
 use conflict::{Choice, Part};
+use copilot::{Copilot, InstallProgress};
 use git::{
     Branch, CloneCancel, Commit, DeleteBranchOutcome, GitError, LastCommit, LineAction,
     MergeOutcome, PullMode, PullOutcome, RepoInfo, ResetMode, Result, Side, Stash, Status,
@@ -189,6 +191,11 @@ fn resolve_block(repo: String, path: String, index: usize, choice: Choice) -> Re
 }
 
 #[tauri::command(async)]
+fn resolve_block_text(repo: String, path: String, index: usize, text: String) -> Result<()> {
+    git::resolve_block_text(Path::new(&repo), &path, index, &text)
+}
+
+#[tauri::command(async)]
 fn resolve_file(repo: String, path: String, side: Side) -> Result<()> {
     git::resolve_file(Path::new(&repo), &path, side)
 }
@@ -355,6 +362,52 @@ fn clone_repo(
     git::open(&dest)
 }
 
+fn app_data(app: &tauri::AppHandle) -> Result<std::path::PathBuf> {
+    app.path()
+        .app_data_dir()
+        .map_err(|e| GitError::Failed(format!("Could not find the app data folder: {e}")))
+}
+
+/// Downloads the Copilot CLI into app data, emitting `copilot-progress` events.
+#[tauri::command(async)]
+fn copilot_install(app: tauri::AppHandle) -> Result<()> {
+    copilot::install(&app_data(&app)?, |percent| {
+        let _ = app.emit("copilot-progress", InstallProgress { percent });
+    })
+    .map(drop)
+}
+
+#[tauri::command]
+async fn copilot_commit_message(
+    app: tauri::AppHandle,
+    copilot: tauri::State<'_, Copilot>,
+    repo: String,
+) -> Result<String> {
+    copilot.commit_message(&app_data(&app)?, repo.into()).await
+}
+
+#[tauri::command]
+async fn copilot_explain(
+    app: tauri::AppHandle,
+    copilot: tauri::State<'_, Copilot>,
+    diff: String,
+) -> Result<String> {
+    copilot.explain(&app_data(&app)?, &diff).await
+}
+
+#[tauri::command]
+async fn copilot_resolve(
+    app: tauri::AppHandle,
+    copilot: tauri::State<'_, Copilot>,
+    repo: String,
+    path: String,
+    index: usize,
+) -> Result<String> {
+    copilot
+        .resolve(&app_data(&app)?, repo.into(), path, index)
+        .await
+}
+
 /// Stops the running `clone_repo`, which then fails with "Clone cancelled".
 #[tauri::command]
 fn cancel_clone(cancel: tauri::State<CloneCancel>) {
@@ -365,6 +418,7 @@ fn cancel_clone(cancel: tauri::State<CloneCancel>) {
 pub fn run() {
     tauri::Builder::default()
         .manage(CloneCancel::default())
+        .manage(Copilot::default())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -403,6 +457,7 @@ pub fn run() {
             push_tag,
             conflict_parts,
             resolve_block,
+            resolve_block_text,
             resolve_file,
             mark_resolved,
             rebase_plan,
@@ -431,7 +486,16 @@ pub fn run() {
             github_repos,
             clone_repo,
             cancel_clone,
+            copilot_install,
+            copilot_commit_message,
+            copilot_explain,
+            copilot_resolve,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while running tauri application")
+        .run(|app, event| {
+            if let tauri::RunEvent::Exit = event {
+                tauri::async_runtime::block_on(app.state::<Copilot>().stop());
+            }
+        });
 }

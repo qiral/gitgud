@@ -51,4 +51,22 @@ describe('PatchView', () => {
       expect(writeText).toHaveBeenLastCalledWith('/home/me/r/src/a.ts'),
     )
   })
+
+  it("asks Copilot about the selected file's diff", () => {
+    const onExplainFile = vi.fn()
+    render(
+      <PatchView
+        repo="/r"
+        patch={PATCH}
+        header={null}
+        onExplainFile={onExplainFile}
+      />,
+    )
+    fireEvent.click(screen.getByText('b.txt'))
+    fireEvent.click(screen.getByTitle('Explain with Copilot'))
+    expect(onExplainFile).toHaveBeenCalledWith(
+      'b.txt',
+      expect.stringContaining('+hello b'),
+    )
+  })
 })

@@ -15,6 +15,7 @@ import {
   Upload,
   FileClock,
   Search,
+  Sparkles,
   X,
 } from 'lucide-react'
 import { git, type Commit, type GraphRow, type RefLabel } from '../lib/git'
@@ -52,6 +53,8 @@ interface Props {
   onFilter?: (f: HistoryFilter | null) => void
   /** The filter's results; null while they load. */
   filtered?: Commit[] | null
+  /** Asks Copilot to explain a commit; unset to hide. */
+  onExplain?: (commit: Commit) => void
 }
 
 const ROW_HEIGHT = 52
@@ -87,6 +90,7 @@ export default function HistoryPanel({
   filter = null,
   onFilter,
   filtered = null,
+  onExplain,
 }: Props) {
   // Filtered commits aren't connected, so they're listed without lines.
   const flat = filter !== null
@@ -190,6 +194,12 @@ export default function HistoryPanel({
         onClick: () => copyText(c.subject),
       },
     ]
+    if (onExplain)
+      items.push('separator', {
+        label: 'Explain with Copilot',
+        icon: Sparkles,
+        onClick: () => onExplain(c),
+      })
     if (actions) {
       const isHead = c.refs.some((r) => r.kind === 'head')
       items.push(

@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest'
+import { expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { mockIPC } from '@tauri-apps/api/mocks'
 import ChangesPanel from './ChangesPanel'
@@ -71,4 +71,87 @@ it('puts the draft back when amending is turned off', async () => {
   await waitFor(() => expect(box.value).toBe('old'))
   fireEvent.click(toggle)
   expect(box.value).toBe('draft')
+})
+
+const stagedFile = {
+  path: 'a.txt',
+  origPath: null,
+  index: 'M',
+  worktree: '.',
+  untracked: false,
+  conflicted: false,
+}
+
+function renderWithCopilot(
+  onGenerateMessage: () => Promise<string | null>,
+  files = [stagedFile],
+) {
+  render(
+    <ChangesPanel
+      repo={repo}
+      files={files}
+      merging={null}
+      rebasing={null}
+      hasCommits
+      selection={null}
+      onSelect={() => {}}
+      busy={false}
+      onStash={() => {}}
+      onGenerateMessage={onGenerateMessage}
+      act={act}
+    />,
+  )
+  return {
+    box: screen.getByPlaceholderText('Commit message') as HTMLTextAreaElement,
+    button: screen.getByRole('button', {
+      name: 'Generate commit message with Copilot',
+    }) as HTMLButtonElement,
+  }
+}
+
+it('fills the message box from Copilot, one request at a time', async () => {
+  let finish: (m: string) => void = () => {}
+  const generate = vi.fn(
+    () => new Promise<string | null>((resolve) => (finish = resolve)),
+  )
+  const { box, button } = renderWithCopilot(generate)
+  fireEvent.click(button)
+  fireEvent.click(button)
+  expect(generate).toHaveBeenCalledTimes(1)
+  expect(button.disabled).toBe(true)
+  finish('fix: thing')
+  await waitFor(() => expect(box.value).toBe('fix: thing'))
+  expect(button.disabled).toBe(false)
+})
+
+it('keeps the message when Copilot fails', async () => {
+  const generate = vi.fn(async () => null)
+  const { box, button } = renderWithCopilot(generate)
+  fireEvent.change(box, { target: { value: 'typed' } })
+  fireEvent.click(button)
+  await waitFor(() => expect(generate).toHaveBeenCalled())
+  expect(box.value).toBe('typed')
+})
+
+it('has nothing to generate from without staged files', () => {
+  const { button } = renderWithCopilot(async () => 'x', [])
+  expect(button.disabled).toBe(true)
+})
+
+it("shows Copilot's message as a diff when something is typed", async () => {
+  const { box, button } = renderWithCopilot(async () => 'trim username')
+  fireEvent.change(box, { target: { value: 'fix stuff' } })
+  fireEvent.click(button)
+  fireEvent.click(await screen.findByRole('button', { name: 'Reject' }))
+  expect(
+    (screen.getByPlaceholderText('Commit message') as HTMLTextAreaElement)
+      .value,
+  ).toBe('fix stuff')
+
+  fireEvent.click(button)
+  fireEvent.click(await screen.findByRole('button', { name: 'Accept' }))
+  expect(
+    (screen.getByPlaceholderText('Commit message') as HTMLTextAreaElement)
+      .value,
+  ).toBe('trim username')
 })
