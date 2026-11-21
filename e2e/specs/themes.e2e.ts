@@ -7,8 +7,13 @@ import { test, expect } from '../fixtures/test'
 const THEMES = [
   { id: 'light', bg: '#ffffff' },
   { id: 'dark', bg: '#16181d' },
+  { id: 'solarized-light', bg: '#fdf6e3' },
+  { id: 'solarized-dark', bg: '#002b36' },
   { id: 'nord', bg: '#2e3440' },
+  { id: 'dracula', bg: '#282a36' },
+  { id: 'gruvbox', bg: '#282828' },
   { id: 'catppuccin-latte', bg: '#eff1f5' },
+  { id: 'catppuccin-mocha', bg: '#1e1e2e' },
 ]
 
 async function appBg(page: import('@playwright/test').Page) {

@@ -20,7 +20,7 @@ like any other web page. No Rust toolchain, no built app, no `tauri dev`.
 The app is not a plain website though: it calls `invoke()` and listens for
 events. So an init script runs before any app code and installs a fake Tauri on
 the page: `window.isTauri`, `window.__TAURI_INTERNALS__` (with `invoke`,
-`transformCallback`, `runCallback`, `metadata`) and the event plugin's
+`transformCallback`, `unregisterCallback`, `runCallback`, `metadata`) and the event plugin's
 `unregisterListener`. The fake `invoke` answers from a small table of benign
 fixtures: no repository opened, no GitHub account, the home directory, and
 updater and window calls that do nothing. A command that isn't in the table
@@ -110,3 +110,6 @@ run it in the container before believing the diff. Keep the image tag, the
 - **Only the start screen and the clone dialog have baselines.** The repo view
   needs a repository and much more fixture data; it has unit tests, not
   screenshots.
+- **The e2e files sit outside the build's type check.** `npm run build` checks
+  `src/`; Playwright loads `e2e/**` and `playwright.config.ts` as they are, so
+  a type slip there shows up when the specs run, not in the build gate.
