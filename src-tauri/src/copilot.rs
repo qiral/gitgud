@@ -342,24 +342,19 @@ fn client_options(bin: PathBuf, app_data: &Path, path_var: &OsStr) -> Result<Cli
     Ok(options)
 }
 
-/// Starts the CLI on `PATH`, or GitGud's own copy when there is none or the
-/// SDK can't talk to it.
+/// Starts the CLI on `PATH`, or GitGud's own copy when there is none or it
+/// won't start: starting is local, so a failure means that copy is unusable.
 async fn start(app_data: &Path, path_var: &OsStr) -> Result<Client> {
-    let mut path_error = None;
     if let Some(bin) = find_on_path(path_var) {
-        match Client::start(client_options(bin, app_data, path_var)?).await {
-            Ok(client) => return Ok(client),
-            Err(e) => path_error = Some(e),
+        if let Ok(client) = Client::start(client_options(bin, app_data, path_var)?).await {
+            return Ok(client);
         }
     }
     match installed(app_data) {
         Some(bin) => Client::start(client_options(bin, app_data, path_var)?)
             .await
             .map_err(sdk_error),
-        None => match path_error {
-            Some(e) if !matches!(e.kind(), ErrorKind::Protocol(_)) => Err(sdk_error(e)),
-            _ => Err(GitError::Failed(COPILOT_MISSING.into())),
-        },
+        None => Err(GitError::Failed(COPILOT_MISSING.into())),
     }
 }
 
