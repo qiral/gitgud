@@ -452,6 +452,9 @@ export default function RepoView({
                 historyFilter?.kind === 'file' ? historyFilter.path : undefined
               }
               onFileHistory={showFileHistory}
+              onExplainFile={(path, fileDiff) =>
+                explain(path, async () => fileDiff)
+              }
               header={
                 <CommitHeader
                   commit={selection.commit}
