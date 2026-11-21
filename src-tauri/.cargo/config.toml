@@ -1,0 +1,3 @@
+[env]
+# The Copilot CLI is found on PATH or downloaded at runtime, never bundled.
+COPILOT_SKIP_CLI_DOWNLOAD = "1"

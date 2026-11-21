@@ -4,6 +4,7 @@ version = "0.7.0"
 description = "A fast, open-source Git GUI"
 authors = ["GitGud contributors"]
 edition = "2021"
+rust-version = "1.94"
 license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -30,6 +31,10 @@ ureq = { version = "3", features = ["json"] }
 base64 = "0.22"
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+github-copilot-sdk = { version = "=1.0.35", default-features = false, features = ["runtime"] }
+sha2 = "0.10"
+flate2 = "1"
+tar = "0.4"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

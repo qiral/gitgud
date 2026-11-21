@@ -528,7 +528,7 @@ fn file_in_repo(repo: &Path, path: &str) -> Result<PathBuf> {
     Ok(repo.join(relative))
 }
 
-fn read_text(repo: &Path, path: &str) -> Result<String> {
+pub(crate) fn read_text(repo: &Path, path: &str) -> Result<String> {
     let bytes = std::fs::read(file_in_repo(repo, path)?)?;
     String::from_utf8(bytes).map_err(|_| GitError::Failed(format!("{path} is not a text file")))
 }
@@ -546,6 +546,15 @@ pub fn resolve_block(
 ) -> Result<()> {
     let content = read_text(repo, path)?;
     let resolved = conflict::resolve(&content, index, choice)
+        .ok_or_else(|| GitError::Failed("That conflict no longer exists".into()))?;
+    std::fs::write(file_in_repo(repo, path)?, resolved)?;
+    Ok(())
+}
+
+/// Replaces the `index`-th conflict block with `text`, e.g. a merge Copilot suggested.
+pub fn resolve_block_text(repo: &Path, path: &str, index: usize, text: &str) -> Result<()> {
+    let content = read_text(repo, path)?;
+    let resolved = conflict::replace(&content, index, text)
         .ok_or_else(|| GitError::Failed("That conflict no longer exists".into()))?;
     std::fs::write(file_in_repo(repo, path)?, resolved)?;
     Ok(())
@@ -697,6 +706,25 @@ pub fn diff(repo: &Path, path: &str, staged: bool, untracked: bool) -> Result<St
     }
     args.extend(["--", path]);
     run(repo, &args)
+}
+
+/// Everything staged for the next commit.
+pub fn staged_diff(repo: &Path) -> Result<String> {
+    run(repo, &["diff", "--cached", "--no-color", "--no-ext-diff"])
+}
+
+/// One line per staged file with its change counts.
+pub fn staged_stat(repo: &Path) -> Result<String> {
+    run(repo, &["diff", "--cached", "--no-color", "--stat"])
+}
+
+/// Subjects of the last `n` commits on the current branch, newest first.
+pub fn recent_subjects(repo: &Path, n: usize) -> Result<Vec<String>> {
+    if !has_head(repo)? {
+        return Ok(Vec::new());
+    }
+    let out = run(repo, &["log", &format!("-{n}"), "--format=%s"])?;
+    Ok(out.lines().map(str::to_string).collect())
 }
 
 /// What to do with the selected lines of a file's diff.
@@ -1780,6 +1808,40 @@ mod tests {
         // A remote branch containing HEAD makes it "pushed".
         run(repo, &["update-ref", "refs/remotes/origin/main", "HEAD"]).unwrap();
         assert!(last_commit(repo).unwrap().unwrap().pushed);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn staged_diff_and_recent_subjects() {
+        let dir = std::env::temp_dir().join(format!("gitgud-staged-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = dir.as_path();
+        run(repo, &["init", "-q", "-b", "main"]).unwrap();
+        for (k, v) in [
+            ("user.name", "T"),
+            ("user.email", "t@x"),
+            ("commit.gpgsign", "false"),
+        ] {
+            run(repo, &["config", k, v]).unwrap();
+        }
+        assert!(recent_subjects(repo, 10).unwrap().is_empty());
+
+        for (file, msg) in [("a.txt", "first"), ("b.txt", "second")] {
+            std::fs::write(dir.join(file), "x\n").unwrap();
+            stage(repo, &[file.into()]).unwrap();
+            commit(repo, msg).unwrap();
+        }
+        std::fs::write(dir.join("c.txt"), "staged line\n").unwrap();
+        stage(repo, &["c.txt".into()]).unwrap();
+        std::fs::write(dir.join("a.txt"), "unstaged\n").unwrap();
+
+        assert_eq!(recent_subjects(repo, 10).unwrap(), ["second", "first"]);
+        assert_eq!(recent_subjects(repo, 1).unwrap(), ["second"]);
+        let diff = staged_diff(repo).unwrap();
+        assert!(diff.contains("+staged line"));
+        assert!(!diff.contains("unstaged"));
+        assert!(staged_stat(repo).unwrap().contains("c.txt"));
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
