@@ -1,0 +1,3 @@
+# Playwright output; the baselines themselves are committed.
+test-results/
+playwright-report/
