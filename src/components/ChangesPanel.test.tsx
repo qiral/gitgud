@@ -137,3 +137,21 @@ it('has nothing to generate from without staged files', () => {
   const { button } = renderWithCopilot(async () => 'x', [])
   expect(button.disabled).toBe(true)
 })
+
+it("shows Copilot's message as a diff when something is typed", async () => {
+  const { box, button } = renderWithCopilot(async () => 'trim username')
+  fireEvent.change(box, { target: { value: 'fix stuff' } })
+  fireEvent.click(button)
+  fireEvent.click(await screen.findByRole('button', { name: 'Reject' }))
+  expect(
+    (screen.getByPlaceholderText('Commit message') as HTMLTextAreaElement)
+      .value,
+  ).toBe('fix stuff')
+
+  fireEvent.click(button)
+  fireEvent.click(await screen.findByRole('button', { name: 'Accept' }))
+  expect(
+    (screen.getByPlaceholderText('Commit message') as HTMLTextAreaElement)
+      .value,
+  ).toBe('trim username')
+})

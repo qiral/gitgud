@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { confirm } from '@tauri-apps/plugin-dialog'
 import {
   Archive,
@@ -21,6 +21,7 @@ import {
 import { fileMenuItems } from '../lib/copy'
 import { basename, dirname } from '../lib/paths'
 import { useContextMenu, type MenuItem } from './ContextMenu'
+import SuggestionDiff from './SuggestionDiff'
 import type { Selection } from './RepoView'
 
 interface Props {
@@ -61,6 +62,11 @@ export default function ChangesPanel({
 }: Props) {
   const [message, setMessage] = useState('')
   const [generating, setGenerating] = useState(false)
+  // Copilot's message while it waits to be accepted over what was typed.
+  const [suggested, setSuggested] = useState<string | null>(null)
+  // What's typed by the time Copilot answers, not when it was asked.
+  const typed = useRef(message)
+  typed.current = message
   // While amending, the message being typed before is kept to put back.
   const [amending, setAmending] = useState<{
     draft: string
@@ -105,7 +111,9 @@ export default function ChangesPanel({
     setGenerating(true)
     try {
       const generated = await onGenerateMessage()
-      if (generated !== null) setMessage(generated)
+      if (generated === null) return
+      if (typed.current.trim()) setSuggested(generated)
+      else setMessage(generated)
     } finally {
       setGenerating(false)
     }
@@ -330,6 +338,20 @@ export default function ChangesPanel({
             </button>
           )}
         </div>
+        {suggested !== null && (
+          <div className="mt-2">
+            <SuggestionDiff
+              label="Copilot's message"
+              before={message}
+              after={suggested}
+              onAccept={() => {
+                setMessage(suggested)
+                setSuggested(null)
+              }}
+              onReject={() => setSuggested(null)}
+            />
+          </div>
+        )}
         {canAmend && (
           <label
             className="mt-1 flex items-center gap-2 text-xs text-muted"
@@ -348,7 +370,7 @@ export default function ChangesPanel({
         <div className="mt-2 flex gap-2">
           <button
             onClick={commit}
-            disabled={busy || !canCommit}
+            disabled={busy || !canCommit || suggested !== null}
             title="Ctrl+Enter"
             className="flex-1 rounded bg-accent py-1.5 font-medium text-on-accent hover:opacity-90 disabled:opacity-40"
           >

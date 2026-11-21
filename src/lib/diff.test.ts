@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseDiff, splitDiff, unquotePath } from './diff'
+import { diffLines, parseDiff, splitDiff, unquotePath } from './diff'
 
 // The same new-file diff as NEW_FILE in src-tauri/src/patch.rs. The backend
 // picks lines by their index in diff.split('\n'), so the indexes the
@@ -160,4 +160,20 @@ describe('unquotePath', () => {
 
 it('reads paths with spaces from the +++ line', () => {
   expect(splitDiff(NEW_FILE).files[0].path).toBe('n x.txt')
+})
+
+describe('diffLines', () => {
+  it('marks what was removed and added, keeping shared lines', () => {
+    expect(diffLines(['a', 'b', 'c'], ['a', 'x', 'c'])).toEqual([
+      { kind: 'context', text: 'a' },
+      { kind: 'remove', text: 'b' },
+      { kind: 'add', text: 'x' },
+      { kind: 'context', text: 'c' },
+    ])
+  })
+
+  it('handles an empty side', () => {
+    expect(diffLines([], ['new'])).toEqual([{ kind: 'add', text: 'new' }])
+    expect(diffLines(['old'], [])).toEqual([{ kind: 'remove', text: 'old' }])
+  })
 })

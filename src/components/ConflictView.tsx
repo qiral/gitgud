@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Check, Loader2, Sparkles } from 'lucide-react'
+import SuggestionDiff from './SuggestionDiff'
 import {
   errorMessage,
   git,
@@ -215,17 +216,14 @@ function ConflictBlock({
         )}
       </div>
       {suggestion !== null && (
-        <div className={`border-l-4 ${TONE.copilot}`}>
-          <div className="flex items-center gap-2 px-3 pt-1 font-sans">
-            <span className="flex-1 text-[11px] font-semibold text-muted">
-              Copilot's suggestion
-            </span>
-            <Button primary onClick={() => onUse(suggestion)}>
-              Use this
-            </Button>
-            <Button onClick={onDismiss}>Dismiss</Button>
-          </div>
-          <Lines lines={suggestion.split('\n')} />
+        <div className="p-2">
+          <SuggestionDiff
+            label="Copilot's merge, compared with ours"
+            before={part.ours.join('')}
+            after={suggestion}
+            onAccept={() => onUse(suggestion)}
+            onReject={onDismiss}
+          />
         </div>
       )}
       <Side label={`Ours (${part.oursLabel})`} tone="ours" lines={part.ours} />
@@ -243,7 +241,6 @@ const TONE = {
   ours: 'border-accent bg-accent/10',
   base: 'border-line bg-panel',
   theirs: 'border-modified bg-modified/10',
-  copilot: 'border-added bg-added/10',
 }
 
 function Side({

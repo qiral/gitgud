@@ -44,7 +44,7 @@ it('applies a Copilot suggestion to its block', async () => {
     />,
   )
   fireEvent.click(await screen.findByRole('button', { name: 'Ask Copilot' }))
-  fireEvent.click(await screen.findByRole('button', { name: 'Use this' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Accept' }))
   await waitFor(() =>
     expect(calls).toContainEqual([
       'resolve_block_text',
@@ -91,7 +91,7 @@ it('keeps a late suggestion with the block it was asked for', async () => {
     ),
   )
   answer('c();\nd();')
-  fireEvent.click(await screen.findByRole('button', { name: 'Use this' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Accept' }))
   await waitFor(() =>
     expect(calls).toContainEqual([
       'resolve_block_text',
