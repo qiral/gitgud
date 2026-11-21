@@ -290,7 +290,7 @@ export default function RepoView({
     <div className="flex h-full flex-col">
       {commitActions.dialogs}
       {ai.dialog}
-      {explaining && (
+      {explaining && !ai.dialog && (
         <ExplainDialog
           title={explaining.title}
           explanation={explaining.text}
