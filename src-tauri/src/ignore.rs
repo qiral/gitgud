@@ -136,7 +136,9 @@ mod tests {
         std::fs::write(dir.join("logs/a.log"), "").unwrap();
         std::fs::write(dir.join("logs/b.txt"), "").unwrap();
         std::fs::write(dir.join("c.log"), "").unwrap();
-        std::fs::write(dir.join("[odd]*.txt"), "").unwrap();
+        // Unescaped, `[odd].txt` would match "o.txt" or "d.txt" but not itself.
+        // (No `*` in the name: Windows doesn't allow it.)
+        std::fs::write(dir.join("[odd].txt"), "").unwrap();
         // No trailing newline, so the new line must start on its own.
         std::fs::write(dir.join(".gitignore"), "target").unwrap();
 
@@ -151,7 +153,7 @@ mod tests {
             v
         };
 
-        add(repo, "[odd]*.txt", IgnoreKind::File).unwrap();
+        add(repo, "[odd].txt", IgnoreKind::File).unwrap();
         assert_eq!(
             untracked(),
             [".gitignore", "c.log", "logs/a.log", "logs/b.txt"]
@@ -165,7 +167,7 @@ mod tests {
         assert_eq!(untracked(), [".gitignore"]);
 
         let text = std::fs::read_to_string(dir.join(".gitignore")).unwrap();
-        assert_eq!(text, "target\n/\\[odd]\\*.txt\n*.log\n/logs/\n");
+        assert_eq!(text, "target\n/\\[odd].txt\n*.log\n/logs/\n");
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
