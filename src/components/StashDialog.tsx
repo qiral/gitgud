@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { git, type RepoInfo } from '../lib/git'
 import Dialog from './Dialog'
+import { useTranslation } from '../i18n'
 
 interface Props {
   repo: RepoInfo
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function StashDialog({ repo, onClose, act }: Props) {
+  const { t } = useTranslation()
   const [message, setMessage] = useState('')
   const [includeUntracked, setIncludeUntracked] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -25,19 +27,22 @@ export default function StashDialog({ repo, onClose, act }: Props) {
   }
 
   return (
-    <Dialog title="Stash changes" onClose={onClose}>
+    <Dialog title={t('stashdialog.stash-changes')} onClose={onClose}>
       <form onSubmit={stash} className="space-y-3">
         <p className="text-muted">
-          Set your uncommitted changes aside and get a clean working tree. You
-          can bring them back from the Stashes tab.
+          {t(
+            'stashdialog.set-your-uncommitted-changes-aside-and-get-a-clean-working-tree-you-can-bring-them-back-from-the-stashes-tab',
+          )}
         </p>
         <label className="block">
-          <span className="mb-1 block text-muted">Message (optional)</span>
+          <span className="mb-1 block text-muted">
+            {t('stashdialog.message-optional')}
+          </span>
           <input
             autoFocus
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="What were you working on?"
+            placeholder={t('stashdialog.what-were-you-working-on')}
             className="w-full rounded border border-line bg-bg px-2 py-1.5 outline-none focus:border-accent"
           />
         </label>

@@ -3,6 +3,7 @@ import { listen } from '@tauri-apps/api/event'
 import { Loader2 } from 'lucide-react'
 import { copilot, errorMessage } from '../lib/git'
 import Dialog from './Dialog'
+import { useTranslation } from '../i18n'
 
 interface Props {
   onInstalled: () => void
@@ -11,6 +12,7 @@ interface Props {
 
 /** Offers to download the Copilot CLI when there is none. */
 export default function CopilotSetupDialog({ onInstalled, onClose }: Props) {
+  const { t } = useTranslation()
   const [percent, setPercent] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const downloading = percent !== null
@@ -36,7 +38,7 @@ export default function CopilotSetupDialog({ onInstalled, onClose }: Props) {
   return (
     // Closing mid-download would hide progress while it keeps running.
     <Dialog
-      title="Set up GitHub Copilot"
+      title={t('copilotsetupdialog.set-up-github-copilot')}
       onClose={() => !downloading && onClose()}
     >
       <div className="space-y-4">
@@ -47,7 +49,7 @@ export default function CopilotSetupDialog({ onInstalled, onClose }: Props) {
         {downloading && (
           <div className="space-y-1">
             <div className="flex justify-between text-xs text-muted">
-              <span>Downloading…</span>
+              <span>{t('copilotsetupdialog.downloading')}</span>
               <span>{percent}%</span>
             </div>
             <div className="h-1.5 overflow-hidden rounded bg-bg">
@@ -69,7 +71,7 @@ export default function CopilotSetupDialog({ onInstalled, onClose }: Props) {
             disabled={downloading}
             className="rounded border border-line px-3 py-1.5 hover:bg-hover disabled:opacity-40"
           >
-            Cancel
+            {t('copilotsetupdialog.cancel')}
           </button>
           <button
             onClick={download}

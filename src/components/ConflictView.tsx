@@ -8,6 +8,7 @@ import {
   type FileChange,
   type RepoInfo,
 } from '../lib/git'
+import { useTranslation } from '../i18n'
 
 interface Props {
   repo: RepoInfo
@@ -27,6 +28,7 @@ export default function ConflictView({
   act,
   onAsk,
 }: Props) {
+  const { t, tp } = useTranslation()
   const [parts, setParts] = useState<ConflictPart[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   // Keyed by file and block content: indexes shift as blocks get resolved,
@@ -79,8 +81,8 @@ export default function ConflictView({
           <span className="ml-2 font-normal text-muted">
             {parts
               ? conflicts > 0
-                ? `${conflicts} conflict${conflicts > 1 ? 's' : ''} left`
-                : 'No conflicts left'
+                ? tp('conflictview.conflicts-left', conflicts)
+                : t('conflictview.no-conflicts-left')
               : ''}
           </span>
         </span>
@@ -89,7 +91,7 @@ export default function ConflictView({
             act('resolve', () => git.resolveFile(repo.path, file.path, 'ours'))
           }
         >
-          Use ours for the whole file
+          {t('conflictview.use-ours-for-the-whole-file')}
         </Button>
         <Button
           onClick={() =>
@@ -98,7 +100,7 @@ export default function ConflictView({
             )
           }
         >
-          Use theirs for the whole file
+          {t('conflictview.use-theirs-for-the-whole-file')}
         </Button>
         <Button
           primary
@@ -107,7 +109,7 @@ export default function ConflictView({
             act('resolve', () => git.markResolved(repo.path, file.path))
           }
         >
-          <Check className="size-3.5" /> Mark as resolved
+          <Check className="size-3.5" /> {t('conflictview.mark-as-resolved')}
         </Button>
       </div>
 
@@ -197,13 +199,20 @@ function ConflictBlock({
   onUse: (text: string) => void
   onDismiss: () => void
 }) {
+  const { t } = useTranslation()
   return (
     <div className="my-2 overflow-hidden border-y border-line">
       <div className="flex items-center gap-2 bg-panel px-3 py-1.5 font-sans">
-        <span className="flex-1 font-medium">Conflict</span>
-        <Button onClick={() => onChoose('ours')}>Use ours</Button>
-        <Button onClick={() => onChoose('theirs')}>Use theirs</Button>
-        <Button onClick={() => onChoose('both')}>Use both</Button>
+        <span className="flex-1 font-medium">{t('conflictview.conflict')}</span>
+        <Button onClick={() => onChoose('ours')}>
+          {t('conflictview.use-ours')}
+        </Button>
+        <Button onClick={() => onChoose('theirs')}>
+          {t('conflictview.use-theirs')}
+        </Button>
+        <Button onClick={() => onChoose('both')}>
+          {t('conflictview.use-both')}
+        </Button>
         {(onAsk || asking) && (
           <Button disabled={!onAsk} onClick={() => onAsk?.()}>
             {asking ? (
@@ -218,7 +227,7 @@ function ConflictBlock({
       {suggestion !== null && (
         <div className="p-2">
           <SuggestionDiff
-            label="Copilot's merge, compared with ours"
+            label={t('conflictview.copilot-s-merge-compared-with-ours')}
             before={part.ours.join('')}
             after={suggestion}
             onAccept={() => onUse(suggestion)}
@@ -226,10 +235,20 @@ function ConflictBlock({
           />
         </div>
       )}
-      <Side label={`Ours (${part.oursLabel})`} tone="ours" lines={part.ours} />
-      {part.base && <Side label="Original" tone="base" lines={part.base} />}
       <Side
-        label={`Theirs (${part.theirsLabel})`}
+        label={t('conflictview.ours', { label: part.oursLabel })}
+        tone="ours"
+        lines={part.ours}
+      />
+      {part.base && (
+        <Side
+          label={t('conflictview.original')}
+          tone="base"
+          lines={part.base}
+        />
+      )}
+      <Side
+        label={t('conflictview.theirs', { label: part.theirsLabel })}
         tone="theirs"
         lines={part.theirs}
       />

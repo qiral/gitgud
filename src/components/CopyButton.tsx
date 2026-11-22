@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Check, Copy } from 'lucide-react'
 import { copyText } from '../lib/copy'
+import { useTranslation } from '../i18n'
 
 /** A small icon button that copies `text` and briefly shows a check mark. */
 export default function CopyButton({
@@ -13,6 +14,7 @@ export default function CopyButton({
   /** Shown next to the icon, e.g. a short commit hash. */
   label?: string
 }) {
+  const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
   useEffect(() => {
     if (!copied) return
@@ -23,7 +25,7 @@ export default function CopyButton({
   const Icon = copied ? Check : Copy
   return (
     <button
-      title={copied ? 'Copied' : title}
+      title={copied ? t('copybutton.copied') : title}
       onClick={async (e) => {
         e.stopPropagation()
         await copyText(text)

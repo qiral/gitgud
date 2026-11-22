@@ -2,6 +2,7 @@ import { Sparkles } from 'lucide-react'
 import type { Commit, Stash } from '../lib/git'
 import { relativeTime } from '../lib/time'
 import CopyButton from './CopyButton'
+import { useTranslation } from '../i18n'
 
 const fullDate = (unixSeconds: number) =>
   new Date(unixSeconds * 1000).toLocaleString()
@@ -18,6 +19,7 @@ export function CommitHeader({
   /** Asks Copilot to explain the commit; unset to hide the button. */
   onExplain?: () => void
 }) {
+  const { t } = useTranslation()
   const body = message.split('\n').slice(1).join('\n').trim()
   return (
     <div className="shrink-0 border-b border-line px-4 py-3">
@@ -25,7 +27,10 @@ export function CommitHeader({
         <h2 className="min-w-0 flex-1 font-semibold break-words select-text">
           {commit.subject}
         </h2>
-        <CopyButton text={commit.subject} title="Copy message" />
+        <CopyButton
+          text={commit.subject}
+          title={t('commitheader.copy-message')}
+        />
       </div>
       {body && (
         <p className="mt-1.5 max-h-40 overflow-auto text-sm whitespace-pre-wrap text-muted select-text">
@@ -45,13 +50,13 @@ export function CommitHeader({
             className="flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-hover hover:text-fg"
           >
             <Sparkles className="size-3.5" />
-            Explain with Copilot
+            {t('commitheader.explain-with-copilot')}
           </button>
         )}
         <CopyButton
           text={commit.hash}
           label={commit.shortHash}
-          title={`Copy full hash ${commit.hash}`}
+          title={t('commitheader.copy-full-hash', { hash: commit.hash })}
         />
       </div>
     </div>

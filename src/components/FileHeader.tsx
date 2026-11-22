@@ -4,6 +4,7 @@ import { fileMenuItems } from '../lib/copy'
 import { basename, dirname } from '../lib/paths'
 import { useContextMenu } from './ContextMenu'
 import CopyButton from './CopyButton'
+import { useTranslation } from '../i18n'
 
 export const STATUS_STYLE: Record<FileStatus, [string, string]> = {
   added: ['A', 'text-added'],
@@ -50,6 +51,7 @@ export default function FileHeader({
   onHistory,
   onExplain,
 }: Props) {
+  const { t } = useTranslation()
   const { menu, open } = useContextMenu()
   const items = () =>
     fileMenuItems(repo, path, exists, onHistory && (() => onHistory(path)))
@@ -68,10 +70,10 @@ export default function FileHeader({
         <span className="font-medium">{basename(path)}</span>
       </div>
       <LineCounts add={additions} del={deletions} />
-      <CopyButton text={path} title="Copy path" />
+      <CopyButton text={path} title={t('fileheader.copy-path')} />
       {onExplain && (
         <button
-          title="Explain with Copilot"
+          title={t('fileheader.explain-with-copilot')}
           onClick={onExplain}
           className="shrink-0 rounded p-0.5 text-muted hover:bg-hover hover:text-fg"
         >
@@ -79,7 +81,7 @@ export default function FileHeader({
         </button>
       )}
       <button
-        title="More"
+        title={t('fileheader.more')}
         onClick={(e) => open(e, items())}
         className="shrink-0 rounded p-0.5 text-muted hover:bg-hover hover:text-fg"
       >

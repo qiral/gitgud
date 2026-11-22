@@ -206,6 +206,16 @@ body {
     -apple-system,
     'Segoe UI',
     Roboto,
+    /* CJK fallbacks so Japanese, Chinese and Korean render on every OS. */
+    'Noto Sans',
+    'Noto Sans JP',
+    'Noto Sans SC',
+    'Noto Sans KR',
+    'Hiragino Sans',
+    'Yu Gothic',
+    Meiryo,
+    'PingFang SC',
+    'Microsoft YaHei',
     sans-serif;
   font-size: 13px;
   user-select: none;

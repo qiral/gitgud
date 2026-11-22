@@ -3,6 +3,7 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import { ExternalLink, Loader2 } from 'lucide-react'
 import { errorMessage, github, type Account, type DeviceCode } from '../lib/git'
 import Dialog from './Dialog'
+import { useTranslation } from '../i18n'
 
 interface Props {
   onClose: () => void
@@ -11,6 +12,7 @@ interface Props {
 
 /** GitHub device flow: show a code, the user enters it on github.com. */
 export default function SignInDialog({ onClose, onSignedIn }: Props) {
+  const { t } = useTranslation()
   const [code, setCode] = useState<DeviceCode | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
@@ -70,7 +72,7 @@ export default function SignInDialog({ onClose, onSignedIn }: Props) {
   }
 
   return (
-    <Dialog title="Sign in to GitHub" onClose={onClose}>
+    <Dialog title={t('signindialog.sign-in-to-github')} onClose={onClose}>
       {error ? (
         <div className="space-y-4">
           <p className="text-removed">{error}</p>
@@ -78,7 +80,7 @@ export default function SignInDialog({ onClose, onSignedIn }: Props) {
             onClick={() => setAttempt((a) => a + 1)}
             className="w-full rounded bg-accent py-2 font-medium text-on-accent hover:opacity-90"
           >
-            Try again
+            {t('signindialog.try-again')}
           </button>
         </div>
       ) : !code ? (
@@ -88,7 +90,9 @@ export default function SignInDialog({ onClose, onSignedIn }: Props) {
       ) : (
         <div className="space-y-4 text-center">
           <p className="text-muted">
-            Enter this code on GitHub to connect your account:
+            {t(
+              'signindialog.enter-this-code-on-github-to-connect-your-account',
+            )}
           </p>
           <p className="font-mono text-3xl font-bold tracking-widest select-text">
             {code.userCode}
@@ -97,12 +101,12 @@ export default function SignInDialog({ onClose, onSignedIn }: Props) {
             onClick={openGitHub}
             className="flex w-full items-center justify-center gap-2 rounded bg-accent py-2 font-medium text-on-accent hover:opacity-90"
           >
-            Copy code and open GitHub
+            {t('signindialog.copy-code-and-open-github')}
             <ExternalLink className="size-4" />
           </button>
           <p className="flex items-center justify-center gap-2 text-xs text-muted">
             <Loader2 className="size-3 animate-spin" />
-            Waiting for you to approve on GitHub…
+            {t('signindialog.waiting-for-you-to-approve-on-github')}
           </p>
         </div>
       )}

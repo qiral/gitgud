@@ -13,8 +13,10 @@ import CloneDialog from './components/CloneDialog'
 import { addRecent, readRecents, removeRecent } from './lib/prefs'
 import logoMark from './assets/logo-mark.png'
 import { useUpdates } from './lib/updates'
+import { useTranslation } from './i18n'
 
 export default function App() {
+  const { t } = useTranslation()
   const [repo, setRepo] = useState<RepoInfo | null>(null)
   const [account, setAccount] = useState<Account | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -36,7 +38,7 @@ export default function App() {
       setRecents(removeRecent(path))
       if (repo)
         await message(errorMessage(e), {
-          title: 'Could not open repository',
+          title: t('app.could-not-open-repository'),
           kind: 'error',
         })
       else setError(errorMessage(e))
@@ -44,7 +46,10 @@ export default function App() {
   }
 
   async function pickRepo() {
-    const path = await open({ directory: true, title: 'Open repository' })
+    const path = await open({
+      directory: true,
+      title: t('app.open-repository'),
+    })
     if (typeof path === 'string') await openPath(path)
   }
 
@@ -107,8 +112,10 @@ export default function App() {
     <main className="flex h-full flex-col items-center justify-center gap-6 overflow-auto p-8 text-center">
       <img src={logoMark} alt="" className="size-24" draggable={false} />
       <div>
-        <h1 className="text-2xl font-semibold">GitGud</h1>
-        <p className="mt-1 text-muted">Open a Git repository to get started.</p>
+        <h1 className="text-2xl font-semibold">{t('app.gitgud')}</h1>
+        <p className="mt-1 text-muted">
+          {t('app.open-a-git-repository-to-get-started')}
+        </p>
       </div>
       <div className="flex gap-3">
         <button
@@ -116,21 +123,21 @@ export default function App() {
           className={`${button} bg-accent text-on-accent`}
         >
           <FolderOpen className="size-4" />
-          Open repository
+          {t('app.open-repository')}
         </button>
         <button
           onClick={() => setCloning(true)}
           className={`${button} border border-line hover:bg-hover`}
         >
           <Download className="size-4" />
-          Clone repository
+          {t('app.clone-repository')}
         </button>
       </div>
       {error && <p className="max-w-md text-removed">{error}</p>}
       {recents.length > 0 && (
         <div className="w-full max-w-md text-left">
           <h2 className="mb-1 px-1 text-xs font-medium text-muted">
-            Recent repositories
+            {t('app.recent-repositories')}
           </h2>
           <ul className="overflow-hidden rounded-md border border-line">
             {recents.map((r) => (
@@ -153,7 +160,7 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => setRecents(removeRecent(r.path))}
-                  title="Remove from list"
+                  title={t('app.remove-from-list')}
                   className="mr-2 rounded p-1 text-muted opacity-0 group-hover:opacity-100 hover:bg-panel hover:text-fg focus:opacity-100"
                 >
                   <X className="size-4" />
@@ -171,6 +178,7 @@ export default function App() {
 
 /** "GitGud 0.6.1 · Check for updates" under the start screen. */
 function VersionLine() {
+  const { t } = useTranslation()
   const { version, update, status, check, openCard } = useUpdates()
   if (!version) return null
   return (
@@ -182,10 +190,10 @@ function VersionLine() {
         className="text-accent hover:underline disabled:opacity-60"
       >
         {update
-          ? `Update to ${update.version}`
+          ? t('app.update-to', { version: update.version })
           : status === 'checking'
-            ? 'Checking…'
-            : 'Check for updates'}
+            ? t('app.checking')
+            : t('app.check-for-updates')}
       </button>
     </p>
   )

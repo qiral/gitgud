@@ -33,6 +33,7 @@ import ExplainDialog from './ExplainDialog'
 import { useResizable } from './Resizable'
 import { useCommitActions } from './CommitActions'
 import { useCopilot } from '../lib/copilot'
+import { useTranslation, type Translate } from '../i18n'
 import { useSync } from './SyncActions'
 import { useRepoCommands, type Tab } from './RepoCommands'
 import { usePullRequests } from './PullRequests'
@@ -43,11 +44,11 @@ export type Selection =
   | { kind: 'commit'; commit: Commit }
   | { kind: 'stash'; stash: Stash }
 
-const EMPTY_HINT: Record<Tab, string> = {
-  changes: 'Select a file to see its changes',
-  history: 'Select a commit to see what changed',
-  stashes: 'Select a stash to see what it contains',
-}
+const EMPTY_HINT = (t: Translate): Record<Tab, string> => ({
+  changes: t('repoview.changes-empty'),
+  history: t('repoview.history-empty'),
+  stashes: t('repoview.stashes-empty'),
+})
 
 function Count({ n }: { n: number }) {
   if (n === 0) return null
@@ -79,6 +80,7 @@ export default function RepoView({
   onOpenRecent,
   onClone,
 }: Props) {
+  const { t: tx } = useTranslation()
   const [tab, setTab] = useState<Tab>('changes')
   const [status, setStatus] = useState<Status | null>(null)
   const [branches, setBranches] = useState<Branch[]>([])
@@ -214,7 +216,8 @@ export default function RepoView({
       .then((d) => !cancelled && setDiff(d))
       .catch(
         (e) =>
-          !cancelled && setDiff(`Could not load diff:\n${errorMessage(e)}`),
+          !cancelled &&
+          setDiff(`${tx('repoview.diff-error')}\n${errorMessage(e)}`),
       )
     return () => {
       cancelled = true
@@ -555,7 +558,7 @@ export default function RepoView({
             </>
           ) : (
             <div className="flex h-full items-center justify-center text-muted">
-              {EMPTY_HINT[tab]}
+              {EMPTY_HINT(tx)[tab]}
             </div>
           )}
         </section>
@@ -567,7 +570,7 @@ export default function RepoView({
             {error}
           </pre>
           <button onClick={() => setError(null)} className="hover:underline">
-            Dismiss
+            {tx('repoview.dismiss')}
           </button>
         </div>
       )}

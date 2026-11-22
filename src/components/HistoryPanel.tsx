@@ -32,6 +32,7 @@ import {
 import { useContextMenu, type MenuItem } from './ContextMenu'
 import type { Selection } from './RepoView'
 import type { CommitActions } from './CommitActions'
+import { useTranslation } from '../i18n'
 
 /** Narrows History to a search or to one file's commits. */
 export type HistoryFilter =
@@ -95,6 +96,7 @@ export default function HistoryPanel({
   onExplain,
   focusSearch,
 }: Props) {
+  const { t, tp } = useTranslation()
   // Filtered commits aren't connected, so they're listed without lines.
   const flat = filter !== null
   const [hidden, setHidden] = useState(() => readHiddenLines(repoPath))
@@ -182,24 +184,24 @@ export default function HistoryPanel({
   function menuFor(c: Commit): MenuItem[] {
     const items: MenuItem[] = [
       {
-        label: 'Copy commit hash',
+        label: t('historypanel.copy-commit-hash'),
         icon: Copy,
         onClick: () => copyText(c.hash),
       },
       {
-        label: 'Copy short hash',
+        label: t('historypanel.copy-short-hash'),
         icon: Copy,
         onClick: () => copyText(c.shortHash),
       },
       {
-        label: 'Copy message',
+        label: t('historypanel.copy-message'),
         icon: GitCommitHorizontal,
         onClick: () => copyText(c.subject),
       },
     ]
     if (onExplain)
       items.push('separator', {
-        label: 'Explain with Copilot',
+        label: t('historypanel.explain-with-copilot'),
         icon: Sparkles,
         onClick: () => onExplain(c),
       })
@@ -208,47 +210,47 @@ export default function HistoryPanel({
       items.push(
         'separator',
         {
-          label: 'Create branch here…',
+          label: t('historypanel.create-branch-here'),
           icon: GitBranchPlus,
           onClick: () => actions.createBranch(c),
         },
         {
-          label: 'Create tag here…',
+          label: t('historypanel.create-tag-here'),
           icon: Tag,
           onClick: () => actions.createTag(c),
         },
       )
-      for (const t of c.refs.filter((r) => r.kind === 'tag'))
+      for (const tag of c.refs.filter((r) => r.kind === 'tag'))
         items.push(
           {
-            label: `Push tag ${t.name}`,
+            label: t('historypanel.push-tag', { name: tag.name }),
             icon: Upload,
-            onClick: () => actions.pushTag(t.name),
+            onClick: () => actions.pushTag(tag.name),
           },
           {
-            label: `Delete tag ${t.name}…`,
+            label: t('historypanel.delete-tag', { name: tag.name }),
             icon: Trash2,
             danger: true,
-            onClick: () => actions.deleteTag(t.name),
+            onClick: () => actions.deleteTag(tag.name),
           },
         )
       const branchItems: MenuItem[] = []
       if (actions.cherryPick)
         branchItems.push({
-          label: 'Cherry-pick onto current branch',
+          label: t('historypanel.cherry-pick-onto-current-branch'),
           icon: CirclePlus,
           disabled: isHead,
           onClick: () => actions.cherryPick!(c),
         })
       if (actions.revert)
         branchItems.push({
-          label: 'Revert this commit…',
+          label: t('historypanel.revert-this-commit'),
           icon: Undo2,
           onClick: () => actions.revert!(c),
         })
       if (actions.reset)
         branchItems.push({
-          label: 'Reset current branch to here…',
+          label: t('historypanel.reset-current-branch-to-here'),
           icon: RotateCcw,
           disabled: isHead,
           onClick: () => actions.reset!(c),
@@ -257,13 +259,13 @@ export default function HistoryPanel({
     }
     if (canHide(c))
       items.push('separator', {
-        label: 'Hide this branch line',
+        label: t('historypanel.hide-this-branch-line'),
         icon: EyeOff,
         onClick: () => hideLineOf(c),
       })
     if (onRebaseFrom && c.parents.length <= 1)
       items.push('separator', {
-        label: 'Edit history from here…',
+        label: t('historypanel.edit-history-from-here'),
         icon: PencilLine,
         onClick: () => onRebaseFrom(c),
       })
@@ -279,11 +281,11 @@ export default function HistoryPanel({
   const graphWidth = (dots ? 1 : lanes) * LANE_WIDTH + GRAPH_PADDING
   const empty = flat
     ? filtered === null
-      ? 'Searching…'
+      ? t('historypanel.searching')
       : filter.kind === 'search'
-        ? 'No commits match'
-        : 'No commits changed this file on this branch'
-    : 'No commits yet'
+        ? t('historypanel.no-commits-match')
+        : t('historypanel.no-commits-file')
+    : t('historypanel.no-commits-yet')
 
   return (
     <>
@@ -302,7 +304,11 @@ export default function HistoryPanel({
             <div className="flex shrink-0 items-center gap-1 border-b border-line px-1 py-0.5 text-xs text-muted">
               <button
                 onClick={toggleGraph}
-                title={collapsed ? 'Show branch lines' : 'Hide branch lines'}
+                title={
+                  collapsed
+                    ? t('historypanel.show-lines')
+                    : t('historypanel.hide-lines')
+                }
                 aria-expanded={!collapsed}
                 className="flex items-center gap-1.5 rounded px-1.5 py-0.5 hover:bg-hover hover:text-fg"
               >
@@ -311,13 +317,16 @@ export default function HistoryPanel({
                 ) : (
                   <Minus className="size-3.5" />
                 )}
-                Graph
+                {t('historypanel.graph')}
               </button>
               {lines.map((l) => (
                 <button
                   key={l.color}
                   onClick={() => showLine(l.color)}
-                  title={`Show ${l.label} again (${l.count} commit${l.count > 1 ? 's' : ''})`}
+                  title={t('historypanel.show-again', {
+                    label: l.label,
+                    commits: tp('historypanel.commits', l.count),
+                  })}
                   className="flex max-w-40 items-center gap-1 rounded border border-line px-1.5 py-0.5 hover:bg-hover hover:text-fg"
                 >
                   <Plus className="size-3 shrink-0" />
@@ -333,7 +342,7 @@ export default function HistoryPanel({
                   onClick={() => updateHidden([])}
                   className="rounded px-1.5 py-0.5 hover:bg-hover hover:text-fg"
                 >
-                  Show all
+                  {t('historypanel.show-all')}
                 </button>
               )}
             </div>
@@ -395,11 +404,13 @@ export default function HistoryPanel({
                             e.stopPropagation()
                             onRebaseFrom(c)
                           }}
-                          title="Edit history from this commit: reorder, squash, reword or drop"
+                          title={t(
+                            'historypanel.edit-history-from-this-commit-reorder-squash-reword-or-drop',
+                          )}
                           className="hidden shrink-0 items-center gap-1 rounded px-1 text-muted group-hover:flex hover:bg-line hover:text-fg"
                         >
                           <PencilLine className="size-3" />
-                          Edit from here
+                          {t('historypanel.edit-from-here')}
                         </button>
                       )}
                     </div>
@@ -425,6 +436,7 @@ function FilterBar({
   onFilter: (f: HistoryFilter | null) => void
   focusSearch?: number
 }) {
+  const { t } = useTranslation()
   const input = useRef<HTMLInputElement>(null)
   useEffect(() => {
     if (focusSearch) input.current?.select()
@@ -442,12 +454,12 @@ function FilterBar({
       <div className="flex shrink-0 items-center gap-2 border-b border-line px-3 py-1.5">
         <FileClock className="size-4 shrink-0 text-muted" />
         <span className="min-w-0 flex-1 truncate" title={filter.path}>
-          <span className="text-muted">History of </span>
+          <span className="text-muted">{t('historypanel.history-of')} </span>
           <span className="font-medium">{filter.path}</span>
         </span>
         <button
           onClick={() => onFilter(null)}
-          title="Show all commits"
+          title={t('historypanel.show-all-commits')}
           className="shrink-0 rounded p-0.5 text-muted hover:bg-hover hover:text-fg"
         >
           <X className="size-4" />
@@ -467,14 +479,14 @@ function FilterBar({
         value={text}
         onChange={(e) => change(e.target.value)}
         onKeyDown={(e) => e.key === 'Escape' && change('')}
-        placeholder="Search messages, authors or hashes"
-        aria-label="Search commits"
+        placeholder={t('historypanel.search-messages-authors-or-hashes')}
+        aria-label={t('historypanel.search-commits')}
         className="min-w-0 flex-1 bg-transparent outline-none"
       />
       {text && (
         <button
           onClick={() => change('')}
-          title="Clear search"
+          title={t('historypanel.clear-search')}
           className="shrink-0 rounded p-0.5 text-muted hover:bg-hover hover:text-fg"
         >
           <X className="size-4" />
@@ -496,6 +508,7 @@ function GraphCell({
   /** Shows a "−" on the dot while the row is hovered. */
   onHide?: () => void
 }) {
+  const { t } = useTranslation()
   const x = (lane: number) =>
     GRAPH_PADDING / 2 + lane * LANE_WIDTH + LANE_WIDTH / 2
   const y = (level: number) => (level * ROW_HEIGHT) / 2
@@ -536,7 +549,7 @@ function GraphCell({
             onHide()
           }}
         >
-          <title>Hide this branch line</title>
+          <title>{t('historypanel.hide-this-branch-line')}</title>
           <circle
             cx={x(row.lane)}
             cy={y(1)}
@@ -609,9 +622,14 @@ const BADGE: Record<RefLabel['kind'], string> = {
 }
 
 function RefBadge({ label }: { label: RefLabel }) {
+  const { t } = useTranslation()
   return (
     <span
-      title={label.kind === 'tag' ? `Tag ${label.name}` : label.name}
+      title={
+        label.kind === 'tag'
+          ? t('historypanel.tag-title', { name: label.name })
+          : label.name
+      }
       className={`max-w-32 shrink-0 truncate rounded px-1.5 text-[11px] leading-4 font-medium ${BADGE[label.kind]}`}
     >
       {label.name}

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { GitMerge, GitPullRequestArrow } from 'lucide-react'
 import { type PullMode } from '../lib/git'
 import Dialog from './Dialog'
+import { useTranslation } from '../i18n'
 
 interface Props {
   branch: string
@@ -21,25 +22,29 @@ export default function PullDialog({
   onPull,
   onClose,
 }: Props) {
+  const { t, tp } = useTranslation()
   const [remember, setRemember] = useState(false)
 
   const choices = [
     {
       mode: 'merge' as const,
       icon: GitMerge,
-      label: 'Merge',
-      description: `Add a merge commit that joins ${upstream} into ${branch}. History stays exactly as it happened.`,
+      label: t('pulldialog.merge'),
+      description: t('pulldialog.merge-desc', { upstream, branch }),
     },
     {
       mode: 'rebase' as const,
       icon: GitPullRequestArrow,
-      label: 'Rebase',
-      description: `Replay your ${ahead} commit${ahead > 1 ? 's' : ''} on top of ${upstream} for a straight history. Your local commits get new hashes.`,
+      label: t('pulldialog.rebase'),
+      description: t('pulldialog.rebase-desc', {
+        commits: tp('pulldialog.commits', ahead),
+        upstream,
+      }),
     },
   ]
 
   return (
-    <Dialog title="Branches have diverged" onClose={onClose}>
+    <Dialog title={t('pulldialog.branches-have-diverged')} onClose={onClose}>
       <div className="space-y-3">
         <p className="text-muted">
           {branch} has {ahead} commit{ahead > 1 ? 's' : ''} that {upstream}{' '}
@@ -66,7 +71,7 @@ export default function PullDialog({
             onChange={(e) => setRemember(e.target.checked)}
             className="accent-accent"
           />
-          Remember for this repository
+          {t('pulldialog.remember-for-this-repository')}
         </label>
       </div>
     </Dialog>

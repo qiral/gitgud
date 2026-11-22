@@ -1,5 +1,6 @@
 import Dialog from './Dialog'
 import { Keys, type Command } from './CommandPalette'
+import { useTranslation } from '../i18n'
 
 /** Lists every command that has a shortcut, by group. */
 export default function ShortcutsDialog({
@@ -9,10 +10,15 @@ export default function ShortcutsDialog({
   commands: Command[]
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const withKeys = commands.filter((c) => c.shortcut)
   const groups = [...new Set(withKeys.map((c) => c.group))]
   return (
-    <Dialog title="Keyboard shortcuts" onClose={onClose} wide>
+    <Dialog
+      title={t('shortcutsdialog.keyboard-shortcuts')}
+      onClose={onClose}
+      wide
+    >
       <div className="max-h-[60vh] space-y-4 overflow-auto">
         {groups.map((g) => (
           <section key={g}>

@@ -1,5 +1,6 @@
 import { Check, X } from 'lucide-react'
 import { diffLines, type DiffLine } from '../lib/diff'
+import { useTranslation } from '../i18n'
 
 const STYLE: Record<DiffLine['kind'], [string, string]> = {
   add: ['+', 'bg-added-bg'],
@@ -27,6 +28,7 @@ export default function SuggestionDiff({
   onAccept,
   onReject,
 }: Props) {
+  const { t } = useTranslation()
   return (
     <div className="overflow-hidden rounded border border-line">
       <div className="flex items-center gap-2 bg-panel px-2 py-1 font-sans text-xs">
@@ -36,14 +38,14 @@ export default function SuggestionDiff({
           className="flex items-center gap-1 rounded bg-accent px-2 py-0.5 font-medium text-on-accent hover:opacity-90"
         >
           <Check className="size-3.5" />
-          Accept
+          {t('suggestiondiff.accept')}
         </button>
         <button
           onClick={onReject}
           className="flex items-center gap-1 rounded border border-line px-2 py-0.5 hover:bg-hover"
         >
           <X className="size-3.5" />
-          Reject
+          {t('suggestiondiff.reject')}
         </button>
       </div>
       <div className="max-h-60 overflow-auto font-mono text-xs leading-5">

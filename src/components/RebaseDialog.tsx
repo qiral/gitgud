@@ -15,6 +15,7 @@ import {
   type RepoInfo,
 } from '../lib/git'
 import Dialog from './Dialog'
+import { useTranslation, type Translate } from '../i18n'
 
 interface Props {
   repo: RepoInfo
@@ -30,23 +31,38 @@ interface Row {
   message: string
 }
 
-const ACTIONS: { value: RebaseAction; label: string; hint: string }[] = [
-  { value: 'pick', label: 'Pick', hint: 'Keep the commit as it is' },
-  { value: 'reword', label: 'Reword', hint: 'Keep it, change the message' },
+const ACTIONS = (
+  t: Translate,
+): { value: RebaseAction; label: string; hint: string }[] => [
+  {
+    value: 'pick',
+    label: t('rebasedialog.pick'),
+    hint: t('rebasedialog.hint-pick'),
+  },
+  {
+    value: 'reword',
+    label: t('rebasedialog.reword'),
+    hint: t('rebasedialog.hint-reword'),
+  },
   {
     value: 'squash',
-    label: 'Squash',
-    hint: 'Combine into the commit above, keeping both messages',
+    label: t('rebasedialog.squash'),
+    hint: t('rebasedialog.hint-squash'),
   },
   {
     value: 'fixup',
-    label: 'Fixup',
-    hint: 'Combine into the commit above, dropping this message',
+    label: t('rebasedialog.fixup'),
+    hint: t('rebasedialog.hint-fixup'),
   },
-  { value: 'drop', label: 'Drop', hint: 'Remove the commit and its changes' },
+  {
+    value: 'drop',
+    label: t('rebasedialog.drop'),
+    hint: t('rebasedialog.hint-drop'),
+  },
 ]
 
 export default function RebaseDialog({ repo, from, onClose, act }: Props) {
+  const { t } = useTranslation()
   const [rows, setRows] = useState<Row[] | null>(null)
   const [pushed, setPushed] = useState(false)
   // Original order, to tell whether anything was moved.
@@ -93,9 +109,9 @@ export default function RebaseDialog({ repo, from, onClose, act }: Props) {
     ? null
     : firstKept &&
         (firstKept.action === 'squash' || firstKept.action === 'fixup')
-      ? 'The first kept commit has nothing above it to squash into.'
+      ? t('rebasedialog.squash-first')
       : rows.some((r) => r.action === 'reword' && !r.message.trim())
-        ? 'A reworded commit needs a message.'
+        ? t('rebasedialog.reword-empty')
         : null
   const changed =
     rows?.some(
@@ -121,7 +137,11 @@ export default function RebaseDialog({ repo, from, onClose, act }: Props) {
   }
 
   return (
-    <Dialog title="Edit history" onClose={() => !busy && onClose()} wide>
+    <Dialog
+      title={t('rebasedialog.edit-history')}
+      onClose={() => !busy && onClose()}
+      wide
+    >
       {loadError ? (
         <p className="text-removed select-text">{loadError}</p>
       ) : !rows ? (
@@ -131,16 +151,17 @@ export default function RebaseDialog({ repo, from, onClose, act }: Props) {
       ) : (
         <div className="space-y-3">
           <p className="text-muted">
-            Oldest first. Drag to reorder, and choose what happens to each
-            commit. Squash and fixup combine a commit into the one above it.
+            {t(
+              'rebasedialog.oldest-first-drag-to-reorder-and-choose-what-happens-to-each-commit-squash-and-fixup-combine-a-commit-into-the-one-above-it',
+            )}
           </p>
 
           {pushed && (
             <p className="flex gap-2 rounded border border-modified bg-modified/10 p-2 text-xs">
               <AlertTriangle className="size-4 shrink-0 text-modified" />
-              Some of these commits are already pushed. After rewriting them
-              you'll need to force push, which affects anyone else using this
-              branch.
+              {t(
+                'rebasedialog.some-of-these-commits-are-already-pushed-after-rewriting-them-you-ll-need-to-force-push-which-affects-anyone-else-using-this-branch',
+              )}
             </p>
           )}
 
@@ -172,10 +193,10 @@ export default function RebaseDialog({ repo, from, onClose, act }: Props) {
                     onChange={(e) =>
                       update(i, { action: e.target.value as RebaseAction })
                     }
-                    title={ACTIONS.find((a) => a.value === row.action)?.hint}
+                    title={ACTIONS(t).find((a) => a.value === row.action)?.hint}
                     className="rounded border border-line bg-panel px-1 py-0.5 text-xs"
                   >
-                    {ACTIONS.map((a) => (
+                    {ACTIONS(t).map((a) => (
                       <option key={a.value} value={a.value} title={a.hint}>
                         {a.label}
                       </option>
@@ -195,7 +216,7 @@ export default function RebaseDialog({ repo, from, onClose, act }: Props) {
                   <button
                     onClick={() => move(i, i - 1)}
                     disabled={i === 0}
-                    title="Move up"
+                    title={t('rebasedialog.move-up')}
                     className="rounded p-0.5 text-muted hover:bg-hover hover:text-fg disabled:opacity-30"
                   >
                     <ArrowUp className="size-3.5" />
@@ -203,7 +224,7 @@ export default function RebaseDialog({ repo, from, onClose, act }: Props) {
                   <button
                     onClick={() => move(i, i + 1)}
                     disabled={i === rows.length - 1}
-                    title="Move down"
+                    title={t('rebasedialog.move-down')}
                     className="rounded p-0.5 text-muted hover:bg-hover hover:text-fg disabled:opacity-30"
                   >
                     <ArrowDown className="size-3.5" />
