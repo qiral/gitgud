@@ -128,6 +128,12 @@ export const THEMES: ThemeInfo[] = [
     dark: true,
     swatch: ['#282828', '#1d2021', '#83a598'],
   },
+  {
+    id: 'tokyo-night',
+    label: 'Tokyo Night',
+    dark: true,
+    swatch: ['#1a1b26', '#16161e', '#7aa2f7'],
+  },
 ]
 
 /** 'system' follows the OS between Light and Dark; anything else is a
