@@ -38,6 +38,8 @@ export default defineConfig({
     // Close to the 1200x780 window tauri.conf.json opens, and fixed so a
     // screenshot does not depend on the screen of whoever runs it.
     viewport: { width: 1200, height: 780 },
+    // English, whatever the language of the machine running the tests.
+    locale: 'en-US',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

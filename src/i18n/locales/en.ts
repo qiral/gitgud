@@ -57,6 +57,9 @@ const messages: Messages = {
   'changespanel.ignore-folder': 'Ignore folder {dir}/',
   'changespanel.merge': 'Merge',
   'changespanel.no-local-changes': 'No local changes',
+  'changespanel.operation-cherry-pick': 'cherry-pick',
+  'changespanel.operation-merge': 'merge',
+  'changespanel.operation-revert': 'revert',
   'changespanel.placeholder-commit-message': 'Commit message',
   'changespanel.placeholder-message-what': '{what} message (optional)',
   'changespanel.placeholder-rebasing':
@@ -327,6 +330,9 @@ const messages: Messages = {
   'repoview.dismiss': 'Dismiss',
   'repoview.history-empty': 'Select a commit to see what changed',
   'repoview.stashes-empty': 'Select a stash to see what it contains',
+  'repoview.tab-changes': 'Changes',
+  'repoview.tab-history': 'History',
+  'repoview.tab-stashes': 'Stashes',
   'resizable.drag-to-resize-double-click-to-reset':
     'Drag to resize, double-click to reset',
   'shortcutsdialog.keyboard-shortcuts': 'Keyboard shortcuts',

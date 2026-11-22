@@ -158,12 +158,14 @@ export default function ChangesPanel({
     if (done) setMessage('')
   }
 
-  const what =
+  const operationName =
     operation === 'cherryPick'
       ? 'cherry-pick'
       : operation === 'revert'
         ? 'revert'
         : 'merge'
+  // The operation as a word in the active language, for the sentences below.
+  const what = t(`changespanel.operation-${operationName}`)
 
   async function abortMerge() {
     const ok = await confirm(t('changespanel.abort-merge-body', { what }), {
@@ -364,7 +366,7 @@ export default function ChangesPanel({
                 : merging
                   ? t('changespanel.placeholder-message-what', {
                       what:
-                        what === 'merge'
+                        operationName === 'merge'
                           ? t('changespanel.merge')
                           : t('changespanel.commit'),
                     })
