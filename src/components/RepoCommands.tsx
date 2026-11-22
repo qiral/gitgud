@@ -32,6 +32,7 @@ import CommandPalette, { type Command } from './CommandPalette'
 import ShortcutsDialog from './ShortcutsDialog'
 import PromptDialog from './PromptDialog'
 import type { Sync } from './SyncActions'
+import { useTranslation } from '../i18n'
 
 type Act = (label: string, action: () => Promise<unknown>) => Promise<boolean>
 export type Tab = 'changes' | 'history' | 'stashes'
@@ -63,6 +64,7 @@ interface Options {
  * and run by its shortcut anywhere in the repository view. Render `ui` once.
  */
 export function useRepoCommands(o: Options) {
+  const { t, tp } = useTranslation()
   const [palette, setPalette] = useState<Command | 'root' | null>(null)
   const [showKeys, setShowKeys] = useState(false)
   const [newBranch, setNewBranch] = useState(false)
@@ -71,54 +73,54 @@ export function useRepoCommands(o: Options) {
   const others = o.branches.filter((b) => !b.current)
 
   async function mergeIn(name: string) {
-    const ok = await confirm(`Merge ${name} into ${current}?`, {
-      title: 'Merge branch',
-      kind: 'info',
-    })
+    const ok = await confirm(
+      t('toolbar.merge-branch-confirm', { name, branch: current }),
+      { title: t('toolbar.merge-branch'), kind: 'info' },
+    )
     if (ok) await o.act('merge', () => git.merge(o.repo.path, name))
   }
 
   const { sync } = o
   const pushLabel = sync.needsRemote
-    ? 'Publish to GitHub'
+    ? t('repocommands.publish-to-github')
     : !sync.hasUpstream
-      ? 'Publish branch'
+      ? t('toolbar.publish-branch')
       : sync.diverged
-        ? 'Force push…'
-        : 'Push'
+        ? t('repocommands.force-push')
+        : t('toolbar.push')
 
   const commands: Command[] = [
     // Repository
     {
       id: 'open',
-      group: 'Repository',
-      label: 'Open local repository…',
+      group: t('repocommands.group-repository'),
+      label: t('toolbar.open-local-repository'),
       icon: FolderOpen,
       shortcut: 'mod+o',
       run: o.onOpenOther,
     },
     {
       id: 'clone',
-      group: 'Repository',
-      label: 'Clone repository…',
+      group: t('repocommands.group-repository'),
+      label: t('repocommands.clone-repository'),
       icon: Download,
       shortcut: 'mod+shift+o',
       run: o.onClone,
     },
     {
       id: 'recent',
-      group: 'Repository',
-      label: 'Open recent repository…',
+      group: t('repocommands.group-repository'),
+      label: t('repocommands.open-recent-repository'),
       icon: FolderGit2,
       disabled: o.recents.every((r) => r.path === o.repo.path),
       page: {
-        placeholder: 'Pick a repository',
+        placeholder: t('repocommands.pick-a-repository'),
         items: () =>
           o.recents
             .filter((r) => r.path !== o.repo.path)
             .map((r) => ({
               id: `recent:${r.path}`,
-              group: 'Recent',
+              group: t('toolbar.recent'),
               label: r.name,
               detail: r.path,
               icon: FolderGit2,
@@ -128,15 +130,15 @@ export function useRepoCommands(o: Options) {
     },
     {
       id: 'reveal',
-      group: 'Repository',
-      label: 'Show repository in folder',
+      group: t('repocommands.group-repository'),
+      label: t('repocommands.show-repository-in-folder'),
       icon: FolderOpen,
       run: () => revealItemInDir(o.repo.path).catch(() => {}),
     },
     {
       id: 'copyPath',
-      group: 'Repository',
-      label: 'Copy repository path',
+      group: t('repocommands.group-repository'),
+      label: t('repocommands.copy-repository-path'),
       icon: Copy,
       run: () => copyText(o.repo.path),
     },
@@ -144,8 +146,8 @@ export function useRepoCommands(o: Options) {
     // Remote
     {
       id: 'fetch',
-      group: 'Remote',
-      label: 'Fetch',
+      group: t('repocommands.group-remote'),
+      label: t('toolbar.fetch'),
       icon: RefreshCw,
       shortcut: 'mod+shift+t',
       disabled: o.busy,
@@ -153,9 +155,9 @@ export function useRepoCommands(o: Options) {
     },
     {
       id: 'pull',
-      group: 'Remote',
-      label: 'Pull',
-      detail: sync.behind > 0 ? `${sync.behind} behind` : undefined,
+      group: t('repocommands.group-remote'),
+      label: t('toolbar.pull'),
+      detail: sync.behind > 0 ? tp('toolbar.behind', sync.behind) : undefined,
       icon: ArrowDown,
       shortcut: 'mod+shift+p',
       disabled: o.busy || !sync.hasUpstream,
@@ -163,9 +165,9 @@ export function useRepoCommands(o: Options) {
     },
     {
       id: 'push',
-      group: 'Remote',
+      group: t('repocommands.group-remote'),
       label: pushLabel,
-      detail: sync.ahead > 0 ? `${sync.ahead} ahead` : undefined,
+      detail: sync.ahead > 0 ? tp('toolbar.ahead', sync.ahead) : undefined,
       keywords: 'push publish',
       icon: ArrowUp,
       shortcut: 'mod+p',
@@ -177,8 +179,8 @@ export function useRepoCommands(o: Options) {
     // Branch
     {
       id: 'newBranch',
-      group: 'Branch',
-      label: 'New branch…',
+      group: t('repocommands.group-branch'),
+      label: t('repocommands.new-branch'),
       icon: GitBranchPlus,
       shortcut: 'mod+shift+n',
       keywords: 'create',
@@ -186,18 +188,18 @@ export function useRepoCommands(o: Options) {
     },
     {
       id: 'switch',
-      group: 'Branch',
-      label: 'Switch branch…',
+      group: t('repocommands.group-branch'),
+      label: t('repocommands.switch-branch'),
       icon: GitBranch,
       shortcut: 'mod+b',
       keywords: 'checkout',
       disabled: others.length === 0,
       page: {
-        placeholder: 'Switch to branch',
+        placeholder: t('repocommands.switch-to-branch'),
         items: () =>
           others.map((b) => ({
             id: `switch:${b.name}`,
-            group: 'Branches',
+            group: t('repocommands.group-branches'),
             label: b.name,
             detail: b.upstream ?? undefined,
             icon: GitBranch,
@@ -208,17 +210,21 @@ export function useRepoCommands(o: Options) {
     },
     {
       id: 'merge',
-      group: 'Branch',
-      label: current ? `Merge into ${current}…` : 'Merge branch…',
+      group: t('repocommands.group-branch'),
+      label: current
+        ? t('toolbar.merge-into-branch', { branch: current })
+        : t('repocommands.merge-branch'),
       icon: GitMerge,
       shortcut: 'mod+shift+m',
       disabled: !current || others.length === 0,
       page: {
-        placeholder: `Branch to merge into ${current}`,
+        placeholder: t('repocommands.branch-to-merge-into', {
+          branch: current,
+        }),
         items: () =>
           others.map((b) => ({
             id: `merge:${b.name}`,
-            group: 'Branches',
+            group: t('repocommands.group-branches'),
             label: b.name,
             icon: GitMerge,
             run: () => mergeIn(b.name),
@@ -227,8 +233,8 @@ export function useRepoCommands(o: Options) {
     },
     {
       id: 'stash',
-      group: 'Branch',
-      label: 'Stash changes…',
+      group: t('repocommands.group-branch'),
+      label: t('repocommands.stash-changes'),
       icon: Archive,
       shortcut: 'mod+shift+s',
       disabled: !o.status?.files.length,
@@ -238,32 +244,32 @@ export function useRepoCommands(o: Options) {
     // View
     {
       id: 'changes',
-      group: 'View',
-      label: 'Show changes',
+      group: t('repocommands.group-view'),
+      label: t('repocommands.show-changes'),
       icon: FileDiff,
       shortcut: 'mod+1',
       run: () => o.showTab('changes'),
     },
     {
       id: 'history',
-      group: 'View',
-      label: 'Show history',
+      group: t('repocommands.group-view'),
+      label: t('repocommands.show-history'),
       icon: History,
       shortcut: 'mod+2',
       run: () => o.showTab('history'),
     },
     {
       id: 'stashes',
-      group: 'View',
-      label: 'Show stashes',
+      group: t('repocommands.group-view'),
+      label: t('repocommands.show-stashes'),
       icon: Archive,
       shortcut: 'mod+3',
       run: () => o.showTab('stashes'),
     },
     {
       id: 'search',
-      group: 'View',
-      label: 'Search history',
+      group: t('repocommands.group-view'),
+      label: t('repocommands.search-history'),
       icon: Search,
       shortcut: 'mod+f',
       keywords: 'find commit',
@@ -271,46 +277,46 @@ export function useRepoCommands(o: Options) {
     },
     {
       id: 'theme',
-      group: 'View',
-      label: 'Change theme…',
+      group: t('repocommands.group-view'),
+      label: t('repocommands.change-theme'),
       icon: Palette,
       page: {
-        placeholder: 'Pick a theme',
+        placeholder: t('repocommands.pick-a-theme'),
         items: () => {
           const now = readTheme()
           return [
-            { id: 'system', label: 'Match system', dark: null },
+            { id: 'system', label: t('toolbar.match-system'), dark: null },
             ...THEMES,
-          ].map((t) => ({
-            id: `theme:${t.id}`,
-            group: 'Themes',
-            label: t.label,
+          ].map((th) => ({
+            id: `theme:${th.id}`,
+            group: t('repocommands.group-themes'),
+            label: th.label,
             detail:
-              t.id === now
-                ? 'current'
-                : t.dark === null
+              th.id === now
+                ? t('repocommands.current')
+                : th.dark === null
                   ? undefined
-                  : t.dark
-                    ? 'dark'
-                    : 'light',
+                  : th.dark
+                    ? t('repocommands.dark')
+                    : t('repocommands.light'),
             icon: Palette,
-            run: () => setTheme(t.id),
+            run: () => setTheme(th.id),
           }))
         },
       },
     },
     {
       id: 'palette',
-      group: 'View',
-      label: 'Command palette',
+      group: t('repocommands.group-view'),
+      label: t('toolbar.command-palette'),
       icon: Search,
       shortcut: 'mod+k',
       run: () => setPalette('root'),
     },
     {
       id: 'shortcuts',
-      group: 'View',
-      label: 'Keyboard shortcuts',
+      group: t('repocommands.group-view'),
+      label: t('shortcutsdialog.keyboard-shortcuts'),
       icon: Keyboard,
       shortcut: 'f1',
       run: () => setShowKeys(true),
@@ -320,32 +326,32 @@ export function useRepoCommands(o: Options) {
     o.signedIn
       ? {
           id: 'signOut',
-          group: 'Account',
-          label: 'Sign out of GitHub',
+          group: t('repocommands.group-account'),
+          label: t('repocommands.sign-out-of-github'),
           icon: LogOut,
           run: o.onSignOut,
         }
       : {
           id: 'signIn',
-          group: 'Account',
-          label: 'Sign in to GitHub…',
+          group: t('repocommands.group-account'),
+          label: t('repocommands.sign-in-to-github'),
           icon: LogIn,
           run: o.onSignIn,
         },
     {
       id: 'hosts',
-      group: 'Account',
-      label: 'Other Git hosts…',
+      group: t('repocommands.group-account'),
+      label: t('toolbar.other-git-hosts'),
       icon: Server,
       keywords: 'gitlab gitea forgejo token',
       run: o.onManageHosts,
     },
     {
       id: 'updates',
-      group: 'Account',
+      group: t('repocommands.group-account'),
       label: updates.update
-        ? `Update to ${updates.update.version}`
-        : 'Check for updates',
+        ? t('app.update-to', { version: updates.update.version })
+        : t('app.check-for-updates'),
       icon: CircleArrowUp,
       run: () => (updates.update ? updates.openCard() : updates.check(true)),
     },
@@ -368,7 +374,7 @@ export function useRepoCommands(o: Options) {
       if (modal) {
         if (
           command.id === 'palette' &&
-          modal.getAttribute('aria-label') === 'Command palette'
+          modal.hasAttribute('data-command-palette')
         ) {
           e.preventDefault()
           setPalette(null)
@@ -406,12 +412,14 @@ export function useRepoCommands(o: Options) {
       )}
       {newBranch && (
         <PromptDialog
-          title="New branch"
-          label="Name"
+          title={t('repocommands.new-branch-title')}
+          label={t('repocommands.name')}
           description={
-            current ? `Starts from ${current} and switches to it.` : undefined
+            current
+              ? t('repocommands.new-branch-description', { branch: current })
+              : undefined
           }
-          submitLabel="Create branch"
+          submitLabel={t('repocommands.create-branch')}
           onSubmit={(name) =>
             o.act('branch', () => git.createBranch(o.repo.path, name))
           }

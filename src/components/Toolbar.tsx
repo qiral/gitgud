@@ -98,7 +98,7 @@ export default function Toolbar({
         onClick={sync.fetch}
         disabled={busy !== null}
         label={tx('toolbar.fetch')}
-        value="All remotes"
+        value={tx('toolbar.all-remotes')}
         icon={<Spin active={busy === 'fetch'} icon={RefreshCw} />}
       />
       <ToolbarButton
@@ -150,8 +150,10 @@ export default function Toolbar({
       <UpdateButton />
       <button
         onClick={onPalette}
-        title={`Commands (${shortcutKeys('mod+k').join('+')})`}
-        aria-label="Command palette"
+        title={tx('toolbar.commands', {
+          keys: shortcutKeys('mod+k').join('+'),
+        })}
+        aria-label={tx('toolbar.command-palette')}
         className="flex items-center border-r border-line px-3 text-muted hover:bg-hover hover:text-fg"
       >
         <Command className="size-4" />
@@ -392,13 +394,14 @@ function ThemeMenu() {
 }
 
 /** Language picker: each language is shown by its own name; the choice
- *  persists and applies without a restart. Untranslated languages fall back
- *  to English per key. */
+ *  persists and applies without a restart. Only languages with a locale file
+ *  are listed, and the menu hides until there are two to pick from. */
 function LanguageMenu() {
   const { locale, setLocale, languages, t: tx } = useTranslation()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   useClickOutside(ref, open, () => setOpen(false))
+  if (languages.length < 2) return null
 
   const row =
     'flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-hover'

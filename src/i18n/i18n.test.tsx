@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   ENGLISH,
   I18nProvider,
+  AVAILABLE,
   LANGUAGES,
   LOCALE_MESSAGES,
   detectLocale,
@@ -97,9 +98,16 @@ describe('detectLocale', () => {
   })
 
   it('prefers the stored choice, normalized', () => {
-    localStorage.setItem('gitgud.locale', 'de-AT')
-    expect(detectLocale()).toBe('de')
+    localStorage.setItem('gitgud.locale', 'en-GB')
+    expect(detectLocale()).toBe('en')
     localStorage.setItem('gitgud.locale', 'xx')
+    expect(detectLocale()).toBe('en')
+  })
+
+  it('skips languages that have no locale file yet', () => {
+    const missing = LANGUAGES.find((l) => l.messages === null)
+    if (!missing) return
+    localStorage.setItem('gitgud.locale', missing.code)
     expect(detectLocale()).toBe('en')
   })
 })
@@ -158,6 +166,13 @@ function Probe() {
     </div>
   )
 }
+
+describe('the language picker', () => {
+  it('only offers languages that have a locale file', () => {
+    expect(AVAILABLE.map((l) => l.code)).toContain(ENGLISH)
+    for (const l of AVAILABLE) expect(l.messages).not.toBeNull()
+  })
+})
 
 describe('I18nProvider', () => {
   it('switches the language without a restart', () => {

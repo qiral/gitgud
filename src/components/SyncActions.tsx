@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { confirm } from '@tauri-apps/plugin-dialog'
 import { git, type PullMode, type RepoInfo, type Status } from '../lib/git'
 import PullDialog from './PullDialog'
+import { useTranslation } from '../i18n'
 
 type Act = (label: string, action: () => Promise<unknown>) => Promise<boolean>
 
@@ -16,6 +17,7 @@ export function useSync(
   act: Act,
   onPublish: () => void,
 ) {
+  const { t } = useTranslation()
   const ahead = status?.ahead ?? 0
   const behind = status?.behind ?? 0
   const hasUpstream = Boolean(status?.upstream)
@@ -40,10 +42,13 @@ export function useSync(
 
   async function forcePush() {
     const ok = await confirm(
-      `Your branch and ${status?.upstream} have diverged (${ahead} ahead, ${behind} behind).\n\n` +
-        'Force pushing replaces the remote branch with yours. Do this after editing history you already pushed. ' +
-        'If someone else pushed to this branch, Pull instead, or their commits will be lost.',
-      { title: 'Force push', kind: 'warning', okLabel: 'Force push' },
+      t('toolbar.diverged', { upstream: status?.upstream, ahead, behind }) +
+        t('toolbar.force-push-body'),
+      {
+        title: t('toolbar.force-push'),
+        kind: 'warning',
+        okLabel: t('toolbar.force-push'),
+      },
     )
     if (ok) act('push', () => git.pushForce(repo.path))
   }

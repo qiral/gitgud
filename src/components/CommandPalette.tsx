@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { fuzzyFilter } from '../lib/fuzzy'
 import { shortcutKeys, type Shortcut } from '../lib/shortcuts'
+import { useTranslation } from '../i18n'
 
 export interface Command {
   id: string
@@ -58,8 +59,13 @@ export function Keys({ shortcut }: { shortcut: Shortcut }) {
 
 /** Search every action by name and run it with the keyboard. */
 export default function CommandPalette({ commands, start, onClose }: Props) {
+  const { t } = useTranslation()
   const [pages, setPages] = useState<Page[]>(() => [
-    { title: null, placeholder: 'Type a command', items: commands },
+    {
+      title: null,
+      placeholder: t('commandpalette.type-a-command'),
+      items: commands,
+    },
     ...(start?.page ? [pageOf(start)] : []),
   ])
   const [query, setQuery] = useState('')
@@ -127,7 +133,8 @@ export default function CommandPalette({ commands, start, onClose }: Props) {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Command palette"
+      aria-label={t('commandpalette.command-palette')}
+      data-command-palette
       className="fixed inset-0 z-40 flex justify-center bg-black/40 pt-[12vh]"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
@@ -136,7 +143,7 @@ export default function CommandPalette({ commands, start, onClose }: Props) {
           {pages.length > 1 ? (
             <button
               onClick={back}
-              title="Back"
+              title={t('commandpalette.back')}
               className="flex shrink-0 items-center gap-1 rounded bg-hover px-1.5 py-0.5 text-xs text-muted hover:text-fg"
             >
               <ChevronLeft className="size-3.5" />
@@ -168,7 +175,9 @@ export default function CommandPalette({ commands, start, onClose }: Props) {
           className="min-h-0 flex-1 overflow-auto py-1"
         >
           {shown.length === 0 && (
-            <li className="px-3 py-2 text-muted">Nothing matches</li>
+            <li className="px-3 py-2 text-muted">
+              {t('commandpalette.nothing-matches')}
+            </li>
           )}
           {shown.map((c, i) => (
             <li key={c.id}>

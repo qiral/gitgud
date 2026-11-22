@@ -4,13 +4,14 @@ import { Copy, FileText, FolderOpen, History } from 'lucide-react'
 import type { MenuItem } from '../components/ContextMenu'
 import { errorMessage } from './git'
 import { absolutePath, basename } from './paths'
+import { t } from '../i18n'
 
 export async function copyText(text: string) {
   try {
     await navigator.clipboard.writeText(text)
   } catch (e) {
-    await message(`Could not copy to the clipboard: ${errorMessage(e)}`, {
-      title: 'Copy failed',
+    await message(t('copy.could-not-copy', { error: errorMessage(e) }), {
+      title: t('copy.copy-failed'),
       kind: 'error',
     })
   }
@@ -21,7 +22,7 @@ async function reveal(path: string) {
     await revealItemInDir(path)
   } catch (e) {
     await message(errorMessage(e), {
-      title: 'Could not show file',
+      title: t('copy.could-not-show-file'),
       kind: 'error',
     })
   }
@@ -39,24 +40,36 @@ export function fileMenuItems(
   const full = absolutePath(repo, path)
   const history: MenuItem[] = onHistory
     ? [
-        { label: 'Show file history', icon: History, onClick: onHistory },
+        {
+          label: t('copy.show-file-history'),
+          icon: History,
+          onClick: onHistory,
+        },
         'separator',
       ]
     : []
   return [
     ...history,
     {
-      label: 'Copy file name',
+      label: t('copy.copy-file-name'),
       icon: FileText,
       onClick: () => copyText(basename(path)),
     },
-    { label: 'Copy relative path', icon: Copy, onClick: () => copyText(path) },
-    { label: 'Copy full path', icon: Copy, onClick: () => copyText(full) },
+    {
+      label: t('copy.copy-relative-path'),
+      icon: Copy,
+      onClick: () => copyText(path),
+    },
+    {
+      label: t('copy.copy-full-path'),
+      icon: Copy,
+      onClick: () => copyText(full),
+    },
     ...(exists
       ? ([
           'separator',
           {
-            label: 'Show in folder',
+            label: t('copy.show-in-folder'),
             icon: FolderOpen,
             onClick: () => reveal(full),
           },

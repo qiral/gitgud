@@ -199,7 +199,7 @@ export default function ChangesPanel({
   function ignoreItems(path: string): MenuItem[] {
     const items: MenuItem[] = [
       {
-        label: 'Ignore file',
+        label: t('changespanel.ignore-file'),
         icon: EyeOff,
         onClick: () => ignore(path, 'file'),
       },
@@ -207,14 +207,14 @@ export default function ChangesPanel({
     const ext = extension(path)
     if (ext)
       items.push({
-        label: `Ignore all .${ext} files`,
+        label: t('changespanel.ignore-extension', { ext }),
         icon: EyeOff,
         onClick: () => ignore(path, 'extension'),
       })
     const dir = dirname(path)
     if (dir)
       items.push({
-        label: `Ignore folder ${dir}/`,
+        label: t('changespanel.ignore-folder', { dir }),
         icon: EyeOff,
         onClick: () => ignore(path, 'folder'),
       })
@@ -319,7 +319,7 @@ export default function ChangesPanel({
           staged
           isSelected={isSelected}
           onSelect={(file) => onSelect({ kind: 'file', file, staged: true })}
-          bulkLabel="Unstage all"
+          bulkLabel={t('changespanel.unstage-all')}
           onBulk={() =>
             act('unstage', () => git.unstage(repo.path, paths(staged)))
           }
@@ -334,7 +334,7 @@ export default function ChangesPanel({
           staged={false}
           isSelected={isSelected}
           onSelect={(file) => onSelect({ kind: 'file', file, staged: false })}
-          bulkLabel="Stage all"
+          bulkLabel={t('changespanel.stage-all')}
           onBulk={() =>
             act('stage', () => git.stage(repo.path, paths(unstaged)))
           }

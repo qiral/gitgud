@@ -173,8 +173,8 @@ Contributions are welcome. Open an issue to discuss larger changes before starti
 The app reads all of its UI text from message files in `src/i18n/locales/`. English (`en.ts`) is the source of truth; every other file is optional and any key it lacks falls back to English, so a language can be added incrementally:
 
 1. Copy `src/i18n/locales/en.ts` to `src/i18n/locales/<code>.ts` (e.g. `de.ts`, `zh-CN.ts`) and translate the values. Keep the keys, and keep `{placeholder}` names — they are filled in by `t(key, vars)` / `tp(key, count)`. Plural keys come in `.one` / `.other` pairs chosen by `Intl.PluralRules`.
-2. Add the language's own name to `LANGUAGE_NAMES` in `src/i18n/index.tsx` (e.g. `de: 'Deutsch'`) so the picker in the toolbar shows it as “Deutsch”, not “de”.
-3. Use `const { t, tp } = useTranslation()` in components and replace hardcoded strings with `t('some.key')` / `tp('some.key', count)`.
+2. Add the language's own name to `LANGUAGE_NAMES` in `src/i18n/index.tsx` (e.g. `de: 'Deutsch'`) so the picker in the toolbar shows it as “Deutsch”, not “de”. The picker only lists languages that have a file, and it appears once there are two to choose from; GitGud also picks the OS language by itself only when its file exists.
+3. Use `const { t, tp } = useTranslation()` in components and replace hardcoded strings with `t('some.key')` / `tp('some.key', count)`. Code outside React, like `src/lib`, imports `t` and `tp` from `src/i18n` directly.
 4. Run `npm test`. The parity test in `src/i18n/i18n.test.tsx` fails if your file has keys English does not have; missing keys are fine (they fall back to English) until the translation is complete.
 
 Dates and relative times go through `Intl` with the active locale in `src/lib/time.ts`, so no per-language date code is needed. Make sure layouts survive longer strings (German, French) and that the font stack in `src/index.css` covers your script (it already falls back to Noto Sans JP/SC/KR and friends for CJK).

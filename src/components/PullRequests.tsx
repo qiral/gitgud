@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import {
   ExternalLink,
@@ -20,6 +20,7 @@ import {
 } from '../lib/git'
 import Dialog from './Dialog'
 import type { Command } from './CommandPalette'
+import { useTranslation } from '../i18n'
 
 /** Looks up the pull request again at most this often when the window gets
  *  focus, e.g. after merging it on GitHub. */
@@ -71,6 +72,7 @@ interface Options {
  * from a dialog, and offered in the command palette.
  */
 export function usePullRequests(o: Options) {
+  const { t } = useTranslation()
   const [target, setTarget] = useState<PullTarget | null>(null)
   const [creating, setCreating] = useState(false)
   const checked = useRef(0)
@@ -111,8 +113,8 @@ export function usePullRequests(o: Options) {
     open
       ? {
           id: 'pullRequest',
-          group: 'Remote',
-          label: `View pull request #${open.number}`,
+          group: t('repocommands.group-remote'),
+          label: t('pullrequests.view-pull-request', { number: open.number }),
           detail: open.title,
           icon: GitPullRequest,
           shortcut: 'mod+r',
@@ -120,11 +122,11 @@ export function usePullRequests(o: Options) {
         }
       : {
           id: 'pullRequest',
-          group: 'Remote',
-          label: 'Create pull request…',
+          group: t('repocommands.group-remote'),
+          label: t('pullrequests.create-pull-request-ellipsis'),
           detail:
             o.signedIn && !target && branch
-              ? 'push the branch to GitHub first'
+              ? t('pullrequests.push-the-branch-first')
               : undefined,
           icon: GitPullRequestArrow,
           shortcut: 'mod+r',
@@ -133,8 +135,8 @@ export function usePullRequests(o: Options) {
         },
     {
       id: 'openOnGitHub',
-      group: 'Remote',
-      label: 'Open branch on GitHub',
+      group: t('repocommands.group-remote'),
+      label: t('pullrequests.open-branch-on-github'),
       icon: ExternalLink,
       disabled: !target,
       run: () =>
@@ -147,15 +149,19 @@ export function usePullRequests(o: Options) {
 
   const button = open ? (
     <PullRequestButton
-      label={`#${open.number}${open.draft ? ' draft' : ''}`}
+      label={
+        open.draft
+          ? t('pullrequests.number-draft', { number: open.number })
+          : `#${open.number}`
+      }
       title={open.title}
       icon={open.draft ? GitPullRequestDraft : GitPullRequest}
       onClick={() => openUrl(open.url)}
     />
   ) : canCreate ? (
     <PullRequestButton
-      label="Create"
-      title={`Open a pull request into ${target!.baseRepo}`}
+      label={t('pullrequests.create')}
+      title={t('pullrequests.open-into', { repo: target!.baseRepo })}
       icon={GitPullRequestArrow}
       onClick={() => setCreating(true)}
     />
@@ -191,6 +197,7 @@ function PullRequestButton({
   icon: typeof GitPullRequest
   onClick: () => void
 }) {
+  const { t } = useTranslation()
   return (
     <button
       onClick={onClick}
@@ -199,11 +206,36 @@ function PullRequestButton({
     >
       <Icon className="size-4 text-muted" />
       <span className="flex min-w-0 flex-1 flex-col leading-tight">
-        <span className="text-xs text-muted">Pull request</span>
+        <span className="text-xs text-muted">
+          {t('pullrequests.pull-request')}
+        </span>
         <span className="truncate font-medium">{label}</span>
       </span>
     </button>
   )
+}
+
+/** Puts elements into a translated sentence's {placeholders}, so each
+ *  language can order them its own way. Text between them, string values
+ *  included, stays together in one span. */
+function fill(text: string, parts: Record<string, React.ReactNode>) {
+  const out: React.ReactNode[] = []
+  let run = ''
+  const flush = () => {
+    if (run.trim()) out.push(<span key={out.length}>{run.trim()}</span>)
+    run = ''
+  }
+  for (const piece of text.split(/(\{\w+\})/)) {
+    const name = /^\{(\w+)\}$/.exec(piece)?.[1]
+    const part = name && name in parts ? parts[name] : piece
+    if (typeof part === 'string') run += part
+    else {
+      flush()
+      out.push(<Fragment key={out.length}>{part}</Fragment>)
+    }
+  }
+  flush()
+  return out
 }
 
 interface DialogProps {
@@ -226,6 +258,7 @@ export function CreatePullRequestDialog({
   onClose,
   onCreated,
 }: DialogProps) {
+  const { t, tp } = useTranslation()
   const [bases, setBases] = useState<string[]>([target.defaultBase])
   const [base, setBase] = useState(target.defaultBase)
   const [comparison, setComparison] = useState<Comparison | null>(null)
@@ -309,46 +342,62 @@ export function CreatePullRequestDialog({
   }
 
   const nothingToMerge = comparison?.commits.length === 0 && unpushed === 0
+  const baseSelect = (
+    <select
+      value={base}
+      onChange={(e) => setBase(e.target.value)}
+      aria-label={t('pullrequests.base-branch')}
+      className="rounded border border-line bg-bg px-1.5 py-0.5 font-mono text-xs text-fg outline-none focus:border-accent"
+    >
+      {bases.map((b) => (
+        <option key={b}>{b}</option>
+      ))}
+    </select>
+  )
+
   const input =
     'w-full rounded border border-line bg-bg px-2 py-1.5 outline-none focus:border-accent'
 
   return (
-    <Dialog title="Create pull request" onClose={onClose} wide>
+    <Dialog
+      title={t('pullrequests.create-pull-request')}
+      onClose={onClose}
+      wide
+    >
       <form onSubmit={create} className="space-y-3">
         <div className="flex flex-wrap items-center gap-1.5 text-muted">
-          Merge
-          <span className="rounded bg-hover px-1.5 font-mono text-xs text-fg">
-            {sameRepo ? '' : `${target.headRepo.split('/')[0]}:`}
-            {target.branch}
-          </span>
-          into
-          <select
-            value={base}
-            onChange={(e) => setBase(e.target.value)}
-            aria-label="Base branch"
-            className="rounded border border-line bg-bg px-1.5 py-0.5 font-mono text-xs text-fg outline-none focus:border-accent"
-          >
-            {bases.map((b) => (
-              <option key={b}>{b}</option>
-            ))}
-          </select>
-          {!sameRepo && <span>of {target.baseRepo}</span>}
+          {fill(
+            t(
+              sameRepo
+                ? 'pullrequests.merge-head-into-base'
+                : 'pullrequests.merge-head-into-base-of-repo',
+            ),
+            {
+              head: (
+                <span className="rounded bg-hover px-1.5 font-mono text-xs text-fg">
+                  {sameRepo ? '' : `${target.headRepo.split('/')[0]}:`}
+                  {target.branch}
+                </span>
+              ),
+              base: baseSelect,
+              repo: target.baseRepo,
+            },
+          )}
         </div>
         <p className="text-xs text-muted">
           {comparison === null
-            ? 'Comparing…'
-            : `${comparison.commits.length} commit${comparison.commits.length === 1 ? '' : 's'}`}
-          {unpushed > 0 &&
-            ` · ${unpushed} more not pushed yet, they're pushed first`}
+            ? t('pullrequests.comparing')
+            : tp('historypanel.commits', comparison.commits.length)}
+          {unpushed > 0 && ` · ${tp('pullrequests.unpushed', unpushed)}`}
         </p>
         <div>
           <div className="mb-1 flex items-center justify-between text-muted">
-            <label htmlFor="pr-title">Title</label>
+            <label htmlFor="pr-title">{t('pullrequests.title')}</label>
             <button
               type="button"
               onClick={writeWithCopilot}
               disabled={!comparison || busy !== null}
-              title="Write the title and description with Copilot"
+              title={t('pullrequests.write-with-copilot-title')}
               className="flex items-center gap-1 rounded px-1.5 text-xs hover:bg-hover hover:text-fg disabled:opacity-40"
             >
               {busy === 'copilot' ? (
@@ -356,7 +405,7 @@ export function CreatePullRequestDialog({
               ) : (
                 <Sparkles className="size-3.5" />
               )}
-              Write with Copilot
+              {t('pullrequests.write-with-copilot')}
             </button>
           </div>
           <input
@@ -371,7 +420,9 @@ export function CreatePullRequestDialog({
           />
         </div>
         <label className="block">
-          <span className="mb-1 block text-muted">Description</span>
+          <span className="mb-1 block text-muted">
+            {t('pullrequests.description')}
+          </span>
           <textarea
             value={body}
             onChange={(e) => {
@@ -389,11 +440,14 @@ export function CreatePullRequestDialog({
             onChange={(e) => setDraft(e.target.checked)}
             className="accent-accent"
           />
-          Create as draft
+          {t('pullrequests.create-as-draft')}
         </label>
         {nothingToMerge && (
           <p className="text-muted">
-            {target.branch} has nothing that isn't already in {base}.
+            {t('pullrequests.nothing-to-merge', {
+              branch: target.branch,
+              base,
+            })}
           </p>
         )}
         {error && <p className="text-removed select-text">{error}</p>}
@@ -404,8 +458,8 @@ export function CreatePullRequestDialog({
         >
           {busy === 'create' && <Loader2 className="size-4 animate-spin" />}
           {unpushed > 0
-            ? 'Push and create pull request'
-            : 'Create pull request'}
+            ? t('pullrequests.push-and-create')
+            : t('pullrequests.create-pull-request')}
         </button>
       </form>
     </Dialog>

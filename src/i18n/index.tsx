@@ -61,6 +61,15 @@ export const LANGUAGES: LanguageInfo[] = Object.entries(LANGUAGE_NAMES).map(
   }),
 )
 
+/** The languages that have a locale file, so picking one changes the text.
+ *  The others appear once their file lands. */
+export const AVAILABLE: LanguageInfo[] = LANGUAGES.filter(
+  (l) => l.messages !== null,
+)
+
+const isAvailable = (code: string | null) =>
+  AVAILABLE.some((l) => l.code === code)
+
 const STORAGE_KEY = 'gitgud.locale'
 
 /** Map an OS language tag onto a supported language: 'de-AT' -> 'de'. */
@@ -75,19 +84,21 @@ export function matchLocale(tag: string | null | undefined): string | null {
   return null
 }
 
-/** The stored choice, else the OS language, else English. */
+/** The stored choice, else the OS language, else English. A language without
+ *  a locale file yet isn't picked, or the dates and <html lang> would switch
+ *  while the text stays English. */
 export function detectLocale(): string {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
     const matched = matchLocale(stored)
-    if (matched) return matched
+    if (matched && isAvailable(matched)) return matched
   } catch {
     // No localStorage (tests, privacy modes): fall through to the OS.
   }
   if (typeof navigator !== 'undefined') {
     for (const tag of navigator.languages ?? [navigator.language]) {
       const matched = matchLocale(tag)
-      if (matched) return matched
+      if (matched && isAvailable(matched)) return matched
     }
   }
   return ENGLISH
@@ -174,6 +185,7 @@ export interface I18nValue {
   setLocale: (code: string) => void
   t: Translate
   tp: TranslatePlural
+  /** The languages to offer: only those with a locale file. */
   languages: LanguageInfo[]
 }
 
@@ -204,12 +216,23 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       t: (key, vars) => translate(messages, key, vars),
       tp: (key, count, vars) =>
         translatePlural(messages, locale, key, count, vars),
-      languages: LANGUAGES,
+      languages: AVAILABLE,
     }
   }, [locale])
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
 }
+
+const activeMessages = () =>
+  LANGUAGES.find((l) => l.code === currentLocale)?.messages ?? null
+
+/** Translates in the active language outside React, e.g. in src/lib. */
+export const t: Translate = (key, vars) =>
+  translate(activeMessages(), key, vars)
+
+/** Plural form of a key in the active language, outside React. */
+export const tp: TranslatePlural = (key, count, vars) =>
+  translatePlural(activeMessages(), currentLocale, key, count, vars)
 
 // Without a provider (unit tests render components directly) everything still
 // works in the current locale, just without re-rendering on a switch.
@@ -218,21 +241,9 @@ const fallback: I18nValue = {
     return currentLocale
   },
   setLocale,
-  t: (key, vars) =>
-    translate(
-      LANGUAGES.find((l) => l.code === currentLocale)?.messages ?? null,
-      key,
-      vars,
-    ),
-  tp: (key, count, vars) =>
-    translatePlural(
-      LANGUAGES.find((l) => l.code === currentLocale)?.messages ?? null,
-      currentLocale,
-      key,
-      count,
-      vars,
-    ),
-  languages: LANGUAGES,
+  t,
+  tp,
+  languages: AVAILABLE,
 }
 
 export function useTranslation(): I18nValue {
