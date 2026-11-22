@@ -169,17 +169,23 @@ const messages: Messages = {
     '{count} geänderte Zeilen verwerfen? Das kann nicht rückgängig gemacht werden.',
   'diffview.lines-selected.one': '{count} Zeile ausgewählt',
   'diffview.lines-selected.other': '{count} Zeilen ausgewählt',
+  'diffview.only-whitespace': 'Nur Leerzeichen wurden geändert.',
   'diffview.select-hint':
     'Klicken zum Auswählen, Umschalt+Klick für einen Bereich',
+  'diffview.show-whitespace': 'Leerzeichen-Änderungen anzeigen',
   'diffview.stage-hunk': 'Hunk stagen',
   'diffview.stage-lines': 'Zeilen stagen',
+  'diffview.staging-paused':
+    'Solange Leerzeichen-Änderungen ausgeblendet sind, lassen sich keine Zeilen auswählen.',
   'diffview.unstage-hunk': 'Hunk unstagen',
   'diffview.unstage-lines': 'Zeilen unstagen',
   'explaindialog.asking-copilot': 'Copilot wird gefragt',
   'explaindialog.explain-title': '{title} erklären',
   'fileheader.copy-path': 'Pfad kopieren',
   'fileheader.explain-with-copilot': 'Mit Copilot erklären',
+  'fileheader.ignore-whitespace': 'Leerzeichen ignorieren',
   'fileheader.more': 'Mehr',
+  'fileheader.side-by-side': 'Nebeneinander anzeigen',
   'historypanel.cherry-pick-onto-current-branch':
     'Auf aktuellen Branch cherry-picken',
   'historypanel.clear-search': 'Suche leeren',

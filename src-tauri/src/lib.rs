@@ -83,8 +83,20 @@ fn last_commit(repo: String) -> Result<Option<LastCommit>> {
 }
 
 #[tauri::command(async)]
-fn diff(repo: String, path: String, staged: bool, untracked: bool) -> Result<String> {
-    git::diff(Path::new(&repo), &path, staged, untracked)
+fn diff(
+    repo: String,
+    path: String,
+    staged: bool,
+    untracked: bool,
+    ignore_whitespace: bool,
+) -> Result<String> {
+    git::diff(
+        Path::new(&repo),
+        &path,
+        staged,
+        untracked,
+        ignore_whitespace,
+    )
 }
 
 #[tauri::command(async)]
@@ -135,8 +147,8 @@ fn graph_layout(commits: Vec<(String, Vec<String>)>) -> Vec<graph::GraphRow> {
 }
 
 #[tauri::command(async)]
-fn show_commit(repo: String, hash: String) -> Result<String> {
-    git::show_commit(Path::new(&repo), &hash)
+fn show_commit(repo: String, hash: String, ignore_whitespace: bool) -> Result<String> {
+    git::show_commit(Path::new(&repo), &hash, ignore_whitespace)
 }
 
 #[tauri::command(async)]
@@ -265,8 +277,8 @@ fn stash_drop(repo: String, index: u32) -> Result<()> {
 }
 
 #[tauri::command(async)]
-fn stash_show(repo: String, index: u32) -> Result<String> {
-    git::stash_show(Path::new(&repo), index)
+fn stash_show(repo: String, index: u32, ignore_whitespace: bool) -> Result<String> {
+    git::stash_show(Path::new(&repo), index, ignore_whitespace)
 }
 
 #[tauri::command(async)]

@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { diffLines, parseDiff, splitDiff, unquotePath } from './diff'
+import {
+  diffLines,
+  parseDiff,
+  splitDiff,
+  splitRows,
+  unquotePath,
+  wordDiff,
+  wordHighlights,
+} from './diff'
 
 // The same new-file diff as NEW_FILE in src-tauri/src/patch.rs. The backend
 // picks lines by their index in diff.split('\n'), so the indexes the
@@ -175,5 +183,70 @@ describe('diffLines', () => {
   it('handles an empty side', () => {
     expect(diffLines([], ['new'])).toEqual([{ kind: 'add', text: 'new' }])
     expect(diffLines(['old'], [])).toEqual([{ kind: 'remove', text: 'old' }])
+  })
+})
+
+describe('wordDiff', () => {
+  it('marks only the words that changed', () => {
+    const [left, right] = wordDiff('let count = 1;', 'let total = 1;')!
+    expect(left).toEqual([
+      { text: 'let ', changed: false },
+      { text: 'count', changed: true },
+      { text: ' = 1;', changed: false },
+    ])
+    expect(right.filter((s) => s.changed).map((s) => s.text)).toEqual(['total'])
+  })
+
+  it('gives up on lines with little in common', () => {
+    expect(wordDiff('alpha beta', 'gamma delta')).toBeNull()
+    expect(wordDiff('two', 'TWO')).toBeNull()
+  })
+})
+
+const CHANGE = `diff --git a/f b/f
+--- a/f
++++ b/f
+@@ -1,4 +1,4 @@
+ keep
+-const a = 1
+-const b = 2
++const a = 10
++const b = 2 // two
++const c = 3
+ end
+`
+
+describe('wordHighlights', () => {
+  it('pairs the n-th removal of a block with its n-th addition', () => {
+    const lines = parseDiff(CHANGE)
+    const marks = wordHighlights(lines)
+    const at = (text: string) =>
+      marks.get(lines.find((l) => l.text === text)!.index)
+    expect(at('const a = 1')?.find((s) => s.changed)?.text).toBe('1')
+    expect(at('const a = 10')?.find((s) => s.changed)?.text).toBe('10')
+    expect(at('const b = 2 // two')?.find((s) => s.changed)?.text).toBe(
+      ' // two',
+    )
+    // Nothing to pair the extra addition with.
+    expect(at('const c = 3')).toBeUndefined()
+  })
+})
+
+describe('splitRows', () => {
+  it('puts removals next to the additions that replaced them', () => {
+    const rows = splitRows(parseDiff(CHANGE))
+    const shape = rows.map((r) =>
+      r.kind === 'full'
+        ? r.line.kind
+        : [r.left?.text ?? null, r.right?.text ?? null],
+    )
+    expect(shape.slice(-5)).toEqual([
+      ['keep', 'keep'],
+      ['const a = 1', 'const a = 10'],
+      ['const b = 2', 'const b = 2 // two'],
+      [null, 'const c = 3'],
+      ['end', 'end'],
+    ])
+    expect(shape).toContain('hunk')
   })
 })

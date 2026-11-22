@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { mockIPC } from '@tauri-apps/api/mocks'
 import DiffView from './DiffView'
+import { setDiffPref } from '../lib/diffPrefs'
 
 const DIFF = `diff --git a/f.txt b/f.txt
 index 1111111..2222222 100644
@@ -104,5 +105,53 @@ describe('DiffView', () => {
       'diff --git a/b b/b\nindex 1..2 100644\nBinary files a/b and b/b differ\n'
     rerender(<DiffView diff={binary} actions={{ staged: false, onApply }} />)
     expect(screen.queryByText(/Stage/)).toBeNull()
+  })
+})
+
+describe('DiffView options', () => {
+  afterEach(() => {
+    setDiffPref('split', false)
+    setDiffPref('ignoreWhitespace', false)
+  })
+
+  it('shows removals and additions side by side and still stages lines', async () => {
+    setDiffPref('split', true)
+    const onApply = setup()
+    const row = screen.getByText('two').closest('tr')!
+    // The old and new versions share one row.
+    expect(row.textContent).toContain('TWO')
+    clickLine('two')
+    // The right half's line number cell selects the addition.
+    fireEvent.click(row.querySelectorAll('td')[3])
+    fireEvent.click(screen.getByText('Stage lines'))
+    await waitFor(() => expect(onApply).toHaveBeenCalled())
+    expect([...onApply.mock.calls[0][0]].sort((a, b) => a - b)).toEqual([6, 7])
+  })
+
+  it('highlights the changed words of a line', () => {
+    render(
+      <DiffView
+        diff={
+          'diff --git a/f b/f\n--- a/f\n+++ b/f\n@@ -1 +1 @@\n-let count = 1\n+let total = 1\n'
+        }
+      />,
+    )
+    expect(screen.getByText('count').className).toContain('bg-removed')
+    expect(screen.getByText('total').className).toContain('bg-added')
+  })
+
+  it('pauses line staging while whitespace is ignored', () => {
+    setDiffPref('ignoreWhitespace', true)
+    setup()
+    expect(screen.getByText(/can't be selected while whitespace/)).toBeTruthy()
+    expect(screen.queryByText('Stage hunk')).toBeNull()
+    fireEvent.click(screen.getByText('Show whitespace changes'))
+    expect(screen.getAllByText('Stage hunk')).toHaveLength(2)
+  })
+
+  it('says so when only whitespace changed', () => {
+    setDiffPref('ignoreWhitespace', true)
+    render(<DiffView diff="" />)
+    expect(screen.getByText('Only whitespace changed.')).toBeTruthy()
   })
 })
