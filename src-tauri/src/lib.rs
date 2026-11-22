@@ -1,6 +1,6 @@
 mod conflict;
 mod copilot;
-mod git;
+pub mod git;
 mod github;
 mod graph;
 mod hosts;
