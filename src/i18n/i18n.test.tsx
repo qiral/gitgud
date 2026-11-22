@@ -206,10 +206,9 @@ describe('I18nProvider', () => {
 
     act(() => screen.getByText('de').click())
 
-    // German has no message file yet, so text falls back to English, but the
-    // active locale — and <html lang> — switch immediately.
+    // The text, the active locale and <html lang> all switch immediately.
     expect(screen.getByTestId('locale').textContent).toBe('de')
-    expect(screen.getByTestId('text').textContent).toBe('Language')
+    expect(screen.getByTestId('text').textContent).toBe('Sprache')
     expect(document.documentElement.lang).toBe('de')
     expect(getLocale()).toBe('de')
     expect(localStorage.getItem('gitgud.locale')).toBe('de')
