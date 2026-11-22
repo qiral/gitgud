@@ -477,6 +477,30 @@ impl Copilot {
 }
 
 impl Copilot {
+    /// A title and description for a pull request with these commits, made
+    /// of everything since `merge_base`. The reply's first line is the title.
+    pub async fn pull_request(
+        &self,
+        app_data: &Path,
+        repo: PathBuf,
+        merge_base: String,
+        commits: Vec<String>,
+    ) -> Result<String> {
+        let (stat, diff) = blocking(move || {
+            Ok((
+                git::branch_stat(&repo, &merge_base)?,
+                git::branch_diff(&repo, &merge_base)?,
+            ))
+        })
+        .await?;
+        let reply = self
+            .ask(app_data, pull_request_prompt(&commits, &stat, &diff))
+            .await?;
+        Ok(reply.trim().to_string())
+    }
+}
+
+impl Copilot {
     pub async fn explain(&self, app_data: &Path, diff: &str) -> Result<String> {
         let explanation = self.ask(app_data, explain_prompt(diff)).await?;
         Ok(explanation.trim().to_string())
@@ -558,6 +582,25 @@ fn commit_prompt(stat: &str, diff: &str, subjects: &[String]) -> String {
     }
     prompt.push_str(&format!(
         "\nStaged files:\n{stat}\nStaged changes:\n{}",
+        cap(diff, MAX_INPUT)
+    ));
+    prompt
+}
+
+fn pull_request_prompt(commits: &[String], stat: &str, diff: &str) -> String {
+    let mut prompt = String::from(
+        "Write a GitHub pull request title and description for the branch below.\n\n\
+         - First line: the title, under 72 characters, no prefix like \"Title:\".\n\
+         - Then a blank line and the description in Markdown: what changes and why, \
+         as short bullet points; mention anything a reviewer should look at closely.\n\
+         - Reply with the title and description only: no code fences around them, \
+         no commentary.\n\nCommits, oldest first:\n",
+    );
+    for message in commits {
+        prompt.push_str(&format!("---\n{}\n", message.trim()));
+    }
+    prompt.push_str(&format!(
+        "\nChanged files:\n{stat}\nChanges:\n{}",
         cap(diff, MAX_INPUT)
     ));
     prompt

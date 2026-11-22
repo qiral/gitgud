@@ -18,7 +18,13 @@ import { test as base, expect } from '@playwright/test'
  * This function is serialized into the page: it must not use anything from
  * the module scope.
  */
-function installTauriMock(withRepo: boolean) {
+function installTauriMock({
+  withRepo,
+  signedIn,
+}: {
+  withRepo: boolean
+  signedIn: boolean
+}) {
   const home = '/home/e2e'
   const repo = { path: `${home}/demo`, name: 'demo' }
   // The repository's state, changed by the commands that change it.
@@ -59,6 +65,44 @@ function installTauriMock(withRepo: boolean) {
     },
   }
 
+  // A signed-in GitHub account whose branch was pushed to a fork.
+  let pull: Record<string, unknown> | null = null
+  const githubCommands: Record<
+    string,
+    (args: Record<string, unknown>) => unknown
+  > = {
+    github_account: () => ({
+      login: 'e2e',
+      name: 'E2E',
+      // A blank pixel: nothing is fetched from the network.
+      avatarUrl:
+        'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==',
+    }),
+    github_pull_target: () => ({
+      baseRepo: 'qiral/demo',
+      headRepo: 'e2e/demo',
+      branch: current,
+      defaultBase: 'main',
+      existing: pull,
+    }),
+    github_branches: () => ['main', 'dev'],
+    github_compare: () => ({
+      mergeBase: 'abc1234',
+      commits: ['Log in with a form\n\nUses the new session API.'],
+    }),
+    github_create_pull_request: (args) => {
+      pull = {
+        number: 42,
+        title: args.title,
+        state: 'open',
+        draft: args.draft,
+        url: 'https://github.com/qiral/demo/pull/42',
+      }
+      return pull
+    },
+    'plugin:opener|open_url': () => null,
+  }
+
   const commands: Record<string, (args: Record<string, unknown>) => unknown> = {
     // src/lib/git.ts
     initial_repo: () => null,
@@ -74,6 +118,7 @@ function installTauriMock(withRepo: boolean) {
     'plugin:dialog|open': () => null,
     'plugin:dialog|message': () => 'Ok',
     ...(withRepo ? repoCommands : {}),
+    ...(signedIn ? githubCommands : {}),
   }
 
   function transformCallback(callback: (data: unknown) => void, once = false) {
@@ -134,15 +179,18 @@ function installTauriMock(withRepo: boolean) {
 
 export const test = base.extend<{
   withRepo: boolean
+  signedIn: boolean
   tauri: void
   errors: string[]
 }>({
   // `test.use({ withRepo: true })` starts the app inside a fake repository.
   withRepo: [false, { option: true }],
+  // `test.use({ signedIn: true })` adds a GitHub account and pull requests.
+  signedIn: [false, { option: true }],
 
   tauri: [
-    async ({ page, withRepo }, use) => {
-      await page.addInitScript(installTauriMock, withRepo)
+    async ({ page, withRepo, signedIn }, use) => {
+      await page.addInitScript(installTauriMock, { withRepo, signedIn })
       await use()
     },
     { auto: true },

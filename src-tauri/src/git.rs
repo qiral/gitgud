@@ -718,6 +718,30 @@ pub fn staged_stat(repo: &Path) -> Result<String> {
     run(repo, &["diff", "--cached", "--no-color", "--stat"])
 }
 
+/// A commit id as GitHub sends it, checked so it can't be read as an option.
+fn check_sha(sha: &str) -> Result<()> {
+    if sha.len() >= 7 && sha.chars().all(|c| c.is_ascii_hexdigit()) {
+        Ok(())
+    } else {
+        Err(GitError::Failed(format!("not a commit id: {sha}")))
+    }
+}
+
+/// Everything the current branch changed since `merge_base`.
+pub fn branch_diff(repo: &Path, merge_base: &str) -> Result<String> {
+    check_sha(merge_base)?;
+    run(
+        repo,
+        &["diff", "--no-color", "--no-ext-diff", merge_base, "HEAD"],
+    )
+}
+
+/// One line per file the current branch changed since `merge_base`.
+pub fn branch_stat(repo: &Path, merge_base: &str) -> Result<String> {
+    check_sha(merge_base)?;
+    run(repo, &["diff", "--no-color", "--stat", merge_base, "HEAD"])
+}
+
 /// Subjects of the last `n` commits on the current branch, newest first.
 pub fn recent_subjects(repo: &Path, n: usize) -> Result<Vec<String>> {
     if !has_head(repo)? {

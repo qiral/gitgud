@@ -62,6 +62,13 @@ updater and window calls that do nothing. A command that isn't in the table
 rejects, so a new `invoke` on the start screen fails a spec instead of rendering
 half a screen.
 
+Two options widen the table for specs that need more than the start screen:
+`test.use({ withRepo: true })` opens a small fake repository at start (three
+branches, switching between them works), and `test.use({ signedIn: true })`
+adds a GitHub account whose branch was pushed to a fork, with the pull request
+commands. See `e2e/specs/command-palette.e2e.ts` and
+`e2e/specs/pull-request.e2e.ts`.
+
 This mirrors `src/test/setup.ts`, where vitest does the same job with
 `@tauri-apps/api/mocks`. That module can't be used here because it has to be
 imported before the app boots, which an init script can't do, so the fake is

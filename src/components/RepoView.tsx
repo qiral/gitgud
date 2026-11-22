@@ -35,6 +35,7 @@ import { useCommitActions } from './CommitActions'
 import { useCopilot } from '../lib/copilot'
 import { useSync } from './SyncActions'
 import { useRepoCommands, type Tab } from './RepoCommands'
+import { usePullRequests } from './PullRequests'
 
 /** What the right-hand pane is showing. */
 export type Selection =
@@ -300,6 +301,14 @@ export default function RepoView({
     setSelection(null)
     setFocusSearch(0)
   }
+  const pullRequests = usePullRequests({
+    repo,
+    status,
+    signedIn: account !== null,
+    onSignIn: openSignIn,
+    push: () => act('push', () => git.push(repo.path)),
+    ask: ai.run,
+  })
   const palette = useRepoCommands({
     repo,
     status,
@@ -323,11 +332,13 @@ export default function RepoView({
     onSignIn: openSignIn,
     onSignOut: signOut,
     onManageHosts: () => setDialog('hosts'),
+    extra: pullRequests.commands,
   })
 
   return (
     <div className="flex h-full flex-col">
       {palette.ui}
+      {pullRequests.dialog}
       {commitActions.dialogs}
       {ai.dialog}
       {explaining && !ai.dialog && (
@@ -352,6 +363,7 @@ export default function RepoView({
         onManageHosts={() => setDialog('hosts')}
         sync={sync}
         onPalette={palette.openPalette}
+        pullRequest={pullRequests.button}
         act={act}
       />
 
