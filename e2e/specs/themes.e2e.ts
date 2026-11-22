@@ -14,6 +14,7 @@ const THEMES = [
   { id: 'gruvbox', bg: '#282828' },
   { id: 'catppuccin-latte', bg: '#eff1f5' },
   { id: 'catppuccin-mocha', bg: '#1e1e2e' },
+  { id: 'tokyo-night', bg: '#1a1b26' },
 ]
 
 async function appBg(page: import('@playwright/test').Page) {

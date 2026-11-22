@@ -157,6 +157,23 @@
   color-scheme: dark;
 }
 
+:root[data-theme='tokyo-night'] {
+  --app-bg: #1a1b26;
+  --app-panel: #16161e;
+  --app-hover: #292e42;
+  --app-line: #3b4261;
+  --app-fg: #c0caf5;
+  --app-muted: #a9b1d6;
+  --app-accent: #7aa2f7;
+  --app-added: #9ece6a;
+  --app-added-bg: #1e2a2b;
+  --app-removed: #f7768e;
+  --app-removed-bg: #33212b;
+  --app-modified: #e0af68;
+  --app-on-accent: #1a1b26;
+  color-scheme: dark;
+}
+
 @theme inline {
   --color-bg: var(--app-bg);
   --color-panel: var(--app-panel);
