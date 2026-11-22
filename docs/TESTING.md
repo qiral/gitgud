@@ -10,6 +10,38 @@ Three layers, each catching what the one above it can't.
 
 The Rust side has its own tests; see the CI workflow.
 
+## The parity lab
+
+The backend is a parser over git's output, and its unit tests check that parse
+against output someone read once and wrote down. `src-tauri/tests/parity.rs`
+asks the other question: it builds a scratch repository (a temp dir, `git init`,
+a fixed identity, three fixed commits), drives the state through the backend's
+own functions, reads the same state a second time straight from the `git` CLI,
+and compares the two independent reads.
+
+What it compares are facts, not text: the set of (path, status) pairs that are
+staged, unstaged, untracked or conflicted; the commit hash, parents and subject
+of every entry in the history, and the counts. Porcelain output gets reflowed
+between git releases and that must not paint the lab red; a parse that drifts
+from git must. It runs the real binary on purpose, so there is nothing mocked
+here to agree with the backend by construction.
+
+Every test in the file is `#[ignore]`d, so `cargo test` skips it. Run it by
+hand:
+
+```bash
+cargo test --manifest-path src-tauri/Cargo.toml --test parity -- --ignored
+```
+
+`.github/workflows/parity.yml` runs exactly that on three triggers: a manual
+`workflow_dispatch`, a push to any `parity/**` branch, and a nightly tour of
+`main` at 04:17 UTC. It is Rust only: no node, no npm, no built frontend.
+
+It stays out of the per-push gates because it is meant to grow: stash states,
+merge conflicts, rebase stops, the odd ref shape. That is worth running before
+a release and after touching `git.rs`, and it is not worth paying for on every
+push, so it is invoked rather than ambient.
+
 ## How the browser tests run
 
 The web UI is driven without the Tauri shell. Vite already serves it on a fixed
