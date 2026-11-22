@@ -11,6 +11,14 @@
 //! parents, counts. A git release may reflow its output and that must not
 //! paint this lab red, while a parse that drifts from git must.
 //!
+//! Two honest gaps. Rename sources (the backend parses `orig_path`) are not
+//! compared yet: no seeded state produces a rename record, and a rename slice
+//! must carry the old paths into `Facts` on both sides before trusting it.
+//! And the CLI-side read below is a fresh parse, not a call into the backend's
+//! parser, but a systematic misread of porcelain would still look identical
+//! on both sides; each test also asserts against a fixed expectation written
+//! down by hand, and that is what catches a shared delusion.
+//!
 //! Every test is `#[ignore]`d, so `cargo test` stays fast and the per-push
 //! gate never runs this. See docs/TESTING.md.
 
@@ -174,6 +182,8 @@ impl Facts {
             } else if file.conflicted {
                 facts.conflicted.insert(file.path);
             } else {
+                // file.orig_path is parsed by the backend but deliberately not
+                // compared in this slice; see the module docs.
                 facts.record(&file.path, file.index, file.worktree);
             }
         }
@@ -205,7 +215,9 @@ impl Facts {
                     }
                 }
                 // 2 XY sub mH mI mW hH hI Xscore path, then the old path as
-                // its own record, which is skipped here.
+                // its own record. The rename source is not compared yet: no
+                // seeded state renames, and a rename slice must add it to
+                // Facts on both sides.
                 b'2' => {
                     let f: Vec<&str> = entry.splitn(10, ' ').collect();
                     entries.next();

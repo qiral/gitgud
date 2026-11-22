@@ -19,9 +19,12 @@ a fixed identity, three fixed commits), drives the state through the backend's
 own functions, reads the same state a second time straight from the `git` CLI,
 and compares the two independent reads.
 
-What it compares are facts, not text: the set of (path, status) pairs that are
-staged, unstaged, untracked or conflicted; the commit hash, parents and subject
-of every entry in the history, and the counts. Porcelain output gets reflowed
+What it compares are facts, not text: the (path, status) pairs that are staged
+or unstaged; the names that are untracked or in conflict; the commit hash,
+parents and subject of every entry in the history, and the counts. Rename
+sources are parsed by the backend but not compared in this slice: nothing
+seeded renames yet, and a rename slice has to carry the old paths on both
+sides first. Porcelain output gets reflowed
 between git releases and that must not paint the lab red; a parse that drifts
 from git must. It runs the real binary on purpose, so there is nothing mocked
 here to agree with the backend by construction.
