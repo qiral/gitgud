@@ -50,6 +50,7 @@ Pick a commit to browse its changed files one by one, right-click anything to co
 - With a GitHub Copilot plan, once signed in with GitHub: generate commit messages, explain commits and changes, and get a suggested merge for each conflict block. GitGud runs the [Copilot CLI](https://github.com/github/copilot-cli) you already have, or downloads it once into its own folder, with its own settings so your Copilot MCP servers and plugins aren't loaded. It sends only the diff or conflict you asked about, so organization content exclusions don't apply to it
 - Tells you when a new version is out and updates itself after you click (AppImage, Windows and macOS); an Update button stays in the toolbar until you do, and "Check for updates" sits in the account menu and on the start screen
 - Themes: Light, Dark, Solarized, Catppuccin, Nord, Dracula, Gruvbox and Tokyo Night, or follow your system
+- Speaks English, Türkçe, Azərbaycanca, Deutsch, Français, Italiano, Español, 日本語, 简体中文 and 한국어: it starts in your system's language and the 文A menu in the toolbar switches without a restart
 - Drag panel edges to resize them (double-click to reset), collapse the history graph to a single line, or hide just the branch lines you don't care about
 - Recent repositories on the start screen and in the Repository menu
 - A command palette (`Ctrl+K`, `Cmd+K` on macOS) to search and run any action, and keyboard shortcuts for the common ones (press `F1` for the list)
