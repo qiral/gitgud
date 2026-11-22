@@ -155,3 +155,43 @@ it("shows Copilot's message as a diff when something is typed", async () => {
       .value,
   ).toBe('trim username')
 })
+
+it('adds an untracked file to .gitignore from its menu', async () => {
+  const calls: [string, unknown][] = []
+  mockIPC((cmd, args) => {
+    calls.push([cmd, args])
+  })
+  const file = {
+    path: 'logs/today.log',
+    origPath: null,
+    index: '?',
+    worktree: '?',
+    untracked: true,
+    conflicted: false,
+  }
+  render(
+    <ChangesPanel
+      repo={repo}
+      files={[file]}
+      merging={null}
+      rebasing={null}
+      hasCommits
+      selection={null}
+      onSelect={() => {}}
+      busy={false}
+      onStash={() => {}}
+      act={act}
+    />,
+  )
+  const row = screen.getByText('today.log')
+  fireEvent.contextMenu(row)
+  expect(screen.getByText('Ignore file')).toBeTruthy()
+  expect(screen.getByText('Ignore folder logs/')).toBeTruthy()
+  fireEvent.click(screen.getByText('Ignore all .log files'))
+  await waitFor(() =>
+    expect(calls).toContainEqual([
+      'ignore',
+      { repo: '/r', path: 'logs/today.log', kind: 'extension' },
+    ]),
+  )
+})

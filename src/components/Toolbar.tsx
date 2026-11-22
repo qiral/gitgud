@@ -5,6 +5,7 @@ import {
   ArrowUp,
   Check,
   CircleArrowUp,
+  Command,
   ChevronDown,
   Download,
   FolderGit2,
@@ -26,14 +27,14 @@ import {
 import GithubIcon from './GithubIcon'
 import { useUpdates } from '../lib/updates'
 import { readTheme, setTheme, THEMES, type ThemeInfo } from '../lib/prefs'
-import PullDialog from './PullDialog'
+import type { Sync } from './SyncActions'
+import { shortcutKeys } from '../lib/shortcuts'
 import PromptDialog from './PromptDialog'
 import { useContextMenu, type MenuItem } from './ContextMenu'
 import {
   git,
   type Account,
   type Branch,
-  type PullMode,
   type RepoInfo,
   type Status,
 } from '../lib/git'
@@ -43,7 +44,6 @@ interface Props {
   repo: RepoInfo
   status: Status | null
   branches: Branch[]
-  originUrl: string | null
   account: Account | null
   busy: string | null
   onOpenOther: () => void
@@ -53,7 +53,10 @@ interface Props {
   onSignIn: () => void
   onSignOut: () => void
   onManageHosts: () => void
-  onPublish: () => void
+  sync: Sync
+  onPalette: () => void
+  /** The pull request button, when the branch can have one. */
+  pullRequest?: React.ReactNode
   act: (label: string, action: () => Promise<unknown>) => Promise<boolean>
 }
 
@@ -61,7 +64,6 @@ export default function Toolbar({
   repo,
   status,
   branches,
-  originUrl,
   account,
   busy,
   onOpenOther,
@@ -71,44 +73,13 @@ export default function Toolbar({
   onSignIn,
   onSignOut,
   onManageHosts,
-  onPublish,
+  sync,
+  onPalette,
+  pullRequest,
   act,
 }: Props) {
   const { t: tx, tp: txp } = useTranslation()
-  const ahead = status?.ahead ?? 0
-  const behind = status?.behind ?? 0
-  const hasUpstream = Boolean(status?.upstream)
-  // Without any remote, "push" means creating the repository on GitHub first.
-  const needsRemote = !hasUpstream && originUrl === null
-  // After editing pushed history, a normal push is rejected.
-  const diverged = hasUpstream && ahead > 0 && behind > 0
-  const [askPull, setAskPull] = useState(false)
-
-  async function pull(mode: PullMode | null = null, remember = false) {
-    setAskPull(false)
-    let mustAsk = false
-    await act('pull', async () => {
-      mustAsk = (await git.pull(repo.path, mode, remember)).diverged
-    })
-    // Conflicts show up in the Changes tab by themselves.
-    if (mustAsk) setAskPull(true)
-  }
-
-  async function forcePush() {
-    const ok = await confirm(
-      tx('toolbar.diverged', {
-        upstream: status?.upstream,
-        ahead,
-        behind,
-      }) + tx('toolbar.force-push-body'),
-      {
-        title: tx('toolbar.force-push'),
-        kind: 'warning',
-        okLabel: tx('toolbar.force-push'),
-      },
-    )
-    if (ok) act('push', () => git.pushForce(repo.path))
-  }
+  const { ahead, behind, hasUpstream, needsRemote, diverged } = sync
 
   return (
     <header className="flex h-12 shrink-0 items-stretch border-b border-line">
@@ -124,14 +95,14 @@ export default function Toolbar({
       <div className="flex-1" />
 
       <ToolbarButton
-        onClick={() => act('fetch', () => git.fetch(repo.path))}
+        onClick={sync.fetch}
         disabled={busy !== null}
         label={tx('toolbar.fetch')}
         value="All remotes"
         icon={<Spin active={busy === 'fetch'} icon={RefreshCw} />}
       />
       <ToolbarButton
-        onClick={() => pull()}
+        onClick={() => sync.pull()}
         disabled={busy !== null || !hasUpstream}
         label={tx('toolbar.pull')}
         value={
@@ -141,7 +112,7 @@ export default function Toolbar({
       />
       {needsRemote ? (
         <ToolbarButton
-          onClick={onPublish}
+          onClick={sync.push}
           disabled={busy !== null || !status?.branch}
           label={tx('toolbar.publish')}
           value={tx('toolbar.to-github')}
@@ -149,7 +120,7 @@ export default function Toolbar({
         />
       ) : diverged ? (
         <ToolbarButton
-          onClick={forcePush}
+          onClick={sync.push}
           disabled={busy !== null}
           label={tx('toolbar.force-push')}
           value={tx('toolbar.ahead-behind', { ahead, behind })}
@@ -160,7 +131,7 @@ export default function Toolbar({
         />
       ) : (
         <ToolbarButton
-          onClick={() => act('push', () => git.push(repo.path))}
+          onClick={sync.push}
           disabled={busy !== null || !status?.branch}
           label={
             hasUpstream ? tx('toolbar.push') : tx('toolbar.publish-branch')
@@ -175,19 +146,19 @@ export default function Toolbar({
           icon={<Spin active={busy === 'push'} icon={ArrowUp} />}
         />
       )}
+      {pullRequest}
       <UpdateButton />
+      <button
+        onClick={onPalette}
+        title={`Commands (${shortcutKeys('mod+k').join('+')})`}
+        aria-label="Command palette"
+        className="flex items-center border-r border-line px-3 text-muted hover:bg-hover hover:text-fg"
+      >
+        <Command className="size-4" />
+      </button>
       <ThemeMenu />
       <LanguageMenu />
-      {askPull && status?.branch && status.upstream && (
-        <PullDialog
-          branch={status.branch}
-          upstream={status.upstream}
-          ahead={ahead}
-          behind={behind}
-          onPull={pull}
-          onClose={() => setAskPull(false)}
-        />
-      )}
+      {sync.dialog}
       <AccountMenu
         account={account}
         onSignIn={onSignIn}
@@ -370,13 +341,13 @@ function Swatch({ theme }: { theme: ThemeInfo }) {
 function ThemeMenu() {
   const { t: tx } = useTranslation()
   const [open, setOpen] = useState(false)
-  const [theme, setChoice] = useState(readTheme)
+  // Read when shown: the command palette can change it too.
+  const theme = readTheme()
   const ref = useRef<HTMLDivElement>(null)
   useClickOutside(ref, open, () => setOpen(false))
 
   const choose = (id: string) => {
     setTheme(id)
-    setChoice(id)
     setOpen(false)
   }
   const row =

@@ -34,8 +34,9 @@ import { useResizable } from './Resizable'
 import { useCommitActions } from './CommitActions'
 import { useCopilot } from '../lib/copilot'
 import { useTranslation, type Translate } from '../i18n'
-
-type Tab = 'changes' | 'history' | 'stashes'
+import { useSync } from './SyncActions'
+import { useRepoCommands, type Tab } from './RepoCommands'
+import { usePullRequests } from './PullRequests'
 
 /** What the right-hand pane is showing. */
 export type Selection =
@@ -95,6 +96,7 @@ export default function RepoView({
   const [filtered, setFiltered] = useState<Commit[] | null>(null)
   const [logLimit, setLogLimit] = useState(HISTORY_PAGE)
   const [diff, setDiff] = useState('')
+  const [focusSearch, setFocusSearch] = useState(0)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -289,8 +291,57 @@ export default function RepoView({
     [ai.run],
   )
 
+  const signOut = () =>
+    act('signOut', async () => {
+      await github.signOut()
+      onAccountChange(null)
+    })
+  const sync = useSync(repo, status, originUrl, act, () =>
+    setDialog(account ? 'publish' : 'signIn'),
+  )
+  const showTab = (t: Tab) => {
+    setTab(t)
+    setSelection(null)
+    setFocusSearch(0)
+  }
+  const pullRequests = usePullRequests({
+    repo,
+    status,
+    signedIn: account !== null,
+    onSignIn: openSignIn,
+    push: () => act('push', () => git.push(repo.path)),
+    ask: ai.run,
+  })
+  const palette = useRepoCommands({
+    repo,
+    status,
+    branches,
+    recents,
+    signedIn: account !== null,
+    sync,
+    busy: busy !== null,
+    act,
+    showTab,
+    searchHistory: () => {
+      if (tab !== 'history') setSelection(null)
+      setTab('history')
+      if (historyFilter?.kind === 'file') changeFilter(null)
+      setFocusSearch((n) => n + 1)
+    },
+    onOpenOther,
+    onOpenRecent,
+    onClone,
+    onStash: () => setDialog('stash'),
+    onSignIn: openSignIn,
+    onSignOut: signOut,
+    onManageHosts: () => setDialog('hosts'),
+    extra: pullRequests.commands,
+  })
+
   return (
     <div className="flex h-full flex-col">
+      {palette.ui}
+      {pullRequests.dialog}
       {commitActions.dialogs}
       {ai.dialog}
       {explaining && !ai.dialog && (
@@ -304,7 +355,6 @@ export default function RepoView({
         repo={repo}
         status={status}
         branches={branches}
-        originUrl={originUrl}
         account={account}
         busy={busy}
         onOpenOther={onOpenOther}
@@ -312,14 +362,11 @@ export default function RepoView({
         onOpenRecent={onOpenRecent}
         onClone={onClone}
         onSignIn={() => setDialog('signIn')}
-        onSignOut={() =>
-          act('signOut', async () => {
-            await github.signOut()
-            onAccountChange(null)
-          })
-        }
+        onSignOut={signOut}
         onManageHosts={() => setDialog('hosts')}
-        onPublish={() => setDialog(account ? 'publish' : 'signIn')}
+        sync={sync}
+        onPalette={palette.openPalette}
+        pullRequest={pullRequests.button}
         act={act}
       />
 
@@ -365,10 +412,7 @@ export default function RepoView({
             {(['changes', 'history', 'stashes'] as const).map((t) => (
               <button
                 key={t}
-                onClick={() => {
-                  setTab(t)
-                  setSelection(null)
-                }}
+                onClick={() => showTab(t)}
                 className={`flex-1 py-2 font-medium capitalize ${
                   tab === t
                     ? 'border-b-2 border-accent text-fg'
@@ -411,6 +455,7 @@ export default function RepoView({
               filter={historyFilter}
               onFilter={changeFilter}
               filtered={filtered}
+              focusSearch={focusSearch}
               onExplain={(c) =>
                 explain(c.shortHash, () => git.showCommit(repo.path, c.hash))
               }

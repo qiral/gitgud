@@ -6,6 +6,8 @@ export interface RepoInfo {
   name: string
 }
 
+export type IgnoreKind = 'file' | 'extension' | 'folder'
+
 export interface FileChange {
   path: string
   origPath: string | null
@@ -145,12 +147,42 @@ export interface CloneProgress {
 /** Error text when the Copilot CLI isn't installed; see src-tauri/src/copilot.rs. */
 export const COPILOT_MISSING = 'Copilot CLI not installed'
 
+export interface PullRequest {
+  number: number
+  title: string
+  state: 'open' | 'closed' | 'merged'
+  draft: boolean
+  url: string
+}
+
+/** Where a pull request for the current branch goes; see src-tauri/src/pulls.rs. */
+export interface PullTarget {
+  /** owner/repo the pull request is opened in (a fork's parent). */
+  baseRepo: string
+  /** owner/repo the branch was pushed to. */
+  headRepo: string
+  /** The branch's name on the remote. */
+  branch: string
+  defaultBase: string
+  /** The newest pull request from this branch, open or not. */
+  existing: PullRequest | null
+}
+
+export interface Comparison {
+  mergeBase: string
+  /** Full commit messages, oldest first. */
+  commits: string[]
+}
+
 export const copilot = {
   /** Downloads the CLI, emitting `copilot-progress` events. */
   install: () => invoke<void>('copilot_install'),
   commitMessage: (repo: string) =>
     invoke<string>('copilot_commit_message', { repo }),
   explain: (diff: string) => invoke<string>('copilot_explain', { diff }),
+  /** A pull request title, a blank line, then its description. */
+  pullRequest: (repo: string, mergeBase: string, commits: string[]) =>
+    invoke<string>('copilot_pull_request', { repo, mergeBase, commits }),
   /** Merged code for the `index`-th conflict block of `path`. */
   resolve: (repo: string, path: string, index: number) =>
     invoke<string>('copilot_resolve', { repo, path, index }),
@@ -158,6 +190,27 @@ export const copilot = {
 
 export const github = {
   repos: () => invoke<RemoteRepo[]>('github_repos'),
+  /** Null when the current branch has no upstream on github.com. */
+  pullTarget: (repo: string) =>
+    invoke<PullTarget | null>('github_pull_target', { repo }),
+  branches: (baseRepo: string) =>
+    invoke<string[]>('github_branches', { baseRepo }),
+  compare: (baseRepo: string, base: string, headRepo: string, branch: string) =>
+    invoke<Comparison>('github_compare', { baseRepo, base, headRepo, branch }),
+  createPullRequest: (
+    repo: string,
+    base: string,
+    title: string,
+    body: string,
+    draft: boolean,
+  ) =>
+    invoke<PullRequest>('github_create_pull_request', {
+      repo,
+      base,
+      title,
+      body,
+      draft,
+    }),
   account: () => invoke<Account | null>('github_account'),
   startSignIn: () => invoke<DeviceCode>('github_start_sign_in'),
   pollSignIn: (deviceCode: string, interval: number) =>
@@ -225,6 +278,9 @@ export const git = {
     invoke<void>('unstage', { repo, paths }),
   discard: (repo: string, paths: string[]) =>
     invoke<void>('discard', { repo, paths }),
+  /** Adds an untracked file, its extension or its folder to .gitignore. */
+  ignore: (repo: string, path: string, kind: IgnoreKind) =>
+    invoke<void>('ignore', { repo, path, kind }),
   /** Applies only some lines of `diff`; `lines` index into diff.split('\n'). */
   applyLines: (
     repo: string,
