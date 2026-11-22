@@ -6,6 +6,7 @@ mod graph;
 mod hosts;
 mod ignore;
 mod patch;
+mod pulls;
 mod rebase;
 
 use conflict::{Choice, Part};
@@ -17,6 +18,7 @@ use git::{
 use github::{Account, CreatedRepo, DeviceCode, PollResult, RemoteRepo};
 use hosts::{Host, HostKind};
 use ignore::IgnoreKind;
+use pulls::{Comparison, PullRequest, PullTarget};
 use rebase::{RebaseOutcome, RebasePlan, TodoItem};
 use std::path::Path;
 use tauri::{Emitter, Manager};
@@ -343,6 +345,41 @@ fn publish_to_github(
 }
 
 #[tauri::command(async)]
+fn github_pull_target(repo: String) -> Result<Option<PullTarget>> {
+    pulls::target(Path::new(&repo))
+}
+
+#[tauri::command(async)]
+fn github_branches(base_repo: String) -> Result<Vec<String>> {
+    pulls::branches(&base_repo)
+}
+
+#[tauri::command(async)]
+fn github_compare(
+    base_repo: String,
+    base: String,
+    head_repo: String,
+    branch: String,
+) -> Result<Comparison> {
+    pulls::compare(&base_repo, &base, &head_repo, &branch)
+}
+
+/// Opens a pull request for the current branch. The target is looked up
+/// again so the frontend can't point it somewhere else.
+#[tauri::command(async)]
+fn github_create_pull_request(
+    repo: String,
+    base: String,
+    title: String,
+    body: String,
+    draft: bool,
+) -> Result<PullRequest> {
+    let target = pulls::target(Path::new(&repo))?
+        .ok_or_else(|| GitError::Failed("This branch hasn't been pushed to GitHub yet".into()))?;
+    pulls::create(&target, &base, &title, &body, draft)
+}
+
+#[tauri::command(async)]
 fn github_repos() -> Result<Vec<RemoteRepo>> {
     github::list_repos()
 }
@@ -391,6 +428,19 @@ async fn copilot_commit_message(
     repo: String,
 ) -> Result<String> {
     copilot.commit_message(&app_data(&app)?, repo.into()).await
+}
+
+#[tauri::command]
+async fn copilot_pull_request(
+    app: tauri::AppHandle,
+    copilot: tauri::State<'_, Copilot>,
+    repo: String,
+    merge_base: String,
+    commits: Vec<String>,
+) -> Result<String> {
+    copilot
+        .pull_request(&app_data(&app)?, repo.into(), merge_base, commits)
+        .await
 }
 
 #[tauri::command]
@@ -492,11 +542,16 @@ pub fn run() {
             host_remove,
             publish_to_github,
             github_repos,
+            github_pull_target,
+            github_branches,
+            github_compare,
+            github_create_pull_request,
             clone_repo,
             cancel_clone,
             copilot_install,
             copilot_commit_message,
             copilot_explain,
+            copilot_pull_request,
             copilot_resolve,
         ])
         .build(tauri::generate_context!())

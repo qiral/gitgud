@@ -15,9 +15,9 @@ const CLIENT_ID: &str = "Ov23li9VaKu4azd6eO0H";
 const SCOPES: &str = "repo workflow read:user user:email";
 const KEYRING_SERVICE: &str = "dev.gitgud.app";
 const KEYRING_USER: &str = "github";
-const USER_AGENT: &str = concat!("GitGud/", env!("CARGO_PKG_VERSION"));
+pub(crate) const USER_AGENT: &str = concat!("GitGud/", env!("CARGO_PKG_VERSION"));
 
-fn http_error(e: ureq::Error) -> GitError {
+pub(crate) fn http_error(e: ureq::Error) -> GitError {
     GitError::Failed(format!("GitHub request failed: {e}"))
 }
 
@@ -176,7 +176,10 @@ pub fn poll_sign_in(device_code: &str, interval: u64) -> Result<PollResult> {
 // ---------------------------------------------------------------------------
 // API
 
-fn api_get(token: &str, path: &str) -> ureq::RequestBuilder<ureq::typestate::WithoutBody> {
+pub(crate) fn api_get(
+    token: &str,
+    path: &str,
+) -> ureq::RequestBuilder<ureq::typestate::WithoutBody> {
     ureq::get(format!("https://api.github.com{path}"))
         .header("Accept", "application/vnd.github+json")
         .header("Authorization", format!("Bearer {token}"))

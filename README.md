@@ -46,6 +46,7 @@ Pick a commit to browse its changed files one by one, right-click anything to co
 - Sign in with GitHub (device flow, token kept in the OS keychain) to push over HTTPS
 - Sign in to GitLab, Gitea, Forgejo or any other HTTPS host with a personal access token; each token is only sent to its own host
 - Publish a local repository to GitHub in one step
+- Create a pull request for the current branch from the toolbar (`Ctrl+R`): pick the base branch, start from the commits or let Copilot write the title and description, and save it as a draft. Branches pushed to a fork go to the parent repository. Once it's open, the toolbar links to it
 - With a GitHub Copilot plan, once signed in with GitHub: generate commit messages, explain commits and changes, and get a suggested merge for each conflict block. GitGud runs the [Copilot CLI](https://github.com/github/copilot-cli) you already have, or downloads it once into its own folder, with its own settings so your Copilot MCP servers and plugins aren't loaded. It sends only the diff or conflict you asked about, so organization content exclusions don't apply to it
 - Tells you when a new version is out and updates itself after you click (AppImage, Windows and macOS); an Update button stays in the toolbar until you do, and "Check for updates" sits in the account menu and on the start screen
 - Themes: Light, Dark, Solarized, Catppuccin, Nord, Dracula, Gruvbox and Tokyo Night, or follow your system
@@ -62,6 +63,7 @@ Use `Cmd` instead of `Ctrl` on macOS.
 | `Ctrl+K` | Command palette |
 | `Ctrl+P` / `Ctrl+Shift+P` | Push / Pull |
 | `Ctrl+Shift+T` | Fetch |
+| `Ctrl+R` | Create or view the branch's pull request |
 | `Ctrl+B` | Switch branch |
 | `Ctrl+Shift+N` | New branch |
 | `Ctrl+Shift+M` | Merge a branch into the current one |

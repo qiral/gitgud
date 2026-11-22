@@ -53,6 +53,8 @@ interface Props {
   onManageHosts: () => void
   sync: Sync
   onPalette: () => void
+  /** The pull request button, when the branch can have one. */
+  pullRequest?: React.ReactNode
   act: (label: string, action: () => Promise<unknown>) => Promise<boolean>
 }
 
@@ -71,6 +73,7 @@ export default function Toolbar({
   onManageHosts,
   sync,
   onPalette,
+  pullRequest,
   act,
 }: Props) {
   const { ahead, behind, hasUpstream, needsRemote, diverged } = sync
@@ -134,6 +137,7 @@ export default function Toolbar({
           icon={<Spin active={busy === 'push'} icon={ArrowUp} />}
         />
       )}
+      {pullRequest}
       <UpdateButton />
       <button
         onClick={onPalette}
