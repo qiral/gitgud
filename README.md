@@ -51,6 +51,26 @@ Pick a commit to browse its changed files one by one, right-click anything to co
 - Themes: Light, Dark, Solarized, Catppuccin, Nord, Dracula, Gruvbox and Tokyo Night, or follow your system
 - Drag panel edges to resize them (double-click to reset), collapse the history graph to a single line, or hide just the branch lines you don't care about
 - Recent repositories on the start screen and in the Repository menu
+- A command palette (`Ctrl+K`, `Cmd+K` on macOS) to search and run any action, and keyboard shortcuts for the common ones (press `F1` for the list)
+
+### Keyboard shortcuts
+
+Use `Cmd` instead of `Ctrl` on macOS.
+
+| Shortcut | Action |
+| --- | --- |
+| `Ctrl+K` | Command palette |
+| `Ctrl+P` / `Ctrl+Shift+P` | Push / Pull |
+| `Ctrl+Shift+T` | Fetch |
+| `Ctrl+B` | Switch branch |
+| `Ctrl+Shift+N` | New branch |
+| `Ctrl+Shift+M` | Merge a branch into the current one |
+| `Ctrl+Shift+S` | Stash changes |
+| `Ctrl+1` / `Ctrl+2` / `Ctrl+3` | Changes / History / Stashes |
+| `Ctrl+F` | Search history |
+| `Ctrl+O` / `Ctrl+Shift+O` | Open / Clone a repository |
+| `Ctrl+Enter` | Commit (in the message box) |
+| `F1` | List all shortcuts |
 
 ## Screenshots
 
