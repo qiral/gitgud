@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { confirm } from '@tauri-apps/plugin-dialog'
 import {
   Archive,
+  EyeOff,
   GitMerge,
   Loader2,
   Minus,
@@ -14,12 +15,13 @@ import {
   isStaged,
   isUnstaged,
   type FileChange,
+  type IgnoreKind,
   type Operation,
   type RepoInfo,
   type Status,
 } from '../lib/git'
 import { fileMenuItems } from '../lib/copy'
-import { basename, dirname } from '../lib/paths'
+import { basename, dirname, extension } from '../lib/paths'
 import { useContextMenu, type MenuItem } from './ContextMenu'
 import SuggestionDiff from './SuggestionDiff'
 import type { Selection } from './RepoView'
@@ -181,6 +183,36 @@ export default function ChangesPanel({
     if (ok) act('discard', () => git.discard(repo.path, [file.path]))
   }
 
+  function ignore(path: string, kind: IgnoreKind) {
+    act('ignore', () => git.ignore(repo.path, path, kind))
+  }
+
+  /** Ways to add an untracked file to .gitignore. */
+  function ignoreItems(path: string): MenuItem[] {
+    const items: MenuItem[] = [
+      {
+        label: 'Ignore file',
+        icon: EyeOff,
+        onClick: () => ignore(path, 'file'),
+      },
+    ]
+    const ext = extension(path)
+    if (ext)
+      items.push({
+        label: `Ignore all .${ext} files`,
+        icon: EyeOff,
+        onClick: () => ignore(path, 'extension'),
+      })
+    const dir = dirname(path)
+    if (dir)
+      items.push({
+        label: `Ignore folder ${dir}/`,
+        icon: EyeOff,
+        onClick: () => ignore(path, 'folder'),
+      })
+    return items
+  }
+
   /** Right-click actions for a file; mirrors the buttons on its row. */
   function menuFor(f: FileChange, inStaged: boolean): MenuItem[] {
     const items: MenuItem[] = []
@@ -208,6 +240,7 @@ export default function ChangesPanel({
         })
       items.push('separator')
     }
+    if (f.untracked) items.push(...ignoreItems(f.path), 'separator')
     const deleted = f.worktree === 'D' || f.index === 'D'
     const history =
       onFileHistory && !f.untracked && f.index !== 'A'

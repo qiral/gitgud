@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { absolutePath, basename, dirname } from './paths'
+import { absolutePath, basename, dirname, extension } from './paths'
 
 describe('paths', () => {
   it('splits a repo path into folder and name', () => {
@@ -18,4 +18,11 @@ describe('paths', () => {
       'C:\\code\\repo\\src\\a.ts',
     )
   })
+})
+
+it('finds extensions like the backend does', () => {
+  expect(extension('a/b.tar.gz')).toBe('gz')
+  expect(extension('dir.d/file')).toBeNull()
+  expect(extension('.env')).toBeNull()
+  expect(extension('x.')).toBeNull()
 })

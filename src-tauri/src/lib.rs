@@ -4,6 +4,7 @@ pub mod git;
 mod github;
 mod graph;
 mod hosts;
+mod ignore;
 mod patch;
 mod rebase;
 
@@ -15,6 +16,7 @@ use git::{
 };
 use github::{Account, CreatedRepo, DeviceCode, PollResult, RemoteRepo};
 use hosts::{Host, HostKind};
+use ignore::IgnoreKind;
 use rebase::{RebaseOutcome, RebasePlan, TodoItem};
 use std::path::Path;
 use tauri::{Emitter, Manager};
@@ -56,6 +58,11 @@ fn discard(repo: String, paths: Vec<String>) -> Result<()> {
 #[tauri::command(async)]
 fn apply_lines(repo: String, diff: String, lines: Vec<usize>, action: LineAction) -> Result<()> {
     git::apply_lines(Path::new(&repo), &diff, &lines, action)
+}
+
+#[tauri::command(async)]
+fn ignore(repo: String, path: String, kind: IgnoreKind) -> Result<()> {
+    ignore::add(Path::new(&repo), &path, kind)
 }
 
 #[tauri::command(async)]
@@ -431,6 +438,7 @@ pub fn run() {
             unstage,
             discard,
             apply_lines,
+            ignore,
             commit,
             amend,
             last_commit,

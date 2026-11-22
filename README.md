@@ -31,6 +31,7 @@ Pick a commit to browse its changed files one by one, right-click anything to co
 - Clone from a URL or pick from your GitHub repositories, with live progress
 - See changed files, stage and unstage per file or all at once, and discard changes
 - Stage, unstage or discard individual lines and hunks right from the diff
+- Right-click an untracked file to add it, all files with its extension, or its folder to `.gitignore`
 - Merge branches and resolve conflicts block by block, or abort the merge
 - Edit history: reorder commits by dragging, squash, fixup, reword or drop them
 - Right-click a commit in History to cherry-pick or revert it, reset the current branch to it (soft, mixed or hard), or start a branch or tag there; tags can be pushed or deleted from the same menu
@@ -47,7 +48,7 @@ Pick a commit to browse its changed files one by one, right-click anything to co
 - Publish a local repository to GitHub in one step
 - With a GitHub Copilot plan, once signed in with GitHub: generate commit messages, explain commits and changes, and get a suggested merge for each conflict block. GitGud runs the [Copilot CLI](https://github.com/github/copilot-cli) you already have, or downloads it once into its own folder, with its own settings so your Copilot MCP servers and plugins aren't loaded. It sends only the diff or conflict you asked about, so organization content exclusions don't apply to it
 - Tells you when a new version is out and updates itself after you click (AppImage, Windows and macOS); an Update button stays in the toolbar until you do, and "Check for updates" sits in the account menu and on the start screen
-- Themes: Light, Dark, Solarized, Catppuccin, Nord, Dracula and Gruvbox, or follow your system
+- Themes: Light, Dark, Solarized, Catppuccin, Nord, Dracula, Gruvbox and Tokyo Night, or follow your system
 - Drag panel edges to resize them (double-click to reset), collapse the history graph to a single line, or hide just the branch lines you don't care about
 - Recent repositories on the start screen and in the Repository menu
 
