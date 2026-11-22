@@ -10,6 +10,17 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig(() => ({
   plugins: [react(), tailwindcss()],
 
+  build: {
+    rollupOptions: {
+      output: {
+        // Every language is bundled so switching needs no loading; keep them
+        // in their own chunk next to the app's code.
+        manualChunks: (id: string) =>
+          id.includes("/src/i18n/locales/") ? "locales" : undefined,
+      },
+    },
+  },
+
   test: {
     environment: "jsdom",
     // Tests mock Tauri's IPC; reset it so one test's handler can't leak into the next.

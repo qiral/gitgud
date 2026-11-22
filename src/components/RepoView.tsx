@@ -413,13 +413,13 @@ export default function RepoView({
               <button
                 key={t}
                 onClick={() => showTab(t)}
-                className={`flex-1 py-2 font-medium capitalize ${
+                className={`flex-1 py-2 font-medium ${
                   tab === t
                     ? 'border-b-2 border-accent text-fg'
                     : 'text-muted hover:text-fg'
                 }`}
               >
-                {t}
+                {tx(`repoview.tab-${t}`)}
                 {t === 'changes' && <Count n={status?.files.length ?? 0} />}
                 {t === 'stashes' && <Count n={stashes.length} />}
               </button>

@@ -132,6 +132,24 @@ describe('locale files', () => {
     }
   })
 
+  it('keeps the {placeholders} of English in every translation', () => {
+    const names = (s: string) =>
+      [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort()
+    const base = (k: string) =>
+      k.replace(/\.(zero|one|two|few|many|other)$/, '')
+    for (const path of files) {
+      for (const [key, text] of Object.entries(LOCALE_MESSAGES[path].default)) {
+        const english = en[key] ?? en[`${base(key)}.other`]
+        if (english === undefined) continue
+        // A plural form may leave the number out, like French "votre commit".
+        const expected = names(english).filter(
+          (n) => n !== 'count' || key === base(key) || text.includes('{count}'),
+        )
+        expect(names(text), `${path} ${key}`).toEqual(expected)
+      }
+    }
+  })
+
   it('shows every language by its own name in the picker', () => {
     for (const path of files) {
       const code = path.replace('./locales/', '').replace('.ts', '')
