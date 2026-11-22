@@ -1,5 +1,20 @@
 @import 'tailwindcss';
 
+/* The language picker shows every language by its own name. On machines with
+   no CJK fonts (common on Linux) these would draw as boxes, so we ship Noto
+   Sans cut down to just those characters (한국어 / 简体中文日本語, ~4 KB).
+   Installed fonts still win; see OFL.txt for the font license. */
+@font-face {
+  font-family: 'GitGud Language Names KR';
+  src: url('./assets/fonts/language-names-kr.woff2') format('woff2');
+  font-weight: 100 900;
+}
+@font-face {
+  font-family: 'GitGud Language Names SC';
+  src: url('./assets/fonts/language-names-sc.woff2') format('woff2');
+  font-weight: 100 900;
+}
+
 :root {
   --app-bg: #ffffff;
   --app-panel: #f6f7f9;
@@ -216,6 +231,8 @@ body {
     Meiryo,
     'PingFang SC',
     'Microsoft YaHei',
+    'GitGud Language Names KR',
+    'GitGud Language Names SC',
     sans-serif;
   font-size: 13px;
   user-select: none;
