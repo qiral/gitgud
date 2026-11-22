@@ -6,6 +6,8 @@ export interface RepoInfo {
   name: string
 }
 
+export type IgnoreKind = 'file' | 'extension' | 'folder'
+
 export interface FileChange {
   path: string
   origPath: string | null
@@ -225,6 +227,9 @@ export const git = {
     invoke<void>('unstage', { repo, paths }),
   discard: (repo: string, paths: string[]) =>
     invoke<void>('discard', { repo, paths }),
+  /** Adds an untracked file, its extension or its folder to .gitignore. */
+  ignore: (repo: string, path: string, kind: IgnoreKind) =>
+    invoke<void>('ignore', { repo, path, kind }),
   /** Applies only some lines of `diff`; `lines` index into diff.split('\n'). */
   applyLines: (
     repo: string,
