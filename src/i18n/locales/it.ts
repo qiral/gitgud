@@ -167,17 +167,23 @@ const messages: Messages = {
     "Scartare {count} righe modificate? L'operazione non può essere annullata.",
   'diffview.lines-selected.one': '{count} riga selezionata',
   'diffview.lines-selected.other': '{count} righe selezionate',
+  'diffview.only-whitespace': 'Sono cambiati solo gli spazi.',
   'diffview.select-hint':
     'Fai clic per selezionare, Maiusc+clic per un intervallo',
+  'diffview.show-whitespace': 'Mostra modifiche agli spazi',
   'diffview.stage-hunk': 'Aggiungi blocco allo stage',
   'diffview.stage-lines': 'Aggiungi righe allo stage',
+  'diffview.staging-paused':
+    'Non puoi selezionare righe mentre le modifiche agli spazi sono nascoste.',
   'diffview.unstage-hunk': 'Rimuovi blocco dallo stage',
   'diffview.unstage-lines': 'Rimuovi righe dallo stage',
   'explaindialog.asking-copilot': 'Chiedo a Copilot',
   'explaindialog.explain-title': 'Spiega {title}',
   'fileheader.copy-path': 'Copia percorso',
   'fileheader.explain-with-copilot': 'Spiega con Copilot',
+  'fileheader.ignore-whitespace': 'Ignora spazi',
   'fileheader.more': 'Altro',
+  'fileheader.side-by-side': 'Vista affiancata',
   'historypanel.cherry-pick-onto-current-branch':
     'Cherry-pick sul branch corrente',
   'historypanel.clear-search': 'Cancella ricerca',

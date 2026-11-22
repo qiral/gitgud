@@ -6,6 +6,7 @@ import { useContextMenu } from './ContextMenu'
 import DiffView from './DiffView'
 import FileHeader, { LineCounts, STATUS_STYLE } from './FileHeader'
 import { useResizable } from './Resizable'
+import { setDiffPref, useDiffPrefs } from '../lib/diffPrefs'
 import { useTranslation } from '../i18n'
 
 interface Props {
@@ -34,6 +35,7 @@ export default function PatchView({
   onExplainFile,
 }: Props) {
   const { t } = useTranslation()
+  const { ignoreWhitespace } = useDiffPrefs()
   const { files } = useMemo(() => splitDiff(patch), [patch])
   const [selected, setSelected] = useState(0)
   const { menu, open } = useContextMenu()
@@ -68,9 +70,21 @@ export default function PatchView({
     <div className="flex h-full min-h-0 flex-col">
       {header}
       {files.length === 0 ? (
-        <p className="p-6 text-muted">
-          {t('patchview.no-file-changes-in-this-commit')}
-        </p>
+        <div className="flex flex-col items-start gap-2 p-6 text-muted">
+          <p>
+            {ignoreWhitespace
+              ? t('diffview.only-whitespace')
+              : t('patchview.no-file-changes-in-this-commit')}
+          </p>
+          {ignoreWhitespace && (
+            <button
+              onClick={() => setDiffPref('ignoreWhitespace', false)}
+              className="rounded border border-line px-2 py-0.5 text-xs font-medium text-fg hover:bg-hover"
+            >
+              {t('diffview.show-whitespace')}
+            </button>
+          )}
+        </div>
       ) : (
         <div className="flex min-h-0 flex-1">
           <div

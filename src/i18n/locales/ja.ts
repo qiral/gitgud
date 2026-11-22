@@ -158,16 +158,22 @@ const messages: Messages = {
   'diffview.discard-lines-body.other':
     '変更された {count} 行を破棄しますか？元に戻せません。',
   'diffview.lines-selected.other': '{count} 行を選択中',
+  'diffview.only-whitespace': '空白のみが変更されています。',
   'diffview.select-hint': 'クリックで選択、Shift+クリックで範囲選択',
+  'diffview.show-whitespace': '空白の変更を表示',
   'diffview.stage-hunk': 'ハンクをステージ',
   'diffview.stage-lines': '行をステージ',
+  'diffview.staging-paused':
+    '空白の変更を非表示にしている間は行を選択できません。',
   'diffview.unstage-hunk': 'ハンクのステージを解除',
   'diffview.unstage-lines': '行のステージを解除',
   'explaindialog.asking-copilot': 'Copilot に問い合わせ中',
   'explaindialog.explain-title': '{title} を説明',
   'fileheader.copy-path': 'パスをコピー',
   'fileheader.explain-with-copilot': 'Copilot で説明',
+  'fileheader.ignore-whitespace': '空白を無視',
   'fileheader.more': 'その他',
+  'fileheader.side-by-side': '左右に並べて表示',
   'historypanel.cherry-pick-onto-current-branch':
     '現在のブランチにチェリーピック',
   'historypanel.clear-search': '検索をクリア',

@@ -684,7 +684,13 @@ pub fn amend(repo: &Path, message: &str) -> Result<()> {
 // ---------------------------------------------------------------------------
 // Diff
 
-pub fn diff(repo: &Path, path: &str, staged: bool, untracked: bool) -> Result<String> {
+pub fn diff(
+    repo: &Path,
+    path: &str,
+    staged: bool,
+    untracked: bool,
+    ignore_whitespace: bool,
+) -> Result<String> {
     // Fixed prefixes so the output can be fed back to `git apply`, whatever
     // the user's diff.noprefix / diff.mnemonicPrefix settings are.
     let mut args = vec![
@@ -694,6 +700,9 @@ pub fn diff(repo: &Path, path: &str, staged: bool, untracked: bool) -> Result<St
         "--src-prefix=a/",
         "--dst-prefix=b/",
     ];
+    if ignore_whitespace {
+        args.push("-w");
+    }
     if untracked {
         // `--no-index` exits with 1 when the files differ, which is always the
         // case here, so read the output regardless of the exit code.
@@ -1015,20 +1024,21 @@ pub fn file_log(repo: &Path, path: &str, limit: u32) -> Result<Vec<Commit>> {
 }
 
 /// Full patch for a single commit, with a short header.
-pub fn show_commit(repo: &Path, hash: &str) -> Result<String> {
+pub fn show_commit(repo: &Path, hash: &str, ignore_whitespace: bool) -> Result<String> {
     check_hash(hash)?;
-    run(
-        repo,
-        &[
-            "show",
-            "--no-color",
-            "--no-ext-diff",
-            // Merges have no diff by default; show what they brought in.
-            "--diff-merges=first-parent",
-            "--format=%B",
-            hash,
-        ],
-    )
+    let mut args = vec![
+        "show",
+        "--no-color",
+        "--no-ext-diff",
+        // Merges have no diff by default; show what they brought in.
+        "--diff-merges=first-parent",
+        "--format=%B",
+    ];
+    if ignore_whitespace {
+        args.push("-w");
+    }
+    args.push(hash);
+    run(repo, &args)
 }
 
 fn parse_log(raw: &str) -> Vec<Commit> {
@@ -1148,18 +1158,14 @@ pub fn stash_drop(repo: &Path, index: u32) -> Result<()> {
 }
 
 /// The stash's changes as a patch, including files that were untracked.
-pub fn stash_show(repo: &Path, index: u32) -> Result<String> {
-    run(
-        repo,
-        &[
-            "stash",
-            "show",
-            "-p",
-            "--include-untracked",
-            "--no-color",
-            &stash_ref(index),
-        ],
-    )
+pub fn stash_show(repo: &Path, index: u32, ignore_whitespace: bool) -> Result<String> {
+    let stash = stash_ref(index);
+    let mut args = vec!["stash", "show", "-p", "--include-untracked", "--no-color"];
+    if ignore_whitespace {
+        args.push("-w");
+    }
+    args.push(&stash);
+    run(repo, &args)
 }
 
 // ---------------------------------------------------------------------------
@@ -1590,7 +1596,7 @@ mod tests {
         assert!(log(repo, 10).unwrap().is_empty());
         std::fs::write(dir.join("a b.txt"), "hello\n").unwrap();
         assert!(status(repo).unwrap().files[0].untracked);
-        assert!(diff(repo, "a b.txt", false, true)
+        assert!(diff(repo, "a b.txt", false, true, false)
             .unwrap()
             .contains("+hello"));
         stage(repo, &["a b.txt".into()]).unwrap();
@@ -1606,9 +1612,9 @@ mod tests {
         let commits = log(repo, 10).unwrap();
         assert_eq!(commits[0].subject, message);
         assert!(status(repo).unwrap().files.is_empty());
-        let shown = show_commit(repo, &commits[0].hash).unwrap();
+        let shown = show_commit(repo, &commits[0].hash, false).unwrap();
         assert!(shown.contains("+hello"));
-        assert!(show_commit(repo, "--help").is_err());
+        assert!(show_commit(repo, "--help", false).is_err());
 
         create_branch(repo, "feature/x").unwrap();
         assert!(create_branch(repo, "bad..name").is_err());
@@ -1826,7 +1832,9 @@ mod tests {
         let commits = log(repo, 10).unwrap();
         assert_eq!(commits.len(), 1);
         assert_eq!(commits[0].subject, "first");
-        assert!(show_commit(repo, &commits[0].hash).unwrap().contains("+b"));
+        assert!(show_commit(repo, &commits[0].hash, false)
+            .unwrap()
+            .contains("+b"));
         assert!(amend(repo, "  ").is_err());
 
         // A remote branch containing HEAD makes it "pushed".
@@ -2073,7 +2081,7 @@ mod tests {
 
         let merge = &log(repo, 1).unwrap()[0];
         assert_eq!(merge.parents.len(), 2);
-        let shown = show_commit(repo, &merge.hash).unwrap();
+        let shown = show_commit(repo, &merge.hash, false).unwrap();
         assert!(shown.contains("+from feature"), "{shown}");
         std::fs::remove_dir_all(&dir).unwrap();
     }
@@ -2223,7 +2231,7 @@ mod tests {
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].message, "my work");
         assert_eq!(list[0].branch.as_deref(), Some("main"));
-        let patch = stash_show(repo, 0).unwrap();
+        let patch = stash_show(repo, 0, false).unwrap();
         assert!(
             patch.contains("+two") && patch.contains("+untracked"),
             "{patch}"
@@ -2242,6 +2250,41 @@ mod tests {
         assert!(dir.join("new.txt").exists(), "untracked stays without -u");
         stash_drop(repo, 0).unwrap();
         assert!(stashes(repo).unwrap().is_empty());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn ignores_whitespace_changes_when_asked() {
+        let dir = std::env::temp_dir().join(format!("gitgud-ws-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = dir.as_path();
+        run(repo, &["init", "-q", "-b", "main"]).unwrap();
+        run(repo, &["config", "user.name", "T"]).unwrap();
+        run(repo, &["config", "user.email", "t@x"]).unwrap();
+        run(repo, &["config", "commit.gpgsign", "false"]).unwrap();
+        std::fs::write(dir.join("f.txt"), "a\nb\n").unwrap();
+        stage(repo, &["f.txt".into()]).unwrap();
+        commit(repo, "init").unwrap();
+
+        // Re-indent one line and really change the other.
+        std::fs::write(dir.join("f.txt"), "    a\nc\n").unwrap();
+        let all = diff(repo, "f.txt", false, false, false).unwrap();
+        assert!(all.contains("+    a") && all.contains("+c"));
+        let w = diff(repo, "f.txt", false, false, true).unwrap();
+        assert!(!w.contains("+    a") && w.contains("+c"));
+
+        stage(repo, &["f.txt".into()]).unwrap();
+        commit(repo, "edit").unwrap();
+        let hash = log(repo, 1).unwrap()[0].hash.clone();
+        assert!(show_commit(repo, &hash, false).unwrap().contains("+    a"));
+        let shown = show_commit(repo, &hash, true).unwrap();
+        assert!(!shown.contains("+    a") && shown.contains("+c"));
+
+        std::fs::write(dir.join("f.txt"), "  a\nc\n").unwrap();
+        run(repo, &["stash", "push", "-q"]).unwrap();
+        assert!(stash_show(repo, 0, false).unwrap().contains("+  a"));
+        assert!(!stash_show(repo, 0, true).unwrap().contains("+  a"));
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
@@ -2276,16 +2319,16 @@ mod tests {
         };
 
         // Stage only the first edit.
-        let d = diff(repo, "f.txt", false, false).unwrap();
+        let d = diff(repo, "f.txt", false, false, false).unwrap();
         let picked = [index_of(&d, "-line 2"), index_of(&d, "+line 2 edited")];
         apply_lines(repo, &d, &picked, LineAction::Stage).unwrap();
-        let staged = diff(repo, "f.txt", true, false).unwrap();
+        let staged = diff(repo, "f.txt", true, false, false).unwrap();
         assert!(staged.contains("+line 2 edited") && !staged.contains("line 18 edited"));
-        let unstaged = diff(repo, "f.txt", false, false).unwrap();
+        let unstaged = diff(repo, "f.txt", false, false, false).unwrap();
         assert!(unstaged.contains("+line 18 edited") && !unstaged.contains("line 2 edited"));
 
         // Unstage just the added line: the index loses "line 2" entirely.
-        let s = diff(repo, "f.txt", true, false).unwrap();
+        let s = diff(repo, "f.txt", true, false, false).unwrap();
         apply_lines(
             repo,
             &s,
@@ -2293,7 +2336,7 @@ mod tests {
             LineAction::Unstage,
         )
         .unwrap();
-        let staged = diff(repo, "f.txt", true, false).unwrap();
+        let staged = diff(repo, "f.txt", true, false, false).unwrap();
         assert!(
             staged.contains("-line 2") && !staged.contains("+line 2 edited"),
             "{staged}"
@@ -2301,7 +2344,7 @@ mod tests {
         unstage(repo, &["f.txt".into()]).unwrap();
 
         // Discard only the second edit from the working tree.
-        let d = diff(repo, "f.txt", false, false).unwrap();
+        let d = diff(repo, "f.txt", false, false, false).unwrap();
         let picked = [index_of(&d, "-line 18"), index_of(&d, "+line 18 edited")];
         apply_lines(repo, &d, &picked, LineAction::Discard).unwrap();
         let now = std::fs::read_to_string(dir.join("f.txt")).unwrap();
@@ -2338,20 +2381,20 @@ mod tests {
 
         // Untracked file: stage two of three lines.
         std::fs::write(dir.join("new file.txt"), "a\nb\nc\n").unwrap();
-        let d = diff(repo, "new file.txt", false, true).unwrap();
+        let d = diff(repo, "new file.txt", false, true, false).unwrap();
         let picked = [index_of(&d, "+a"), index_of(&d, "+c")];
         apply_lines(repo, &d, &picked, LineAction::Stage).unwrap();
         assert_eq!(staged_text("new file.txt"), "a\nc\n");
-        let rest = diff(repo, "new file.txt", false, false).unwrap();
+        let rest = diff(repo, "new file.txt", false, false, false).unwrap();
         assert!(rest.contains("+b") && !rest.contains("+a"), "{rest}");
 
         // Unstage one of them: the file stays added, with one line.
-        let s = diff(repo, "new file.txt", true, false).unwrap();
+        let s = diff(repo, "new file.txt", true, false, false).unwrap();
         apply_lines(repo, &s, &[index_of(&s, "+a")], LineAction::Unstage).unwrap();
         assert_eq!(staged_text("new file.txt"), "c\n");
 
         // Unstage the last line: the file is no longer in the index.
-        let s = diff(repo, "new file.txt", true, false).unwrap();
+        let s = diff(repo, "new file.txt", true, false, false).unwrap();
         apply_lines(repo, &s, &[index_of(&s, "+c")], LineAction::Unstage).unwrap();
         assert!(status(repo)
             .unwrap()
@@ -2360,7 +2403,7 @@ mod tests {
             .any(|f| f.path == "new file.txt" && f.untracked));
 
         // Discard one line of the untracked file.
-        let d = diff(repo, "new file.txt", false, true).unwrap();
+        let d = diff(repo, "new file.txt", false, true, false).unwrap();
         apply_lines(repo, &d, &[index_of(&d, "+b")], LineAction::Discard).unwrap();
         assert_eq!(
             std::fs::read_to_string(dir.join("new file.txt")).unwrap(),
@@ -2369,22 +2412,22 @@ mod tests {
 
         // Deleted file: stage the removal of one line, then unstage it again.
         std::fs::remove_file(dir.join("old.txt")).unwrap();
-        let d = diff(repo, "old.txt", false, false).unwrap();
+        let d = diff(repo, "old.txt", false, false, false).unwrap();
         apply_lines(repo, &d, &[index_of(&d, "-y")], LineAction::Stage).unwrap();
         assert_eq!(staged_text("old.txt"), "x\nz\n");
-        let s = diff(repo, "old.txt", true, false).unwrap();
+        let s = diff(repo, "old.txt", true, false, false).unwrap();
         apply_lines(repo, &s, &[index_of(&s, "-y")], LineAction::Unstage).unwrap();
         assert_eq!(staged_text("old.txt"), "x\ny\nz\n");
 
         // Staged deletion: unstage one line, which puts the file back with it.
         stage(repo, &["old.txt".into()]).unwrap();
-        let s = diff(repo, "old.txt", true, false).unwrap();
+        let s = diff(repo, "old.txt", true, false, false).unwrap();
         apply_lines(repo, &s, &[index_of(&s, "-z")], LineAction::Unstage).unwrap();
         assert_eq!(staged_text("old.txt"), "z\n");
 
         // Discard one removal: the deleted file comes back with just that line.
         unstage(repo, &["old.txt".into()]).unwrap();
-        let d = diff(repo, "old.txt", false, false).unwrap();
+        let d = diff(repo, "old.txt", false, false, false).unwrap();
         apply_lines(repo, &d, &[index_of(&d, "-x")], LineAction::Discard).unwrap();
         assert_eq!(std::fs::read_to_string(dir.join("old.txt")).unwrap(), "x\n");
         std::fs::remove_dir_all(&dir).unwrap();

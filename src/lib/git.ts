@@ -295,8 +295,20 @@ export const git = {
     invoke<void>('amend', { repo, message }),
   lastCommit: (repo: string) =>
     invoke<LastCommit | null>('last_commit', { repo }),
-  diff: (repo: string, path: string, staged: boolean, untracked: boolean) =>
-    invoke<string>('diff', { repo, path, staged, untracked }),
+  diff: (
+    repo: string,
+    path: string,
+    staged: boolean,
+    untracked: boolean,
+    ignoreWhitespace = false,
+  ) =>
+    invoke<string>('diff', {
+      repo,
+      path,
+      staged,
+      untracked,
+      ignoreWhitespace,
+    }),
   branches: (repo: string) => invoke<Branch[]>('branches', { repo }),
   switchBranch: (repo: string, name: string) =>
     invoke<void>('switch_branch', { repo, name }),
@@ -317,8 +329,8 @@ export const git = {
   /** Graph rows for `commits` (hash and parents, newest first). */
   graphLayout: (commits: [string, string[]][]) =>
     invoke<GraphRow[]>('graph_layout', { commits }),
-  showCommit: (repo: string, hash: string) =>
-    invoke<string>('show_commit', { repo, hash }),
+  showCommit: (repo: string, hash: string, ignoreWhitespace = false) =>
+    invoke<string>('show_commit', { repo, hash, ignoreWhitespace }),
   merge: (repo: string, branch: string) =>
     invoke<{ conflicts: boolean }>('merge', { repo, branch }),
   mergeAbort: (repo: string) => invoke<void>('merge_abort', { repo }),
@@ -370,8 +382,8 @@ export const git = {
     invoke<void>('stash_pop', { repo, index }),
   stashDrop: (repo: string, index: number) =>
     invoke<void>('stash_drop', { repo, index }),
-  stashShow: (repo: string, index: number) =>
-    invoke<string>('stash_show', { repo, index }),
+  stashShow: (repo: string, index: number, ignoreWhitespace = false) =>
+    invoke<string>('stash_show', { repo, index, ignoreWhitespace }),
   fetch: (repo: string) => invoke<void>('fetch', { repo }),
   /** Without a mode, follows `pull.rebase` or only fast-forwards. */
   pull: (repo: string, mode: PullMode | null = null, remember = false) =>

@@ -1,9 +1,10 @@
-import { MoreHorizontal, Sparkles } from 'lucide-react'
+import { Columns2, MoreHorizontal, Space, Sparkles } from 'lucide-react'
 import type { FileStatus } from '../lib/diff'
 import { fileMenuItems } from '../lib/copy'
 import { basename, dirname } from '../lib/paths'
 import { useContextMenu } from './ContextMenu'
 import CopyButton from './CopyButton'
+import { setDiffPref, useDiffPrefs } from '../lib/diffPrefs'
 import { useTranslation } from '../i18n'
 
 export const STATUS_STYLE: Record<FileStatus, [string, string]> = {
@@ -53,6 +54,7 @@ export default function FileHeader({
 }: Props) {
   const { t } = useTranslation()
   const { menu, open } = useContextMenu()
+  const prefs = useDiffPrefs()
   const items = () =>
     fileMenuItems(repo, path, exists, onHistory && (() => onHistory(path)))
   const dir = dirname(path)
@@ -70,6 +72,20 @@ export default function FileHeader({
         <span className="font-medium">{basename(path)}</span>
       </div>
       <LineCounts add={additions} del={deletions} />
+      <Toggle
+        on={prefs.ignoreWhitespace}
+        title={t('fileheader.ignore-whitespace')}
+        onClick={() => setDiffPref('ignoreWhitespace', !prefs.ignoreWhitespace)}
+      >
+        <Space className="size-4" />
+      </Toggle>
+      <Toggle
+        on={prefs.split}
+        title={t('fileheader.side-by-side')}
+        onClick={() => setDiffPref('split', !prefs.split)}
+      >
+        <Columns2 className="size-4" />
+      </Toggle>
       <CopyButton text={path} title={t('fileheader.copy-path')} />
       {onExplain && (
         <button
@@ -89,5 +105,31 @@ export default function FileHeader({
       </button>
       {menu}
     </div>
+  )
+}
+
+/** An icon button that stays highlighted while its setting is on. */
+function Toggle({
+  on,
+  title,
+  onClick,
+  children,
+}: {
+  on: boolean
+  title: string
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      title={title}
+      aria-pressed={on}
+      onClick={onClick}
+      className={`shrink-0 rounded p-0.5 hover:bg-hover ${
+        on ? 'bg-hover text-accent' : 'text-muted hover:text-fg'
+      }`}
+    >
+      {children}
+    </button>
   )
 }

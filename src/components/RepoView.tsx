@@ -37,6 +37,7 @@ import { useTranslation, type Translate } from '../i18n'
 import { useSync } from './SyncActions'
 import { useRepoCommands, type Tab } from './RepoCommands'
 import { usePullRequests } from './PullRequests'
+import { useDiffPrefs } from '../lib/diffPrefs'
 
 /** What the right-hand pane is showing. */
 export type Selection =
@@ -96,6 +97,7 @@ export default function RepoView({
   const [filtered, setFiltered] = useState<Commit[] | null>(null)
   const [logLimit, setLogLimit] = useState(HISTORY_PAGE)
   const [diff, setDiff] = useState('')
+  const { ignoreWhitespace } = useDiffPrefs()
   const [focusSearch, setFocusSearch] = useState(0)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -201,16 +203,20 @@ export default function RepoView({
     const load = async () => {
       if (!selection) return ''
       if (selection.kind === 'commit')
-        return git.showCommit(repo.path, selection.commit.hash)
+        return git.showCommit(
+          repo.path,
+          selection.commit.hash,
+          ignoreWhitespace,
+        )
       if (selection.kind === 'stash')
-        return git.stashShow(repo.path, selection.stash.index)
+        return git.stashShow(repo.path, selection.stash.index, ignoreWhitespace)
       const { file, staged } = selection
       // Staging some lines of an untracked file makes it tracked, so ask the
       // latest status rather than the selection, which was taken before.
       const untracked =
         status?.files.find((f) => f.path === file.path)?.untracked ??
         file.untracked
-      return git.diff(repo.path, file.path, staged, untracked)
+      return git.diff(repo.path, file.path, staged, untracked, ignoreWhitespace)
     }
     load()
       .then((d) => !cancelled && setDiff(d))
@@ -222,7 +228,7 @@ export default function RepoView({
     return () => {
       cancelled = true
     }
-  }, [repo.path, selection, status])
+  }, [repo.path, selection, status, ignoreWhitespace])
 
   // The graph and branch labels need more room than file lists, so History
   // starts wider and remembers its own width.

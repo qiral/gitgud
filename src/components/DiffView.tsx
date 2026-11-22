@@ -2,7 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { confirm } from '@tauri-apps/plugin-dialog'
 import type { LineAction } from '../lib/git'
 import { useVirtualRows } from '../lib/virtual'
-import { parseDiff, type Line, type LineKind } from '../lib/diff'
+import {
+  parseDiff,
+  splitRows,
+  wordHighlights,
+  type Line,
+  type LineKind,
+  type Segment,
+} from '../lib/diff'
+import { setDiffPref, useDiffPrefs } from '../lib/diffPrefs'
 import { useTranslation } from '../i18n'
 
 const isChange = (l: Line) => l.kind === 'add' || l.kind === 'remove'
@@ -35,6 +43,17 @@ const ROW: Record<LineKind, string> = {
   meta: 'text-muted',
 }
 
+/** The stronger highlight on the words that changed within a line. */
+const WORD: Partial<Record<LineKind, string>> = {
+  add: 'rounded-sm bg-added/25',
+  remove: 'rounded-sm bg-removed/25',
+}
+
+const SIGN_COLOR: Partial<Record<LineKind, string>> = {
+  add: 'text-added',
+  remove: 'text-removed',
+}
+
 const SIGN: Record<LineKind, string> = {
   add: '+',
   remove: '-',
@@ -54,22 +73,28 @@ interface Props {
 
 export default function DiffView({ diff, actions: rawActions }: Props) {
   const { t, tp } = useTranslation()
+  const { split, ignoreWhitespace } = useDiffPrefs()
   const lines = useMemo(() => parseDiff(diff), [diff])
-  const actions = rawActions && !BINARY.test(diff) ? rawActions : undefined
+  const words = useMemo(() => wordHighlights(lines), [lines])
+  const pairs = useMemo(() => (split ? splitRows(lines) : null), [lines, split])
+  const binary = BINARY.test(diff)
+  // A diff without whitespace changes can't be applied back to the files,
+  // so picking lines waits until whitespace is shown again.
+  const actions =
+    rawActions && !binary && !ignoreWhitespace ? rawActions : undefined
+  const stagingPaused = !!rawActions && !binary && ignoreWhitespace
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [anchor, setAnchor] = useState<number | null>(null)
-  const virtual = lines.length >= VIRTUAL_FROM
-  const rows = useVirtualRows<HTMLTableElement>(
-    lines.length,
-    ROW_HEIGHT,
-    virtual,
-  )
+  const rowCount = pairs ? pairs.length : lines.length
+  const virtual = rowCount >= VIRTUAL_FROM
+  const rows = useVirtualRows<HTMLTableElement>(rowCount, ROW_HEIGHT, virtual)
   // Only some rows exist at a time, so they can't size the table's width;
-  // reserve room for the longest line up front instead.
-  const minWidth = useMemo(
-    () => (virtual ? `calc(8.25rem + ${longestLine(lines)}ch)` : undefined),
-    [lines, virtual],
-  )
+  // reserve room for the longest line up front instead. Side by side, both
+  // halves get that room so long lines scroll instead of squeezing.
+  const minWidth = useMemo(() => {
+    if (split) return `calc(8.5rem + ${2 * longestLine(lines) + 4}ch)`
+    return virtual ? `calc(8.25rem + ${longestLine(lines)}ch)` : undefined
+  }, [lines, virtual, split])
 
   // A new diff means new line numbers; old selections no longer apply.
   useEffect(() => {
@@ -78,7 +103,14 @@ export default function DiffView({ diff, actions: rawActions }: Props) {
   }, [diff])
 
   if (!diff.trim())
-    return (
+    return ignoreWhitespace ? (
+      <div className="flex flex-col items-start gap-2 p-6 text-muted">
+        <p>{t('diffview.only-whitespace')}</p>
+        <ActionButton onClick={() => setDiffPref('ignoreWhitespace', false)}>
+          {t('diffview.show-whitespace')}
+        </ActionButton>
+      </div>
+    ) : (
       <p className="p-6 text-muted">
         No textual changes (binary file or mode change).
       </p>
@@ -118,8 +150,121 @@ export default function DiffView({ diff, actions: rawActions }: Props) {
   const primary: LineAction = actions?.staged ? 'unstage' : 'stage'
   const count = selected.size
 
+  /** A line-number cell; clicking it selects a changed line. */
+  const gutter = (
+    line: Line | undefined,
+    no: number | undefined,
+    edge = '',
+  ) => {
+    const selectable = actions && line && isChange(line)
+    const isSelected = line && selected.has(line.index)
+    return (
+      <td
+        onClick={(e) => selectable && toggle(line, e.shiftKey)}
+        className={`w-12 pr-2 text-right text-muted/70 select-none ${edge} ${
+          selectable ? 'cursor-pointer' : ''
+        } ${isSelected ? 'bg-accent/30' : ''}`}
+        title={selectable ? t('diffview.select-hint') : ''}
+      >
+        {no}
+      </td>
+    )
+  }
+
+  const sign = (line: Line) => (
+    <td
+      className={`w-5 text-center select-none ${SIGN_COLOR[line.kind] ?? ''}`}
+    >
+      {SIGN[line.kind]}
+    </td>
+  )
+
+  const text = (line: Line) => {
+    const segments = words.get(line.index)
+    return segments ? <Words segments={segments} kind={line.kind} /> : line.text
+  }
+
+  /** A hunk header with its buttons, or (side by side) a meta line, across
+   *  the whole row. `span` is the table's column count. */
+  const fullRow = (line: Line, span: number) => (
+    <tr key={line.index} className={`group ${ROW[line.kind]}`}>
+      {/* Skip the line numbers and sign so the text lines up with the code. */}
+      <td colSpan={span === 4 ? 3 : 2} />
+      <td colSpan={span === 4 ? 1 : span - 2} className="pr-4 whitespace-pre">
+        {line.kind === 'hunk' && actions ? (
+          <div className="flex items-center gap-2">
+            <span className="min-w-0 flex-1 truncate">{line.text}</span>
+            <span className="invisible flex gap-1 font-sans group-hover:visible">
+              <ActionButton
+                primary
+                onClick={() => apply(hunkLines(line.hunk), primary)}
+              >
+                {actions.staged
+                  ? t('diffview.unstage-hunk')
+                  : t('diffview.stage-hunk')}
+              </ActionButton>
+              {!actions.staged && (
+                <ActionButton
+                  onClick={() => apply(hunkLines(line.hunk), 'discard')}
+                >
+                  {t('diffview.discard-hunk')}
+                </ActionButton>
+              )}
+            </span>
+          </div>
+        ) : (
+          line.text
+        )}
+      </td>
+    </tr>
+  )
+
+  /** One side of a side-by-side row; blank where the other side has more. */
+  const half = (line: Line | undefined, side: 'old' | 'new') => {
+    if (!line)
+      return (
+        <>
+          <td
+            className={`bg-panel ${side === 'new' ? 'border-l border-line' : ''}`}
+          />
+          <td className="bg-panel" />
+          <td className="bg-panel" />
+        </>
+      )
+    const isSelected = selected.has(line.index)
+    return (
+      <>
+        {gutter(
+          line,
+          side === 'old' ? line.oldNo : line.newNo,
+          `${ROW[line.kind]} ${side === 'new' ? 'border-l border-line' : ''}`,
+        )}
+        <td
+          className={`w-5 text-center select-none ${ROW[line.kind]} ${SIGN_COLOR[line.kind] ?? ''}`}
+        >
+          {SIGN[line.kind]}
+        </td>
+        <td
+          className={`overflow-hidden pr-4 whitespace-pre ${ROW[line.kind]} ${
+            isSelected ? 'outline-1 -outline-offset-1 outline-accent' : ''
+          }`}
+        >
+          {text(line)}
+        </td>
+      </>
+    )
+  }
+
   return (
     <div>
+      {stagingPaused && (
+        <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-line bg-panel px-3 py-2 text-muted">
+          <span className="flex-1">{t('diffview.staging-paused')}</span>
+          <ActionButton onClick={() => setDiffPref('ignoreWhitespace', false)}>
+            {t('diffview.show-whitespace')}
+          </ActionButton>
+        </div>
+      )}
       {actions && count > 0 && (
         <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-line bg-panel px-3 py-2">
           <span className="text-muted">
@@ -144,92 +289,75 @@ export default function DiffView({ diff, actions: rawActions }: Props) {
       <table
         ref={rows.ref}
         style={{ minWidth }}
-        className="w-full border-collapse font-mono text-xs leading-5 select-text"
+        className={`w-full border-collapse font-mono text-xs leading-5 select-text ${
+          pairs ? 'table-fixed' : ''
+        }`}
       >
+        {pairs && (
+          <colgroup>
+            <col className="w-12" />
+            <col className="w-5" />
+            <col />
+            <col className="w-12" />
+            <col className="w-5" />
+            <col />
+          </colgroup>
+        )}
         <tbody>
           {rows.top > 0 && <tr aria-hidden style={{ height: rows.top }} />}
-          {lines.slice(rows.start, rows.end).map((line) => {
-            const selectable = actions && isChange(line)
-            const isSelected = selected.has(line.index)
-            return (
-              <tr
-                key={line.index}
-                className={`group ${ROW[line.kind]} ${
-                  isSelected ? 'outline-1 -outline-offset-1 outline-accent' : ''
-                }`}
-              >
-                <td
-                  colSpan={line.kind === 'hunk' ? 3 : 1}
-                  onClick={(e) => selectable && toggle(line, e.shiftKey)}
-                  className={`w-12 pr-2 text-right text-muted/70 select-none ${
-                    selectable ? 'cursor-pointer' : ''
-                  } ${isSelected ? 'bg-accent/30' : ''}`}
-                  title={selectable ? t('diffview.select-hint') : ''}
-                >
-                  {line.kind !== 'hunk' && line.oldNo}
-                </td>
-                {line.kind !== 'hunk' && (
-                  <>
-                    <td
-                      onClick={(e) => selectable && toggle(line, e.shiftKey)}
-                      className={`w-12 border-r border-line pr-2 text-right text-muted/70 select-none ${
-                        selectable ? 'cursor-pointer' : ''
-                      } ${isSelected ? 'bg-accent/30' : ''}`}
-                    >
-                      {line.newNo}
-                    </td>
-                    <td
-                      className={`w-5 text-center select-none ${
-                        line.kind === 'add'
-                          ? 'text-added'
-                          : line.kind === 'remove'
-                            ? 'text-removed'
-                            : ''
-                      }`}
-                    >
-                      {SIGN[line.kind]}
-                    </td>
-                  </>
-                )}
-                <td className="pr-4 whitespace-pre">
-                  {line.kind === 'hunk' && actions ? (
-                    <div className="flex items-center gap-2">
-                      <span className="min-w-0 flex-1 truncate">
-                        {line.text}
-                      </span>
-                      <span className="invisible flex gap-1 font-sans group-hover:visible">
-                        <ActionButton
-                          primary
-                          onClick={() => apply(hunkLines(line.hunk), primary)}
-                        >
-                          {actions.staged
-                            ? t('diffview.unstage-hunk')
-                            : t('diffview.stage-hunk')}
-                        </ActionButton>
-                        {!actions.staged && (
-                          <ActionButton
-                            onClick={() =>
-                              apply(hunkLines(line.hunk), 'discard')
-                            }
-                          >
-                            {t('diffview.discard-hunk')}
-                          </ActionButton>
-                        )}
-                      </span>
-                    </div>
-                  ) : (
-                    line.text
-                  )}
-                </td>
-              </tr>
-            )
-          })}
+          {pairs
+            ? pairs.slice(rows.start, rows.end).map((row) =>
+                row.kind === 'full' ? (
+                  fullRow(row.line, 6)
+                ) : (
+                  <tr key={row.key}>
+                    {half(row.left, 'old')}
+                    {half(row.right, 'new')}
+                  </tr>
+                ),
+              )
+            : lines.slice(rows.start, rows.end).map((line) => {
+                if (line.kind === 'hunk') return fullRow(line, 4)
+                const isSelected = selected.has(line.index)
+                return (
+                  <tr
+                    key={line.index}
+                    className={`${ROW[line.kind]} ${
+                      isSelected
+                        ? 'outline-1 -outline-offset-1 outline-accent'
+                        : ''
+                    }`}
+                  >
+                    {gutter(line, line.oldNo)}
+                    {gutter(line, line.newNo, 'border-r border-line')}
+                    {sign(line)}
+                    <td className="pr-4 whitespace-pre">{text(line)}</td>
+                  </tr>
+                )
+              })}
           {rows.bottom > 0 && (
             <tr aria-hidden style={{ height: rows.bottom }} />
           )}
         </tbody>
       </table>
     </div>
+  )
+}
+
+/** A changed line with the words that differ from its counterpart marked. */
+function Words({ segments, kind }: { segments: Segment[]; kind: LineKind }) {
+  return (
+    <>
+      {segments.map((s, i) =>
+        s.changed ? (
+          <span key={i} className={WORD[kind]}>
+            {s.text}
+          </span>
+        ) : (
+          <span key={i}>{s.text}</span>
+        ),
+      )}
+    </>
   )
 }
 

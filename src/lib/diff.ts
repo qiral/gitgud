@@ -241,3 +241,128 @@ export function diffLines(before: string[], after: string[]): DiffLine[] {
   while (j < m) out.push({ kind: 'add', text: after[j++] })
   return out
 }
+
+/** Part of a changed line; `changed` parts get a stronger highlight. */
+export interface Segment {
+  text: string
+  changed: boolean
+}
+
+/** Past this many tokens per line, word highlights aren't worth the cost. */
+const MAX_TOKENS = 400
+
+/** Words, runs of whitespace, and single other characters. */
+const tokenize = (s: string) => s.match(/\w+|\s+|[^\w\s]/g) ?? []
+
+function merge(segments: Segment[], text: string, changed: boolean) {
+  const last = segments[segments.length - 1]
+  if (last && last.changed === changed) last.text += text
+  else segments.push({ text, changed })
+}
+
+/**
+ * Which words differ between a removed line and the added line that
+ * replaced it. Null when the lines have too little in common for word
+ * highlights to help, or are too long to compare cheaply.
+ */
+export function wordDiff(
+  before: string,
+  after: string,
+): [Segment[], Segment[]] | null {
+  const a = tokenize(before)
+  const b = tokenize(after)
+  if (a.length > MAX_TOKENS || b.length > MAX_TOKENS) return null
+
+  const steps = diffLines(a, b)
+  const left: Segment[] = []
+  const right: Segment[] = []
+  let same = 0
+  for (const s of steps) {
+    if (s.kind === 'context') {
+      if (s.text.trim()) same += s.text.length
+      merge(left, s.text, false)
+      merge(right, s.text, false)
+    } else if (s.kind === 'remove') merge(left, s.text, true)
+    else merge(right, s.text, true)
+  }
+  // Mostly rewritten: highlighting nearly everything is just noise.
+  const visible = (t: string) => t.replace(/\s+/g, '').length
+  const longest = Math.max(visible(before), visible(after))
+  if (longest === 0 || same / longest < 0.4) return null
+  return [left, right]
+}
+
+/** A run of removals followed by additions, in one hunk. */
+function changeBlocks(lines: Line[]) {
+  const blocks: { removed: Line[]; added: Line[] }[] = []
+  let current: { removed: Line[]; added: Line[] } | null = null
+  for (const l of lines) {
+    if (l.kind === 'remove') {
+      if (!current || current.added.length) {
+        current = { removed: [], added: [] }
+        blocks.push(current)
+      }
+      current.removed.push(l)
+    } else if (l.kind === 'add') {
+      if (!current) {
+        current = { removed: [], added: [] }
+        blocks.push(current)
+      }
+      current.added.push(l)
+    } else current = null
+  }
+  return blocks
+}
+
+/** Word highlights for every changed line that has a counterpart: the n-th
+ *  removal of a block is paired with its n-th addition. Keyed by line index. */
+export function wordHighlights(lines: Line[]): Map<number, Segment[]> {
+  const out = new Map<number, Segment[]>()
+  for (const { removed, added } of changeBlocks(lines)) {
+    const n = Math.min(removed.length, added.length)
+    for (let i = 0; i < n; i++) {
+      const pair = wordDiff(removed[i].text, added[i].text)
+      if (!pair) continue
+      out.set(removed[i].index, pair[0])
+      out.set(added[i].index, pair[1])
+    }
+  }
+  return out
+}
+
+/** One row of a side-by-side diff. Hunk and meta lines span both sides. */
+export type SplitRow =
+  | { kind: 'full'; line: Line }
+  | { kind: 'pair'; left?: Line; right?: Line; key: number }
+
+/** Lays a parsed diff out side by side: context on both sides, removals on
+ *  the left next to the additions that replaced them on the right. */
+export function splitRows(lines: Line[]): SplitRow[] {
+  const rows: SplitRow[] = []
+  let removed: Line[] = []
+  let added: Line[] = []
+  const flush = () => {
+    const n = Math.max(removed.length, added.length)
+    for (let i = 0; i < n; i++) {
+      const left = removed[i]
+      const right = added[i]
+      rows.push({ kind: 'pair', left, right, key: (left ?? right)!.index })
+    }
+    removed = []
+    added = []
+  }
+  for (const l of lines) {
+    if (l.kind === 'remove') {
+      if (added.length) flush()
+      removed.push(l)
+    } else if (l.kind === 'add') added.push(l)
+    else {
+      flush()
+      if (l.kind === 'context')
+        rows.push({ kind: 'pair', left: l, right: l, key: l.index })
+      else rows.push({ kind: 'full', line: l })
+    }
+  }
+  flush()
+  return rows
+}
