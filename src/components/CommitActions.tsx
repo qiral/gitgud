@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react'
 import { git, type Commit, type ResetMode, type Status } from '../lib/git'
 import Dialog from './Dialog'
 import PromptDialog from './PromptDialog'
+import { useTranslation, type Translate } from '../i18n'
 
 /** What can be done to a commit in History. Unset entries are hidden. */
 export interface CommitActions {
@@ -32,6 +33,7 @@ export function useCommitActions(
   status: Status | null,
   act: Act,
 ): { actions: CommitActions; dialogs: React.ReactNode } {
+  const { t } = useTranslation()
   const [open, setOpen] = useState<Open | null>(null)
   const close = () => setOpen(null)
   const branch = status?.branch ?? null
@@ -40,17 +42,26 @@ export function useCommitActions(
   const onBranch = branch !== null && !status?.merging && !status?.rebasing
 
   async function deleteTag(name: string) {
-    const ok = await confirm(
-      `Delete the tag ${name}? If it was pushed, the remote keeps its copy.`,
-      { title: 'Delete tag', kind: 'warning', okLabel: 'Delete' },
-    )
+    const ok = await confirm(t('commitactions.delete-tag-body', { name }), {
+      title: t('commitactions.delete-tag'),
+      kind: 'warning',
+      okLabel: t('commitactions.delete'),
+    })
     if (ok) act('tag', () => git.deleteTag(repo, name))
   }
 
   async function revert(c: Commit) {
     const ok = await confirm(
-      `Add a commit to ${branch} that undoes “${c.subject}” (${c.shortHash})?`,
-      { title: 'Revert commit', kind: 'info', okLabel: 'Revert' },
+      t('commitactions.revert-body', {
+        branch,
+        subject: c.subject,
+        hash: c.shortHash,
+      }),
+      {
+        title: t('commitactions.revert-commit'),
+        kind: 'info',
+        okLabel: t('commitactions.revert'),
+      },
     )
     if (ok) act('revert', () => git.revert(repo, c.hash))
   }
@@ -71,11 +82,14 @@ export function useCommitActions(
   const dialogs =
     open?.kind === 'branch' ? (
       <PromptDialog
-        title="Create branch"
-        label="Branch name"
-        description={`Starts at ${open.commit.shortHash} “${open.commit.subject}”, and switches to it.`}
+        title={t('commitactions.create-branch')}
+        label={t('commitactions.branch-name')}
+        description={t('commitactions.create-branch-desc', {
+          hash: open.commit.shortHash,
+          subject: open.commit.subject,
+        })}
         placeholder="feature/my-idea"
-        submitLabel="Create branch"
+        submitLabel={t('commitactions.create-branch')}
         onSubmit={(name) =>
           act('branch', () => git.createBranchAt(repo, name, open.commit.hash))
         }
@@ -108,14 +122,18 @@ function TagDialog({
   act: Act
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const [message, setMessage] = useState('')
   return (
     <PromptDialog
-      title="Create tag"
-      label="Tag name"
-      description={`Tags ${commit.shortHash} “${commit.subject}”.`}
-      placeholder="v1.0.0"
-      submitLabel="Create tag"
+      title={t('commitactions.create-tag')}
+      label={t('commitactions.tag-name')}
+      description={t('commitactions.create-tag-desc', {
+        hash: commit.shortHash,
+        subject: commit.subject,
+      })}
+      placeholder={t('commitactions.v1-0-0')}
+      submitLabel={t('commitactions.create-tag')}
       onSubmit={(name) =>
         act('tag', () => git.createTag(repo, name, commit.hash, message))
       }
@@ -135,21 +153,23 @@ function TagDialog({
   )
 }
 
-const MODES: { mode: ResetMode; label: string; hint: string }[] = [
+const MODES = (
+  t: Translate,
+): { mode: ResetMode; label: string; hint: string }[] => [
   {
     mode: 'soft',
-    label: 'Soft',
-    hint: 'Keep the changes of the later commits, staged.',
+    label: t('commitactions.soft'),
+    hint: t('commitactions.hint-soft'),
   },
   {
     mode: 'mixed',
-    label: 'Mixed',
-    hint: 'Keep the changes of the later commits, unstaged.',
+    label: t('commitactions.mixed'),
+    hint: t('commitactions.hint-mixed'),
   },
   {
     mode: 'hard',
-    label: 'Hard',
-    hint: 'Throw away the later commits and all uncommitted changes.',
+    label: t('commitactions.hard'),
+    hint: t('commitactions.hint-hard'),
   },
 ]
 
@@ -169,6 +189,7 @@ export function ResetDialog({
   act: Act
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const [mode, setMode] = useState<ResetMode>('mixed')
   const [busy, setBusy] = useState(false)
 
@@ -178,9 +199,13 @@ export function ResetDialog({
       mode === 'hard' &&
       !(await confirm(
         dirty
-          ? 'Your uncommitted changes and every commit after this one are lost. This cannot be undone from GitGud.'
-          : 'Every commit after this one is lost. This cannot be undone from GitGud.',
-        { title: 'Hard reset', kind: 'warning', okLabel: 'Reset' },
+          ? t('commitactions.hard-reset-dirty')
+          : t('commitactions.hard-reset-clean'),
+        {
+          title: t('commitactions.hard-reset'),
+          kind: 'warning',
+          okLabel: t('commitactions.reset'),
+        },
       ))
     )
       return
@@ -191,16 +216,17 @@ export function ResetDialog({
   }
 
   return (
-    <Dialog title="Reset branch" onClose={onClose}>
+    <Dialog title={t('commitactions.reset-branch')} onClose={onClose}>
       <form onSubmit={submit} className="space-y-3">
         <p className="text-muted">
-          Move <span className="font-medium text-fg">{branch}</span> back to{' '}
+          {t('commitactions.move')}{' '}
+          <span className="font-medium text-fg">{branch}</span> back to{' '}
           <span className="font-mono">{commit.shortHash}</span> “
           {commit.subject}”. Pushed commits that get removed need a force push
           afterwards.
         </p>
         <div className="space-y-1">
-          {MODES.map((m) => (
+          {MODES(t).map((m) => (
             <label
               key={m.mode}
               className={`flex cursor-pointer gap-2 rounded border px-3 py-2 ${

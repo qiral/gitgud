@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { relativeTime } from './time'
+import { setLocale } from '../i18n'
 
 const NOW = 1_760_000_000
 
@@ -23,4 +24,20 @@ it.each([
   [NOW + 7200, rtf.format(2, 'hour')],
 ])('relativeTime(%i)', (time, label) => {
   expect(relativeTime(time)).toBe(label)
+})
+
+it('formats in an explicitly requested locale', () => {
+  const de = new Intl.RelativeTimeFormat('de', { numeric: 'auto' })
+  expect(relativeTime(NOW - 3 * 86400, 'de')).toBe(de.format(-3, 'day'))
+  expect(relativeTime(NOW - 3 * 86400, 'de')).toContain('Tag')
+})
+
+it('defaults to the app’s active language', () => {
+  setLocale('de')
+  try {
+    const de = new Intl.RelativeTimeFormat('de', { numeric: 'auto' })
+    expect(relativeTime(NOW - 86400)).toBe(de.format(-1, 'day'))
+  } finally {
+    setLocale('en')
+  }
 })

@@ -6,6 +6,7 @@ import { useContextMenu } from './ContextMenu'
 import DiffView from './DiffView'
 import FileHeader, { LineCounts, STATUS_STYLE } from './FileHeader'
 import { useResizable } from './Resizable'
+import { useTranslation } from '../i18n'
 
 interface Props {
   repo: string
@@ -32,6 +33,7 @@ export default function PatchView({
   onFileHistory,
   onExplainFile,
 }: Props) {
+  const { t } = useTranslation()
   const { files } = useMemo(() => splitDiff(patch), [patch])
   const [selected, setSelected] = useState(0)
   const { menu, open } = useContextMenu()
@@ -66,7 +68,9 @@ export default function PatchView({
     <div className="flex h-full min-h-0 flex-col">
       {header}
       {files.length === 0 ? (
-        <p className="p-6 text-muted">No file changes in this commit.</p>
+        <p className="p-6 text-muted">
+          {t('patchview.no-file-changes-in-this-commit')}
+        </p>
       ) : (
         <div className="flex min-h-0 flex-1">
           <div

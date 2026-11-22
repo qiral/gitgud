@@ -23,6 +23,7 @@ import { basename, dirname } from '../lib/paths'
 import { useContextMenu, type MenuItem } from './ContextMenu'
 import SuggestionDiff from './SuggestionDiff'
 import type { Selection } from './RepoView'
+import { useTranslation } from '../i18n'
 
 interface Props {
   repo: RepoInfo
@@ -60,6 +61,7 @@ export default function ChangesPanel({
   onGenerateMessage,
   act,
 }: Props) {
+  const { t, tp } = useTranslation()
   const [message, setMessage] = useState('')
   const [generating, setGenerating] = useState(false)
   // Copilot's message while it waits to be accepted over what was typed.
@@ -129,8 +131,14 @@ export default function ChangesPanel({
       if (
         amending.pushed &&
         !(await confirm(
-          'The last commit is already pushed. After amending it, your branch and the remote have different histories, and only a force push can update the remote.',
-          { title: 'Amend pushed commit', kind: 'warning', okLabel: 'Amend' },
+          t(
+            'changespanel.the-last-commit-is-already-pushed-after-amending-it-your-branch-and-the-remote-have-different-histories-and-only-a-force-push-can-update-the-remote',
+          ),
+          {
+            title: t('changespanel.amend-pushed-commit'),
+            kind: 'warning',
+            okLabel: t('changespanel.amend'),
+          },
         ))
       )
         return
@@ -156,27 +164,27 @@ export default function ChangesPanel({
         : 'merge'
 
   async function abortMerge() {
-    const ok = await confirm(
-      `Abort the ${what}? Your branch goes back to how it was before, and conflict resolutions are lost.`,
-      { title: `Abort ${what}`, kind: 'warning' },
-    )
+    const ok = await confirm(t('changespanel.abort-merge-body', { what }), {
+      title: t('changespanel.abort-what', { what }),
+      kind: 'warning',
+    })
     if (ok) act('merge', () => git.mergeAbort(repo.path))
   }
 
   async function abortRebase() {
     const ok = await confirm(
       rebasing?.editingHistory
-        ? 'Abort the rebase? Your branch goes back to how it was before you started editing history.'
-        : 'Abort the rebase? Your branch goes back to how it was before pulling.',
-      { title: 'Abort rebase', kind: 'warning' },
+        ? t('changespanel.abort-rebase-history')
+        : t('changespanel.abort-rebase-pull'),
+      { title: t('changespanel.abort-rebase'), kind: 'warning' },
     )
     if (ok) act('rebase', () => git.rebaseAbort(repo.path))
   }
 
   async function discard(file: FileChange) {
     const ok = await confirm(
-      `Discard changes to ${file.path}? This cannot be undone.`,
-      { title: 'Discard changes', kind: 'warning' },
+      t('changespanel.discard-file-body', { path: file.path }),
+      { title: t('changespanel.discard-changes'), kind: 'warning' },
     )
     if (ok) act('discard', () => git.discard(repo.path, [file.path]))
   }
@@ -188,20 +196,20 @@ export default function ChangesPanel({
       items.push(
         inStaged
           ? {
-              label: 'Unstage',
+              label: t('changespanel.unstage'),
               icon: Minus,
               onClick: () =>
                 act('unstage', () => git.unstage(repo.path, [f.path])),
             }
           : {
-              label: 'Stage',
+              label: t('changespanel.stage'),
               icon: Plus,
               onClick: () => act('stage', () => git.stage(repo.path, [f.path])),
             },
       )
       if (!inStaged && !f.untracked)
         items.push({
-          label: 'Discard changes…',
+          label: t('changespanel.discard-changes-2'),
           icon: Undo2,
           danger: true,
           onClick: () => discard(f),
@@ -232,30 +240,39 @@ export default function ChangesPanel({
               title={merging ?? undefined}
             >
               {merging ??
-                `${rebasing!.editingHistory ? 'Editing history of' : 'Rebasing'} ${rebasing!.branch} (step ${rebasing!.step} of ${rebasing!.total})`}
+                t('changespanel.rebase-status', {
+                  mode: rebasing!.editingHistory
+                    ? t('changespanel.editing-history-of')
+                    : t('changespanel.rebasing'),
+                  branch: rebasing!.branch,
+                  step: rebasing!.step,
+                  total: rebasing!.total,
+                })}
             </span>
           </div>
           <div className="mt-1 flex items-center gap-2 text-xs text-muted">
             <span className="flex-1">
               {conflicts.length > 0
-                ? `${conflicts.length} conflicted file${conflicts.length > 1 ? 's' : ''} to resolve`
+                ? tp('changespanel.conflicted-files', conflicts.length)
                 : merging
-                  ? `All conflicts resolved. Commit to finish the ${what}.`
-                  : 'All conflicts resolved. Continue to apply the next commits.'}
+                  ? t('changespanel.all-resolved-commit', { what })
+                  : t('changespanel.all-resolved-continue')}
             </span>
             <button
               onClick={merging ? abortMerge : abortRebase}
               disabled={busy}
               className="rounded border border-line px-2 py-0.5 text-fg hover:bg-hover disabled:opacity-40"
             >
-              {merging ? `Abort ${what}` : 'Abort'}
+              {merging
+                ? t('changespanel.abort-what', { what })
+                : t('changespanel.abort')}
             </button>
           </div>
         </div>
       )}
       <div className="min-h-0 flex-1 overflow-auto">
         <FileList
-          title="Conflicts"
+          title={t('changespanel.conflicts')}
           onMenu={(e, f) => open(e, menuFor(f, false))}
           files={conflicts}
           staged={false}
@@ -263,7 +280,7 @@ export default function ChangesPanel({
           onSelect={(file) => onSelect({ kind: 'file', file, staged: false })}
         />
         <FileList
-          title="Staged"
+          title={t('changespanel.staged')}
           onMenu={(e, f) => open(e, menuFor(f, true))}
           files={staged}
           staged
@@ -278,7 +295,7 @@ export default function ChangesPanel({
           }
         />
         <FileList
-          title="Changes"
+          title={t('changespanel.changes')}
           onMenu={(e, f) => open(e, menuFor(f, false))}
           files={unstaged}
           staged={false}
@@ -292,7 +309,9 @@ export default function ChangesPanel({
           onDiscard={discard}
         />
         {files.length === 0 && (
-          <p className="p-6 text-center text-muted">No local changes</p>
+          <p className="p-6 text-center text-muted">
+            {t('changespanel.no-local-changes')}
+          </p>
         )}
       </div>
       {menu}
@@ -308,10 +327,15 @@ export default function ChangesPanel({
             disabled={rebasing !== null}
             placeholder={
               rebasing
-                ? 'Commits keep their messages while rebasing'
+                ? t('changespanel.placeholder-rebasing')
                 : merging
-                  ? `${what === 'merge' ? 'Merge' : 'Commit'} message (optional)`
-                  : 'Commit message'
+                  ? t('changespanel.placeholder-message-what', {
+                      what:
+                        what === 'merge'
+                          ? t('changespanel.merge')
+                          : t('changespanel.commit'),
+                    })
+                  : t('changespanel.placeholder-commit-message')
             }
             rows={3}
             className="w-full resize-none rounded border border-line bg-bg p-2 pr-8 outline-none select-text focus:border-accent"
@@ -326,8 +350,10 @@ export default function ChangesPanel({
                 merging !== null ||
                 rebasing !== null
               }
-              title="Generate commit message with Copilot"
-              aria-label="Generate commit message with Copilot"
+              title={t('changespanel.generate-commit-message-with-copilot')}
+              aria-label={t(
+                'changespanel.generate-commit-message-with-copilot',
+              )}
               className="absolute top-1.5 right-1.5 rounded p-1 text-muted hover:bg-hover hover:text-fg disabled:opacity-40"
             >
               {generating ? (
@@ -341,7 +367,7 @@ export default function ChangesPanel({
         {suggested !== null && (
           <div className="mt-2">
             <SuggestionDiff
-              label="Copilot's message"
+              label={t('changespanel.copilot-s-message')}
               before={message}
               after={suggested}
               onAccept={() => {
@@ -355,7 +381,9 @@ export default function ChangesPanel({
         {canAmend && (
           <label
             className="mt-1 flex items-center gap-2 text-xs text-muted"
-            title="Replace the last commit with these changes and this message"
+            title={t(
+              'changespanel.replace-the-last-commit-with-these-changes-and-this-message',
+            )}
           >
             <input
               type="checkbox"
@@ -364,23 +392,27 @@ export default function ChangesPanel({
               onChange={(e) => toggleAmend(e.target.checked)}
               className="accent-accent"
             />
-            Amend last commit
+            {t('changespanel.amend-last-commit')}
           </label>
         )}
         <div className="mt-2 flex gap-2">
           <button
             onClick={commit}
             disabled={busy || !canCommit || suggested !== null}
-            title="Ctrl+Enter"
+            title={t('changespanel.ctrl-enter')}
             className="flex-1 rounded bg-accent py-1.5 font-medium text-on-accent hover:opacity-90 disabled:opacity-40"
           >
             {rebasing
-              ? 'Continue rebase'
+              ? t('changespanel.continue-rebase')
               : merging
-                ? `Commit ${what}`
+                ? t('changespanel.commit-what', { what })
                 : amending
-                  ? `Amend last commit${staged.length > 0 ? ` with ${staged.length} file${staged.length > 1 ? 's' : ''}` : ''}`
-                  : `Commit${staged.length > 0 ? ` ${staged.length} file${staged.length > 1 ? 's' : ''}` : ''}`}
+                  ? staged.length > 0
+                    ? tp('changespanel.amend-with-files', staged.length)
+                    : t('changespanel.amend-last-commit')
+                  : staged.length > 0
+                    ? tp('changespanel.commit-files', staged.length)
+                    : t('changespanel.commit')}
           </button>
           <button
             onClick={onStash}
@@ -390,11 +422,11 @@ export default function ChangesPanel({
               merging !== null ||
               rebasing !== null
             }
-            title="Stash all changes"
+            title={t('changespanel.stash-all-changes')}
             className="flex items-center gap-1.5 rounded border border-line px-3 hover:bg-hover disabled:opacity-40"
           >
             <Archive className="size-4" />
-            Stash
+            {t('changespanel.stash')}
           </button>
         </div>
       </div>
@@ -427,6 +459,7 @@ function FileList({
   onToggle,
   onDiscard,
 }: FileListProps) {
+  const { t } = useTranslation()
   if (files.length === 0) return null
   return (
     <section>
@@ -464,13 +497,18 @@ function FileList({
               </span>
             </span>
             {onDiscard && !f.untracked && !f.conflicted && (
-              <RowButton title="Discard changes" onClick={() => onDiscard(f)}>
+              <RowButton
+                title={t('changespanel.discard-changes')}
+                onClick={() => onDiscard(f)}
+              >
                 <Undo2 className="size-3.5" />
               </RowButton>
             )}
             {onToggle && (
               <RowButton
-                title={staged ? 'Unstage' : 'Stage'}
+                title={
+                  staged ? t('changespanel.unstage') : t('changespanel.stage')
+                }
                 onClick={() => onToggle(f)}
               >
                 {staged ? (

@@ -3,6 +3,7 @@ import { confirm } from '@tauri-apps/plugin-dialog'
 import type { LineAction } from '../lib/git'
 import { useVirtualRows } from '../lib/virtual'
 import { parseDiff, type Line, type LineKind } from '../lib/diff'
+import { useTranslation } from '../i18n'
 
 const isChange = (l: Line) => l.kind === 'add' || l.kind === 'remove'
 
@@ -52,6 +53,7 @@ interface Props {
 }
 
 export default function DiffView({ diff, actions: rawActions }: Props) {
+  const { t, tp } = useTranslation()
   const lines = useMemo(() => parseDiff(diff), [diff])
   const actions = rawActions && !BINARY.test(diff) ? rawActions : undefined
   const [selected, setSelected] = useState<Set<number>>(new Set())
@@ -102,8 +104,8 @@ export default function DiffView({ diff, actions: rawActions }: Props) {
     if (!actions || indexes.length === 0) return
     if (action === 'discard') {
       const ok = await confirm(
-        `Discard ${indexes.length} changed line${indexes.length > 1 ? 's' : ''}? This cannot be undone.`,
-        { title: 'Discard lines', kind: 'warning' },
+        tp('diffview.discard-lines-body', indexes.length),
+        { title: t('diffview.discard-lines'), kind: 'warning' },
       )
       if (!ok) return
     }
@@ -121,19 +123,21 @@ export default function DiffView({ diff, actions: rawActions }: Props) {
       {actions && count > 0 && (
         <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-line bg-panel px-3 py-2">
           <span className="text-muted">
-            {count} line{count > 1 ? 's' : ''} selected
+            {tp('diffview.lines-selected', count)}
           </span>
           <div className="flex-1" />
           <ActionButton primary onClick={() => apply([...selected], primary)}>
-            {actions.staged ? 'Unstage' : 'Stage'} lines
+            {actions.staged
+              ? t('diffview.unstage-lines')
+              : t('diffview.stage-lines')}
           </ActionButton>
           {!actions.staged && (
             <ActionButton onClick={() => apply([...selected], 'discard')}>
-              Discard lines
+              {t('diffview.discard-lines')}
             </ActionButton>
           )}
           <ActionButton onClick={() => setSelected(new Set())}>
-            Clear
+            {t('diffview.clear')}
           </ActionButton>
         </div>
       )}
@@ -160,9 +164,7 @@ export default function DiffView({ diff, actions: rawActions }: Props) {
                   className={`w-12 pr-2 text-right text-muted/70 select-none ${
                     selectable ? 'cursor-pointer' : ''
                   } ${isSelected ? 'bg-accent/30' : ''}`}
-                  title={
-                    selectable ? 'Click to select, Shift+click for a range' : ''
-                  }
+                  title={selectable ? t('diffview.select-hint') : ''}
                 >
                   {line.kind !== 'hunk' && line.oldNo}
                 </td>
@@ -200,7 +202,9 @@ export default function DiffView({ diff, actions: rawActions }: Props) {
                           primary
                           onClick={() => apply(hunkLines(line.hunk), primary)}
                         >
-                          {actions.staged ? 'Unstage' : 'Stage'} hunk
+                          {actions.staged
+                            ? t('diffview.unstage-hunk')
+                            : t('diffview.stage-hunk')}
                         </ActionButton>
                         {!actions.staged && (
                           <ActionButton
@@ -208,7 +212,7 @@ export default function DiffView({ diff, actions: rawActions }: Props) {
                               apply(hunkLines(line.hunk), 'discard')
                             }
                           >
-                            Discard hunk
+                            {t('diffview.discard-hunk')}
                           </ActionButton>
                         )}
                       </span>

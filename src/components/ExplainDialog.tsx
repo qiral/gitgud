@@ -1,5 +1,6 @@
 import { Loader2 } from 'lucide-react'
 import Dialog from './Dialog'
+import { useTranslation } from '../i18n'
 
 interface Props {
   title: string
@@ -9,12 +10,17 @@ interface Props {
 }
 
 export default function ExplainDialog({ title, explanation, onClose }: Props) {
+  const { t } = useTranslation()
   return (
-    <Dialog title={`Explain ${title}`} onClose={onClose} wide>
+    <Dialog
+      title={t('explaindialog.explain-title', { title })}
+      onClose={onClose}
+      wide
+    >
       {explanation === null ? (
         <div
           role="status"
-          aria-label="Asking Copilot"
+          aria-label={t('explaindialog.asking-copilot')}
           className="flex justify-center py-8 text-muted"
         >
           <Loader2 className="size-5 animate-spin" />

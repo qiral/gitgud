@@ -4,6 +4,7 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import { CircleCheck, Download, Loader2, TriangleAlert, X } from 'lucide-react'
 import { errorMessage } from '../lib/git'
 import { useUpdates } from '../lib/updates'
+import { useTranslation } from '../i18n'
 
 const RELEASES = 'https://github.com/qiral/gitgud/releases'
 
@@ -12,6 +13,7 @@ const RELEASES = 'https://github.com/qiral/gitgud/releases'
  * "Check for updates". Never updates without the user clicking.
  */
 export default function UpdateNotice() {
+  const { t } = useTranslation()
   const { update, version, status, error, cardOpen, closeCard } = useUpdates()
   // null while idle, 0-100 while downloading.
   const [percent, setPercent] = useState<number | null>(null)
@@ -22,7 +24,7 @@ export default function UpdateNotice() {
       <Card>
         <CircleCheck className="mt-0.5 size-4 shrink-0 text-added" />
         <div className="min-w-0 flex-1">
-          <p className="font-medium">You're up to date</p>
+          <p className="font-medium">{t('updatenotice.you-re-up-to-date')}</p>
           {version && (
             <p className="text-xs text-muted">
               GitGud {version} is the latest.
@@ -37,20 +39,22 @@ export default function UpdateNotice() {
       <Card>
         <TriangleAlert className="mt-0.5 size-4 shrink-0 text-modified" />
         <div className="min-w-0 flex-1">
-          <p className="font-medium">Couldn't check for updates</p>
+          <p className="font-medium">
+            {t('updatenotice.couldn-t-check-for-updates')}
+          </p>
           <p className="text-xs text-muted select-text">
             {error}{' '}
             <button
               onClick={() => openUrl(`${RELEASES}/latest`)}
               className="text-accent hover:underline"
             >
-              Open releases
+              {t('updatenotice.open-releases')}
             </button>
           </p>
         </div>
         <button
           onClick={closeCard}
-          title="Close"
+          title={t('updatenotice.close')}
           className="text-muted hover:text-fg"
         >
           <X className="size-4" />
@@ -97,14 +101,14 @@ export default function UpdateNotice() {
                 onClick={() => openUrl(releasePage)}
                 className="text-accent hover:underline"
               >
-                What's new
+                {t('updatenotice.what-s-new')}
               </button>
             </p>
           </div>
           {!installing && (
             <button
               onClick={closeCard}
-              title="Later"
+              title={t('updatenotice.later')}
               className="text-muted hover:text-fg"
             >
               <X className="size-4" />
@@ -118,7 +122,7 @@ export default function UpdateNotice() {
               onClick={() => openUrl(releasePage)}
               className="text-accent hover:underline"
             >
-              Download it manually
+              {t('updatenotice.download-it-manually')}
             </button>
           </p>
         )}
@@ -128,7 +132,9 @@ export default function UpdateNotice() {
           className="mt-3 flex w-full items-center justify-center gap-2 rounded bg-accent py-1.5 font-medium text-on-accent hover:opacity-90 disabled:opacity-60"
         >
           {installing && <Loader2 className="size-4 animate-spin" />}
-          {installing ? `Downloading… ${percent}%` : 'Update and restart'}
+          {installing
+            ? t('updatenotice.downloading', { percent })
+            : t('updatenotice.update-and-restart')}
         </button>
       </div>
     </Card>

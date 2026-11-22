@@ -14,6 +14,7 @@ import {
   Loader2,
   LogOut,
   MoreHorizontal,
+  Languages,
   Palette,
   Pencil,
   Plus,
@@ -36,6 +37,7 @@ import {
   type RepoInfo,
   type Status,
 } from '../lib/git'
+import { useTranslation } from '../i18n'
 
 interface Props {
   repo: RepoInfo
@@ -72,6 +74,7 @@ export default function Toolbar({
   onPublish,
   act,
 }: Props) {
+  const { t: tx, tp: txp } = useTranslation()
   const ahead = status?.ahead ?? 0
   const behind = status?.behind ?? 0
   const hasUpstream = Boolean(status?.upstream)
@@ -93,10 +96,16 @@ export default function Toolbar({
 
   async function forcePush() {
     const ok = await confirm(
-      `Your branch and ${status?.upstream} have diverged (${ahead} ahead, ${behind} behind).\n\n` +
-        'Force pushing replaces the remote branch with yours. Do this after editing history you already pushed. ' +
-        'If someone else pushed to this branch, Pull instead, or their commits will be lost.',
-      { title: 'Force push', kind: 'warning', okLabel: 'Force push' },
+      tx('toolbar.diverged', {
+        upstream: status?.upstream,
+        ahead,
+        behind,
+      }) + tx('toolbar.force-push-body'),
+      {
+        title: tx('toolbar.force-push'),
+        kind: 'warning',
+        okLabel: tx('toolbar.force-push'),
+      },
     )
     if (ok) act('push', () => git.pushForce(repo.path))
   }
@@ -117,51 +126,58 @@ export default function Toolbar({
       <ToolbarButton
         onClick={() => act('fetch', () => git.fetch(repo.path))}
         disabled={busy !== null}
-        label="Fetch"
+        label={tx('toolbar.fetch')}
         value="All remotes"
         icon={<Spin active={busy === 'fetch'} icon={RefreshCw} />}
       />
       <ToolbarButton
         onClick={() => pull()}
         disabled={busy !== null || !hasUpstream}
-        label="Pull"
-        value={behind > 0 ? `${behind} behind` : 'Up to date'}
+        label={tx('toolbar.pull')}
+        value={
+          behind > 0 ? txp('toolbar.behind', behind) : tx('toolbar.up-to-date')
+        }
         icon={<Spin active={busy === 'pull'} icon={ArrowDown} />}
       />
       {needsRemote ? (
         <ToolbarButton
           onClick={onPublish}
           disabled={busy !== null || !status?.branch}
-          label="Publish"
-          value="to GitHub"
+          label={tx('toolbar.publish')}
+          value={tx('toolbar.to-github')}
           icon={<GithubIcon className="size-4" />}
         />
       ) : diverged ? (
         <ToolbarButton
           onClick={forcePush}
           disabled={busy !== null}
-          label="Force push"
-          value={`${ahead} ahead, ${behind} behind`}
-          title="Your branch and its upstream have different histories"
+          label={tx('toolbar.force-push')}
+          value={tx('toolbar.ahead-behind', { ahead, behind })}
+          title={tx(
+            'toolbar.your-branch-and-its-upstream-have-different-histories',
+          )}
           icon={<Spin active={busy === 'push'} icon={ArrowUp} />}
         />
       ) : (
         <ToolbarButton
           onClick={() => act('push', () => git.push(repo.path))}
           disabled={busy !== null || !status?.branch}
-          label={hasUpstream ? 'Push' : 'Publish branch'}
+          label={
+            hasUpstream ? tx('toolbar.push') : tx('toolbar.publish-branch')
+          }
           value={
             hasUpstream
               ? ahead > 0
-                ? `${ahead} ahead`
-                : 'Up to date'
-              : 'origin'
+                ? txp('toolbar.ahead', ahead)
+                : tx('toolbar.up-to-date')
+              : tx('toolbar.origin')
           }
           icon={<Spin active={busy === 'push'} icon={ArrowUp} />}
         />
       )}
       <UpdateButton />
       <ThemeMenu />
+      <LanguageMenu />
       {askPull && status?.branch && status.upstream && (
         <PullDialog
           branch={status.branch}
@@ -251,6 +267,7 @@ function RepoMenu({
   Props,
   'repo' | 'recents' | 'onOpenRecent' | 'onOpenOther' | 'onClone'
 >) {
+  const { t: tx } = useTranslation()
   const others = recents.filter((r) => r.path !== repo.path)
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -273,7 +290,7 @@ function RepoMenu({
     <div ref={ref} className="relative flex">
       <ToolbarButton
         onClick={() => setOpen((o) => !o)}
-        label="Repository"
+        label={tx('toolbar.repository')}
         value={repo.name}
         emphasis
         icon={<FolderGit2 className="size-4" />}
@@ -284,7 +301,9 @@ function RepoMenu({
         <div className="absolute top-full left-0 z-10 mt-1 w-72 overflow-hidden rounded-md border border-line bg-panel shadow-lg">
           {others.length > 0 && (
             <div className="border-b border-line py-1">
-              <div className="px-3 py-1 text-xs text-muted">Recent</div>
+              <div className="px-3 py-1 text-xs text-muted">
+                {tx('toolbar.recent')}
+              </div>
               {others.map((r) => (
                 <button
                   key={r.path}
@@ -302,11 +321,15 @@ function RepoMenu({
             </div>
           )}
           {item(
-            'Open local repository…',
+            tx('toolbar.open-local-repository'),
             <FolderOpen className="size-4" />,
             onOpenOther,
           )}
-          {item('Clone repository…', <Download className="size-4" />, onClone)}
+          {item(
+            tx('toolbar.clone-repository'),
+            <Download className="size-4" />,
+            onClone,
+          )}
         </div>
       )}
     </div>
@@ -315,16 +338,17 @@ function RepoMenu({
 
 /** Shows up once a newer release is out, and stays until it's installed. */
 function UpdateButton() {
+  const { t: tx } = useTranslation()
   const { update, openCard } = useUpdates()
   if (!update) return null
   return (
     <button
       onClick={openCard}
-      title={`GitGud ${update.version} is available`}
+      title={tx('toolbar.update-available', { version: update.version })}
       className="flex items-center gap-2 border-r border-line bg-accent/10 px-3 font-medium text-accent hover:bg-accent/20"
     >
       <CircleArrowUp className="size-4" />
-      Update
+      {tx('toolbar.update')}
     </button>
   )
 }
@@ -344,6 +368,7 @@ function Swatch({ theme }: { theme: ThemeInfo }) {
 }
 
 function ThemeMenu() {
+  const { t: tx } = useTranslation()
   const [open, setOpen] = useState(false)
   const [theme, setChoice] = useState(readTheme)
   const ref = useRef<HTMLDivElement>(null)
@@ -357,15 +382,15 @@ function ThemeMenu() {
   const row =
     'flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-hover'
   const groups = [
-    { label: 'Light', list: THEMES.filter((t) => !t.dark) },
-    { label: 'Dark', list: THEMES.filter((t) => t.dark) },
+    { label: tx('toolbar.light'), list: THEMES.filter((t) => !t.dark) },
+    { label: tx('toolbar.dark'), list: THEMES.filter((t) => t.dark) },
   ]
 
   return (
     <div ref={ref} className="relative flex border-r border-line">
       <button
         onClick={() => setOpen((o) => !o)}
-        title="Theme"
+        title={tx('toolbar.theme')}
         className="flex items-center px-3 text-muted hover:bg-hover hover:text-fg"
       >
         <Palette className="size-4" />
@@ -374,7 +399,7 @@ function ThemeMenu() {
         <div className="absolute top-full right-1 z-10 mt-1 max-h-[70vh] w-56 overflow-auto rounded-md border border-line bg-panel py-1 shadow-lg">
           <button onClick={() => choose('system')} className={row}>
             <SunMoon className="size-4 text-muted" />
-            <span className="flex-1">Match system</span>
+            <span className="flex-1">{tx('toolbar.match-system')}</span>
             {theme === 'system' && <Check className="size-4 text-accent" />}
           </button>
           {groups.map((g) => (
@@ -395,12 +420,59 @@ function ThemeMenu() {
   )
 }
 
+/** Language picker: each language is shown by its own name; the choice
+ *  persists and applies without a restart. Untranslated languages fall back
+ *  to English per key. */
+function LanguageMenu() {
+  const { locale, setLocale, languages, t: tx } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useClickOutside(ref, open, () => setOpen(false))
+
+  const row =
+    'flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-hover'
+
+  return (
+    <div ref={ref} className="relative flex border-r border-line">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        title={tx('toolbar.language')}
+        aria-label={tx('toolbar.language')}
+        className="flex items-center px-3 text-muted hover:bg-hover hover:text-fg"
+      >
+        <Languages className="size-4" />
+      </button>
+      {open && (
+        <div className="absolute top-full right-1 z-10 mt-1 max-h-[70vh] w-56 overflow-auto rounded-md border border-line bg-panel py-1 shadow-lg">
+          <div className="px-3 py-1 text-xs text-muted">
+            {tx('toolbar.language')}
+          </div>
+          {languages.map((l) => (
+            <button
+              key={l.code}
+              onClick={() => {
+                setLocale(l.code)
+                setOpen(false)
+              }}
+              className={row}
+            >
+              <span className="flex-1">{l.name}</span>
+              {locale === l.code && <Check className="size-4 text-accent" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function AccountMenu({
   account,
   onSignIn,
   onSignOut,
   onManageHosts,
 }: Pick<Props, 'account' | 'onSignIn' | 'onSignOut' | 'onManageHosts'>) {
+  const { t: tx } = useTranslation()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   useClickOutside(ref, open, () => setOpen(false))
@@ -433,7 +505,7 @@ function AccountMenu({
           className="flex items-center gap-2 px-4 hover:bg-hover"
         >
           <GithubIcon className="size-4" />
-          Sign in
+          {tx('toolbar.sign-in')}
           <ChevronDown className="size-3 text-muted" />
         </button>
       )}
@@ -451,17 +523,17 @@ function AccountMenu({
           ) : (
             <button onClick={() => choose(onSignIn)} className={item}>
               <GithubIcon className="size-4" />
-              Sign in to GitHub
+              {tx('toolbar.sign-in-to-github')}
             </button>
           )}
           <button onClick={() => choose(onManageHosts)} className={item}>
             <Server className="size-4" />
-            Other Git hosts…
+            {tx('toolbar.other-git-hosts')}
           </button>
           {account && (
             <button onClick={() => choose(onSignOut)} className={item}>
               <LogOut className="size-4" />
-              Sign out of GitHub
+              {tx('toolbar.sign-out-of-github')}
             </button>
           )}
           <button
@@ -479,8 +551,8 @@ function AccountMenu({
             )}
             <span className="flex-1">
               {updates.update
-                ? `Update to ${updates.update.version}`
-                : 'Check for updates'}
+                ? tx('toolbar.update-to', { version: updates.update.version })
+                : tx('toolbar.check-for-updates')}
             </span>
             {updates.version && (
               <span className="text-xs text-muted">v{updates.version}</span>
@@ -513,6 +585,7 @@ function BranchMenu({
   branches,
   act,
 }: Pick<Props, 'repo' | 'status' | 'branches' | 'act'>) {
+  const { t: tx } = useTranslation()
   const [open, setOpen] = useState(false)
   const [newName, setNewName] = useState('')
   const [renaming, setRenaming] = useState<Branch | null>(null)
@@ -521,10 +594,13 @@ function BranchMenu({
   useClickOutside(ref, open, () => setOpen(false))
 
   async function mergeIn(name: string) {
-    const ok = await confirm(`Merge ${name} into ${status?.branch}?`, {
-      title: 'Merge branch',
-      kind: 'info',
-    })
+    const ok = await confirm(
+      tx('toolbar.merge-branch-confirm', { name, branch: status?.branch }),
+      {
+        title: tx('toolbar.merge-branch'),
+        kind: 'info',
+      },
+    )
     if (!ok) return
     setOpen(false)
     await act('merge', () => git.merge(repo.path, name))
@@ -537,13 +613,16 @@ function BranchMenu({
 
   async function remove(b: Branch) {
     const remote = b.upstream
-      ? `\n\nThe remote branch ${b.upstream} is not deleted.`
+      ? tx('toolbar.remote-not-deleted', { upstream: b.upstream })
       : ''
-    const ok = await confirm(`Delete the branch ${b.name}?${remote}`, {
-      title: 'Delete branch',
-      kind: 'warning',
-      okLabel: 'Delete',
-    })
+    const ok = await confirm(
+      tx('toolbar.delete-branch-body', { name: b.name }) + remote,
+      {
+        title: tx('toolbar.delete-branch'),
+        kind: 'warning',
+        okLabel: tx('toolbar.delete'),
+      },
+    )
     if (!ok) return
     let notMerged = false
     await act('branch', async () => {
@@ -551,12 +630,14 @@ function BranchMenu({
     })
     if (!notMerged) return
     const force = await confirm(
-      `${b.name} has commits that aren't merged into ${status?.branch ?? 'the current branch'} or its upstream. ` +
-        'Deleting it anyway loses those commits.',
+      tx('toolbar.delete-unmerged-body', {
+        name: b.name,
+        branch: status?.branch ?? tx('toolbar.the-current-branch'),
+      }),
       {
-        title: 'Delete unmerged branch',
+        title: tx('toolbar.delete-unmerged-branch'),
         kind: 'warning',
-        okLabel: 'Delete anyway',
+        okLabel: tx('toolbar.delete-anyway'),
       },
     )
     if (force)
@@ -567,20 +648,20 @@ function BranchMenu({
     const items: MenuItem[] = []
     if (!b.current)
       items.push({
-        label: 'Switch to branch',
+        label: tx('toolbar.switch-to-branch'),
         icon: GitBranch,
         onClick: () => switchTo(b.name),
       })
     if (!b.current && status?.branch)
       items.push({
-        label: `Merge into ${status.branch}…`,
+        label: tx('toolbar.merge-into-branch', { branch: status.branch }),
         icon: GitMerge,
         onClick: () => mergeIn(b.name),
       })
     if (items.length > 0) items.push('separator')
     items.push(
       {
-        label: 'Rename…',
+        label: tx('toolbar.rename-2'),
         icon: Pencil,
         onClick: () => {
           setOpen(false)
@@ -588,7 +669,7 @@ function BranchMenu({
         },
       },
       {
-        label: 'Delete…',
+        label: tx('toolbar.delete-2'),
         icon: Trash2,
         danger: true,
         disabled: b.current,
@@ -624,8 +705,8 @@ function BranchMenu({
     <div ref={ref} className="relative flex">
       <ToolbarButton
         onClick={() => setOpen((o) => !o)}
-        label="Current branch"
-        value={status?.branch ?? 'Detached HEAD'}
+        label={tx('toolbar.current-branch')}
+        value={status?.branch ?? tx('toolbar.detached-head')}
         emphasis
         icon={<GitBranch className="size-4" />}
         trailing={<ChevronDown className="size-4 text-muted" />}
@@ -640,12 +721,12 @@ function BranchMenu({
               autoFocus
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              placeholder="Filter or create a branch"
+              placeholder={tx('toolbar.filter-or-create-a-branch')}
               className="min-w-0 flex-1 rounded border border-line bg-bg px-2 py-1 outline-none focus:border-accent"
             />
             <button
               type="submit"
-              title="Create branch"
+              title={tx('toolbar.create-branch')}
               className="rounded px-2 text-muted hover:bg-hover hover:text-fg"
             >
               <Plus className="size-4" />
@@ -654,7 +735,7 @@ function BranchMenu({
           <ul className="max-h-80 overflow-auto py-1">
             {shown.length === 0 && (
               <li className="px-3 py-1.5 text-muted">
-                No branch matches. Press Enter to create “{newName.trim()}”.
+                {tx('toolbar.no-branch-matches', { name: newName.trim() })}
               </li>
             )}
             {shown.map((b) => (
@@ -675,16 +756,19 @@ function BranchMenu({
                 {!b.current && status?.branch && (
                   <button
                     onClick={() => mergeIn(b.name)}
-                    title={`Merge ${b.name} into ${status.branch}`}
+                    title={tx('toolbar.merge-into', {
+                      name: b.name,
+                      branch: status.branch,
+                    })}
                     className="invisible flex items-center gap-1 rounded px-1.5 text-xs text-muted group-hover:visible hover:bg-line hover:text-fg"
                   >
                     <GitMerge className="size-3.5" />
-                    Merge
+                    {tx('toolbar.merge')}
                   </button>
                 )}
                 <button
                   onClick={(e) => openMenu(e, menuFor(b))}
-                  title="More"
+                  title={tx('toolbar.more')}
                   className="invisible mr-1 rounded px-1 text-muted group-hover:visible hover:bg-line hover:text-fg"
                 >
                   <MoreHorizontal className="size-4" />
@@ -697,13 +781,15 @@ function BranchMenu({
       {menu}
       {renaming && (
         <PromptDialog
-          title="Rename branch"
-          label="New name"
+          title={tx('toolbar.rename-branch')}
+          label={tx('toolbar.new-name')}
           initial={renaming.name}
-          submitLabel="Rename"
+          submitLabel={tx('toolbar.rename')}
           description={
             renaming.upstream
-              ? `The remote branch ${renaming.upstream} keeps its name; this only renames your local branch.`
+              ? tx('toolbar.rename-keeps-remote', {
+                  upstream: renaming.upstream,
+                })
               : undefined
           }
           onSubmit={(name) =>

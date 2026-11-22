@@ -3,6 +3,7 @@ import { ArchiveRestore, Trash2, Upload } from 'lucide-react'
 import { git, type RepoInfo, type Stash } from '../lib/git'
 import { relativeTime } from '../lib/time'
 import type { Selection } from './RepoView'
+import { useTranslation } from '../i18n'
 
 interface Props {
   repo: RepoInfo
@@ -21,20 +22,23 @@ export default function StashPanel({
   busy,
   act,
 }: Props) {
+  const { t } = useTranslation()
   if (stashes.length === 0)
     return (
       <div className="p-6 text-center text-muted">
-        <p>No stashes</p>
+        <p>{t('stashpanel.no-stashes')}</p>
         <p className="mt-1 text-xs">
-          Stash your changes from the Changes tab to set them aside for later.
+          {t(
+            'stashpanel.stash-your-changes-from-the-changes-tab-to-set-them-aside-for-later',
+          )}
         </p>
       </div>
     )
 
   async function drop(stash: Stash) {
     const ok = await confirm(
-      `Delete the stash "${stash.message}"? This cannot be undone.`,
-      { title: 'Delete stash', kind: 'warning' },
+      t('stashpanel.delete-stash-body', { message: stash.message }),
+      { title: t('stashpanel.delete-stash'), kind: 'warning' },
     )
     if (ok) act('stash', () => git.stashDrop(repo.path, stash.index))
   }
@@ -61,7 +65,7 @@ export default function StashPanel({
               </span>
               <span className="invisible flex gap-0.5 group-hover:visible">
                 <RowButton
-                  title="Apply (keep the stash)"
+                  title={t('stashpanel.apply-keep-the-stash')}
                   disabled={busy}
                   onClick={() =>
                     act('stash', () => git.stashApply(repo.path, s.index))
@@ -70,7 +74,7 @@ export default function StashPanel({
                   <ArchiveRestore className="size-3.5" />
                 </RowButton>
                 <RowButton
-                  title="Pop (apply and delete)"
+                  title={t('stashpanel.pop-apply-and-delete')}
                   disabled={busy}
                   onClick={() =>
                     act('stash', () => git.stashPop(repo.path, s.index))
@@ -79,7 +83,7 @@ export default function StashPanel({
                   <Upload className="size-3.5" />
                 </RowButton>
                 <RowButton
-                  title="Delete"
+                  title={t('stashpanel.delete')}
                   disabled={busy}
                   onClick={() => drop(s)}
                 >

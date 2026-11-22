@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { readWidth, writeWidth } from '../lib/prefs'
+import { useTranslation } from '../i18n'
 
 /** Room always left for the diff next to a resized panel. */
 const KEEP_FOR_REST = 360
@@ -63,6 +64,7 @@ function ResizeHandle({
   onChange: (w: number, save: boolean) => void
   onReset: () => void
 }) {
+  const { t } = useTranslation()
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (e.button !== 0) return
     e.preventDefault()
@@ -92,7 +94,7 @@ function ResizeHandle({
       aria-orientation="vertical"
       aria-valuenow={width}
       tabIndex={0}
-      title="Drag to resize, double-click to reset"
+      title={t('resizable.drag-to-resize-double-click-to-reset')}
       onPointerDown={onPointerDown}
       onDoubleClick={onReset}
       onKeyDown={(e) => {

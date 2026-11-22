@@ -16,6 +16,7 @@ import { repoNameFromUrl } from '../lib/url'
 import Dialog from './Dialog'
 import SignInDialog from './SignInDialog'
 import GithubIcon from './GithubIcon'
+import { useTranslation } from '../i18n'
 
 const CLONE_DIR_KEY = 'gitgud.cloneDir'
 
@@ -32,6 +33,7 @@ export default function CloneDialog({
   onClose,
   onCloned,
 }: Props) {
+  const { t: tx } = useTranslation()
   const [tab, setTab] = useState<'github' | 'url'>('github')
   const [url, setUrl] = useState('')
   const [name, setName] = useState('')
@@ -61,7 +63,10 @@ export default function CloneDialog({
   }
 
   async function browse() {
-    const dir = await open({ directory: true, title: 'Clone into…' })
+    const dir = await open({
+      directory: true,
+      title: tx('clonedialog.clone-into'),
+    })
     if (typeof dir === 'string') setParent(dir)
   }
 
@@ -123,7 +128,11 @@ export default function CloneDialog({
 
   return (
     // Closing mid-clone would hide progress while git keeps running.
-    <Dialog title="Clone repository" onClose={() => !cloning && onClose()} wide>
+    <Dialog
+      title={tx('clonedialog.clone-repository')}
+      onClose={() => !cloning && onClose()}
+      wide
+    >
       <form onSubmit={clone} className="space-y-4">
         <div className="flex gap-1 rounded-md bg-bg p-1">
           {(['github', 'url'] as const).map((t) => (
@@ -137,7 +146,7 @@ export default function CloneDialog({
             >
               {t === 'github' ? (
                 <>
-                  <GithubIcon className="size-3.5" /> GitHub
+                  <GithubIcon className="size-3.5" /> {tx('clonedialog.github')}
                 </>
               ) : (
                 'URL'
@@ -155,20 +164,23 @@ export default function CloneDialog({
           ) : (
             <div className="space-y-3 py-4 text-center">
               <p className="text-muted">
-                Sign in to see your GitHub repositories.
+                {tx('clonedialog.sign-in-to-see-your-github-repositories')}
               </p>
               <button
                 type="button"
                 onClick={() => setSigningIn(true)}
                 className="inline-flex items-center gap-2 rounded bg-accent px-4 py-1.5 font-medium text-on-accent hover:opacity-90"
               >
-                <GithubIcon className="size-4" /> Sign in to GitHub
+                <GithubIcon className="size-4" />{' '}
+                {tx('clonedialog.sign-in-to-github')}
               </button>
             </div>
           )
         ) : (
           <label className="block">
-            <span className="mb-1 block text-muted">Repository URL</span>
+            <span className="mb-1 block text-muted">
+              {tx('clonedialog.repository-url')}
+            </span>
             <input
               autoFocus
               value={url}
@@ -181,7 +193,9 @@ export default function CloneDialog({
 
         <div className="grid grid-cols-[1fr_auto] gap-2">
           <label className="col-span-2 block">
-            <span className="mb-1 block text-muted">Clone into</span>
+            <span className="mb-1 block text-muted">
+              {tx('clonedialog.clone-into-2')}
+            </span>
             <div className="flex gap-2">
               <input
                 value={parent}
@@ -193,12 +207,14 @@ export default function CloneDialog({
                 onClick={browse}
                 className="shrink-0 rounded border border-line px-3 hover:bg-hover"
               >
-                Browse…
+                {tx('clonedialog.browse')}
               </button>
             </div>
           </label>
           <label className="col-span-2 block">
-            <span className="mb-1 block text-muted">Folder name</span>
+            <span className="mb-1 block text-muted">
+              {tx('clonedialog.folder-name')}
+            </span>
             <input
               value={name}
               onChange={(e) => {
@@ -211,7 +227,8 @@ export default function CloneDialog({
         </div>
         {destination && (
           <p className="truncate text-xs text-muted" title={destination}>
-            Will be cloned to <span className="font-mono">{destination}</span>
+            {tx('clonedialog.will-be-cloned-to')}{' '}
+            <span className="font-mono">{destination}</span>
           </p>
         )}
 
@@ -220,8 +237,8 @@ export default function CloneDialog({
             <div className="flex justify-between text-xs text-muted">
               <span>
                 {cancelling
-                  ? 'Cancelling…'
-                  : (progress?.phase ?? 'Connecting…')}
+                  ? tx('clonedialog.cancelling')
+                  : (progress?.phase ?? tx('clonedialog.connecting'))}
               </span>
               {progress && <span>{progress.percent}%</span>}
             </div>
@@ -238,7 +255,7 @@ export default function CloneDialog({
                 disabled={cancelling}
                 className="shrink-0 rounded border border-line px-2 py-0.5 text-xs hover:bg-hover disabled:opacity-40"
               >
-                Cancel
+                {tx('clonedialog.cancel')}
               </button>
             </div>
           </div>
@@ -269,6 +286,7 @@ function RepoPicker({
   selectedUrl: string
   onPick: (repo: RemoteRepo) => void
 }) {
+  const { t: tx } = useTranslation()
   const [repos, setRepos] = useState<RemoteRepo[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -301,7 +319,7 @@ function RepoPicker({
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Filter repositories"
+          placeholder={tx('clonedialog.filter-repositories')}
           className="w-full rounded border border-line bg-bg py-1.5 pr-2 pl-8 outline-none focus:border-accent"
         />
       </div>
@@ -324,7 +342,9 @@ function RepoPicker({
           </li>
         ))}
         {filtered.length === 0 && (
-          <li className="p-4 text-center text-muted">No repositories found</li>
+          <li className="p-4 text-center text-muted">
+            {tx('clonedialog.no-repositories-found')}
+          </li>
         )}
       </ul>
     </div>
