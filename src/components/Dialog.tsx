@@ -21,6 +21,9 @@ export default function Dialog({ title, onClose, children, wide }: Props) {
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
         className={`${wide ? 'w-[32rem]' : 'w-96'} max-w-[calc(100vw-2rem)] rounded-lg border border-line bg-panel shadow-xl`}
       >
         <div className="flex items-center justify-between border-b border-line px-4 py-3">

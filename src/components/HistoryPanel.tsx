@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   CirclePlus,
   Copy,
@@ -55,6 +55,8 @@ interface Props {
   filtered?: Commit[] | null
   /** Asks Copilot to explain a commit; unset to hide. */
   onExplain?: (commit: Commit) => void
+  /** Focuses the search box whenever this changes, e.g. from a shortcut. */
+  focusSearch?: number
 }
 
 const ROW_HEIGHT = 52
@@ -91,6 +93,7 @@ export default function HistoryPanel({
   onFilter,
   filtered = null,
   onExplain,
+  focusSearch,
 }: Props) {
   // Filtered commits aren't connected, so they're listed without lines.
   const flat = filter !== null
@@ -285,7 +288,11 @@ export default function HistoryPanel({
   return (
     <>
       {onFilter && allCommits.length > 0 && (
-        <FilterBar filter={filter} onFilter={onFilter} />
+        <FilterBar
+          filter={filter}
+          onFilter={onFilter}
+          focusSearch={focusSearch}
+        />
       )}
       {commits.length === 0 ? (
         <p className="p-6 text-center text-muted">{empty}</p>
@@ -412,10 +419,16 @@ export default function HistoryPanel({
 function FilterBar({
   filter,
   onFilter,
+  focusSearch,
 }: {
   filter: HistoryFilter | null
   onFilter: (f: HistoryFilter | null) => void
+  focusSearch?: number
 }) {
+  const input = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (focusSearch) input.current?.select()
+  }, [focusSearch])
   // Typed text updates right away; the search itself waits a moment.
   const [text, setText] = useState(
     filter?.kind === 'search' ? filter.query : '',
@@ -450,6 +463,7 @@ function FilterBar({
     <div className="flex shrink-0 items-center gap-2 border-b border-line px-3 py-1.5">
       <Search className="size-4 shrink-0 text-muted" />
       <input
+        ref={input}
         value={text}
         onChange={(e) => change(e.target.value)}
         onKeyDown={(e) => e.key === 'Escape' && change('')}
