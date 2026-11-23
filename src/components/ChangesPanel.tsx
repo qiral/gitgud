@@ -11,6 +11,7 @@ import {
   Undo2,
 } from 'lucide-react'
 import {
+  canBlame,
   git,
   isStaged,
   isUnstaged,
@@ -43,6 +44,7 @@ interface Props {
   busy: boolean
   onStash: () => void
   onFileHistory?: (path: string) => void
+  onBlame?: (path: string) => void
   /** Asks Copilot for a message for the staged changes; null on failure. */
   onGenerateMessage?: () => Promise<string | null>
   act: (label: string, action: () => Promise<unknown>) => Promise<boolean>
@@ -60,6 +62,7 @@ export default function ChangesPanel({
   busy,
   onStash,
   onFileHistory,
+  onBlame,
   onGenerateMessage,
   act,
 }: Props) {
@@ -256,7 +259,11 @@ export default function ChangesPanel({
       onFileHistory && !f.untracked && f.index !== 'A'
         ? () => onFileHistory(f.path)
         : undefined
-    return [...items, ...fileMenuItems(repo.path, f.path, !deleted, history)]
+    const blame = onBlame && canBlame(f) ? () => onBlame(f.path) : undefined
+    return [
+      ...items,
+      ...fileMenuItems(repo.path, f.path, !deleted, history, blame),
+    ]
   }
 
   const isSelected = (f: FileChange, inStaged: boolean) =>

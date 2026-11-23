@@ -14,6 +14,13 @@ const messages: Messages = {
   'app.recent-repositories': 'Zuletzt verwendet',
   'app.remove-from-list': 'Aus der Liste entfernen',
   'app.update-to': 'Auf {version} aktualisieren',
+  'blameview.back': 'Zurück',
+  'blameview.blame-parent': 'Blame für den Eltern-Commit',
+  'blameview.close': 'Blame schließen',
+  'blameview.empty': 'Diese Datei ist leer.',
+  'blameview.follow-moves': 'Verschobenen und kopierten Zeilen folgen',
+  'blameview.not-committed': 'Noch nicht committet',
+  'blameview.show-in-history': 'Im Verlauf anzeigen',
   'changespanel.abort': 'Abbrechen',
   'changespanel.abort-merge-body':
     '{what} abbrechen? Dein Branch kehrt zum vorherigen Stand zurück, und Konfliktlösungen gehen verloren.',
@@ -358,6 +365,7 @@ const messages: Messages = {
   'repocommands.switch-branch': 'Branch wechseln…',
   'repocommands.switch-to-branch': 'Zu Branch wechseln',
   'repoview.changes-empty': 'Wähle eine Datei, um ihre Änderungen zu sehen',
+  'repoview.commit-not-found': 'Commit {hash} nicht gefunden',
   'repoview.diff-error': 'Diff konnte nicht geladen werden:',
   'repoview.dismiss': 'Schließen',
   'repoview.history-empty':

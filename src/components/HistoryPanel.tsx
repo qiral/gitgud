@@ -58,6 +58,8 @@ interface Props {
   onExplain?: (commit: Commit) => void
   /** Focuses the search box whenever this changes, e.g. from a shortcut. */
   focusSearch?: number
+  /** Scrolls to this commit whenever it changes. */
+  reveal?: { hash: string } | null
 }
 
 const ROW_HEIGHT = 52
@@ -95,6 +97,7 @@ export default function HistoryPanel({
   filtered = null,
   onExplain,
   focusSearch,
+  reveal,
 }: Props) {
   const { t, tp } = useTranslation()
   // Filtered commits aren't connected, so they're listed without lines.
@@ -180,6 +183,12 @@ export default function HistoryPanel({
     setCollapsed(!collapsed)
   }
   const rows = useVirtualRows<HTMLUListElement>(commits.length, ROW_HEIGHT)
+  useEffect(() => {
+    const list = rows.ref.current
+    const i = reveal ? commits.findIndex((c) => c.hash === reveal.hash) : -1
+    if (list && i >= 0) list.scrollTop = i * ROW_HEIGHT - list.clientHeight / 2
+    // Only when asked: not again as commits load.
+  }, [reveal])
 
   function menuFor(c: Commit): MenuItem[] {
     const items: MenuItem[] = [
@@ -446,7 +455,9 @@ function FilterBar({
     filter?.kind === 'search' ? filter.query : '',
   )
   useEffect(() => {
-    if (filter?.kind !== 'search') setText('')
+    // Typing updates both; this is for filters set from elsewhere.
+    const query = filter?.kind === 'search' ? filter.query : ''
+    setText((shown) => (shown.trim() === query ? shown : query))
   }, [filter])
 
   if (filter?.kind === 'file')

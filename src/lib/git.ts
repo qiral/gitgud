@@ -93,6 +93,24 @@ export interface Parent {
   url: string
 }
 
+/** Where blamed lines come from; see src-tauri/src/blame.rs. */
+export interface BlameOrigin {
+  /** Null for lines that aren't committed yet. */
+  hash: string | null
+  author: string
+  time: number
+  subject: string
+  path: string
+  /** The parent commit and the file there; null where the file began. */
+  previous: { hash: string; path: string } | null
+}
+
+export interface Blame {
+  origins: BlameOrigin[]
+  /** `origin` indexes `origins`; `original` is the line's number there. */
+  lines: { origin: number; original: number; text: string }[]
+}
+
 export interface Stash {
   index: number
   message: string
@@ -342,6 +360,15 @@ export const git = {
   /** Commits on the current branch that changed `path`, across renames. */
   fileLog: (repo: string, path: string, limit = 1000) =>
     invoke<Commit[]>('file_log', { repo, path, limit }),
+  /** Blames a file at a commit, or (null) as it is on disk. */
+  blame: (
+    repo: string,
+    path: string,
+    rev: string | null,
+    ignoreWhitespace: boolean,
+    followMoves: boolean,
+  ) =>
+    invoke<Blame>('blame', { repo, path, rev, ignoreWhitespace, followMoves }),
   /** Graph rows for `commits` (hash and parents, newest first). */
   graphLayout: (commits: [string, string[]][]) =>
     invoke<GraphRow[]>('graph_layout', { commits }),
@@ -446,3 +473,7 @@ export const isUnstaged = (f: FileChange) =>
 export function errorMessage(e: unknown): string {
   return typeof e === 'string' ? e : e instanceof Error ? e.message : String(e)
 }
+
+/** Files on disk that have a past to look at. */
+export const canBlame = (f: FileChange) =>
+  !f.untracked && f.index !== 'A' && f.index !== 'D' && f.worktree !== 'D'

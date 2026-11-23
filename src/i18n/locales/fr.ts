@@ -14,6 +14,13 @@ const messages: Messages = {
   'app.recent-repositories': 'Dépôts récents',
   'app.remove-from-list': 'Retirer de la liste',
   'app.update-to': 'Mettre à jour vers {version}',
+  'blameview.back': 'Retour',
+  'blameview.blame-parent': 'Blame du commit parent',
+  'blameview.close': 'Fermer le blame',
+  'blameview.empty': 'Ce fichier est vide.',
+  'blameview.follow-moves': 'Suivre les lignes déplacées et copiées',
+  'blameview.not-committed': 'Pas encore commité',
+  'blameview.show-in-history': "Afficher dans l'historique",
   'changespanel.abort': 'Annuler',
   'changespanel.abort-merge-body':
     'Annuler le {what} ? Votre branche revient à son état précédent et les résolutions de conflits sont perdues.',
@@ -359,6 +366,7 @@ const messages: Messages = {
   'repocommands.switch-to-branch': 'Basculer sur la branche',
   'repoview.changes-empty':
     'Sélectionnez un fichier pour voir ses modifications',
+  'repoview.commit-not-found': 'Commit {hash} introuvable',
   'repoview.diff-error': 'Impossible de charger le diff :',
   'repoview.dismiss': 'Fermer',
   'repoview.history-empty': 'Sélectionnez un commit pour voir ce qui a changé',
