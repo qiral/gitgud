@@ -52,8 +52,7 @@ const messages: Messages = {
   'changespanel.copilot-s-message': 'Copilot-un mesajı',
   'changespanel.discard-changes': 'Dəyişiklikləri at',
   'changespanel.discard-changes-2': 'Dəyişiklikləri at…',
-  'changespanel.discard-file-body':
-    '{path} faylındakı dəyişikliklər atılsın? Bunu geri qaytarmaq olmaz.',
+  'changespanel.discard-file-body': '{path} faylındakı dəyişikliklər atılsın?',
   'changespanel.editing-history-of': 'Tarixçə redaktə olunur:',
   'changespanel.generate-commit-message-with-copilot':
     'Commit mesajını Copilot ilə yaz',
@@ -113,10 +112,9 @@ const messages: Messages = {
     '{name} teqi silinsin? Push edilibsə, uzaq repozitoridəki surəti qalır.',
   'commitactions.hard': 'Hard',
   'commitactions.hard-reset': 'Hard reset',
-  'commitactions.hard-reset-clean':
-    'Bundan sonrakı bütün commit-lər itir. Bunu GitGud-dan geri qaytarmaq olmaz.',
+  'commitactions.hard-reset-clean': 'Bundan sonrakı bütün commit-lər itir.',
   'commitactions.hard-reset-dirty':
-    'Commit edilməmiş dəyişiklikləriniz və bundan sonrakı bütün commit-lər itir. Bunu GitGud-dan geri qaytarmaq olmaz.',
+    'Commit edilməmiş dəyişiklikləriniz və bundan sonrakı bütün commit-lər itir.',
   'commitactions.hint-hard':
     'Sonrakı commit-ləri və commit edilməmiş bütün dəyişiklikləri at.',
   'commitactions.hint-mixed':
@@ -170,10 +168,8 @@ const messages: Messages = {
   'diffview.clear': 'Təmizlə',
   'diffview.discard-hunk': 'Hissəni at',
   'diffview.discard-lines': 'Sətirləri at',
-  'diffview.discard-lines-body.one':
-    'Dəyişən {count} sətir atılsın? Bunu geri qaytarmaq olmaz.',
-  'diffview.discard-lines-body.other':
-    'Dəyişən {count} sətir atılsın? Bunu geri qaytarmaq olmaz.',
+  'diffview.discard-lines-body.one': 'Dəyişən {count} sətir atılsın?',
+  'diffview.discard-lines-body.other': 'Dəyişən {count} sətir atılsın?',
   'diffview.lines-selected.one': '{count} sətir seçildi',
   'diffview.lines-selected.other': '{count} sətir seçildi',
   'diffview.only-whitespace': 'Yalnız boşluqlar dəyişib.',
@@ -300,6 +296,14 @@ const messages: Messages = {
   'rebasedialog.squash': 'Squash',
   'rebasedialog.squash-first':
     'Saxlanılan ilk commit-in üstündə squash ediləcək commit yoxdur.',
+  'reflogdialog.create-branch': 'Burada budaq yarat…',
+  'reflogdialog.deleted-stashes': 'Silinmiş stash-lər',
+  'reflogdialog.empty': 'Burada heç nə yoxdur.',
+  'reflogdialog.everything': 'HEAD (hamısı)',
+  'reflogdialog.recover': 'Bu stash-i bərpa et',
+  'reflogdialog.reset': 'Cari budağı bura sıfırla…',
+  'reflogdialog.show': 'Commit-i göstər',
+  'reflogdialog.source': 'Hərəkətləri göstər',
   'remotesdialog.add': 'Uzaq repozitori əlavə et',
   'remotesdialog.add-parent':
     'Fork-un mənbəyi {repo} repozitorisini {name} kimi əlavə et',
@@ -346,6 +350,7 @@ const messages: Messages = {
   'repocommands.pick-a-repository': 'Repozitori seçin',
   'repocommands.pick-a-theme': 'Mövzu seçin',
   'repocommands.publish-to-github': 'GitHub-da dərc et',
+  'repocommands.reflog': 'Reflog və itmiş stash-lər…',
   'repocommands.search-history': 'Tarixçədə axtar',
   'repocommands.show-changes': 'Dəyişiklikləri göstər',
   'repocommands.show-history': 'Tarixçəni göstər',
@@ -383,8 +388,7 @@ const messages: Messages = {
   'stashpanel.apply-keep-the-stash': 'Tətbiq et (stash qalsın)',
   'stashpanel.delete': 'Sil',
   'stashpanel.delete-stash': 'Stash-i sil',
-  'stashpanel.delete-stash-body':
-    '"{message}" stash-i silinsin? Bunu geri qaytarmaq olmaz.',
+  'stashpanel.delete-stash-body': '"{message}" stash-i silinsin?',
   'stashpanel.no-stashes': 'Stash yoxdur',
   'stashpanel.pop-apply-and-delete': 'Pop (tətbiq et və sil)',
   'stashpanel.stash-your-changes-from-the-changes-tab-to-set-them-aside-for-later':
@@ -468,6 +472,18 @@ const messages: Messages = {
   'toolbar.upstream-of': '{name} budağının pull və push etdiyi uzaq budaq',
   'toolbar.your-branch-and-its-upstream-have-different-histories':
     'Budağınızla upstream-in tarixçəsi fərqlidir',
+  'undo.done-amend': 'Commit düzəldildi',
+  'undo.done-cherryPick': 'Cherry-pick edildi',
+  'undo.done-commit': 'Commit edildi',
+  'undo.done-deleteBranch': 'Budaq silindi',
+  'undo.done-discard': 'Dəyişikliklər atıldı',
+  'undo.done-dropStash': 'Stash silindi',
+  'undo.done-merge': 'Merge edildi',
+  'undo.done-rebase': 'Tarixçə redaktə edildi',
+  'undo.done-reset': 'Budaq sıfırlandı',
+  'undo.done-revert': 'Commit revert edildi',
+  'undo.undo': 'Geri al',
+  'undo.undo-last': 'Son əməliyyatı geri al',
   'updatenotice.close': 'Bağla',
   'updatenotice.couldn-t-check-for-updates': 'Yeniləmələri yoxlamaq alınmadı',
   'updatenotice.download-it-manually': 'Əl ilə yükləyin',

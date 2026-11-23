@@ -285,6 +285,19 @@ pub fn abort(repo: &Path) -> Result<()> {
     cleanup(repo)
 }
 
+/// The branch a stopped rebase is rewriting, and where it pointed before.
+pub fn original(repo: &Path) -> Result<Option<(String, String)>> {
+    let dir = git_path(repo, "rebase-merge")?;
+    let read = |name: &str| std::fs::read_to_string(dir.join(name)).ok();
+    let (Some(head), Some(oid)) = (read("head-name"), read("orig-head")) else {
+        return Ok(None);
+    };
+    Ok(head
+        .trim()
+        .strip_prefix("refs/heads/")
+        .map(|branch| (branch.to_string(), oid.trim().to_string())))
+}
+
 /// Where a stopped rebase is, if one is in progress.
 pub fn progress(repo: &Path) -> Result<Option<RebaseProgress>> {
     let dir = git_path(repo, "rebase-merge")?;

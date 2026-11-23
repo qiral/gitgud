@@ -72,7 +72,7 @@ pub(crate) fn run_with_env(repo: &Path, args: &[&str], env: &[(String, String)])
 }
 
 /// Like [`run`], writing `input` to git's stdin.
-fn run_with_input(repo: &Path, args: &[&str], input: &str) -> Result<String> {
+pub(crate) fn run_with_input(repo: &Path, args: &[&str], input: &str) -> Result<String> {
     use std::io::Write;
     let mut child = command(repo, args)
         .stdin(Stdio::piped())
@@ -282,7 +282,7 @@ fn parse_status(raw: &str) -> Status {
 // Merging and conflicts
 
 /// The pending merge's message if a merge is in progress.
-fn merge_message(repo: &Path) -> Result<Option<String>> {
+pub(crate) fn merge_message(repo: &Path) -> Result<Option<String>> {
     if !output(repo, &["rev-parse", "-q", "--verify", "MERGE_HEAD"])?
         .status
         .success()
@@ -367,7 +367,7 @@ fn ref_exists(repo: &Path, name: &str) -> Result<bool> {
 }
 
 /// A cherry-pick or revert stopped for conflicts, with a line describing it.
-fn pick_state(repo: &Path) -> Result<Option<(Operation, String)>> {
+pub(crate) fn pick_state(repo: &Path) -> Result<Option<(Operation, String)>> {
     let (op, head, verb) = if ref_exists(repo, "CHERRY_PICK_HEAD")? {
         (Operation::CherryPick, "CHERRY_PICK_HEAD", "Cherry-picking")
     } else if ref_exists(repo, "REVERT_HEAD")? {
@@ -528,7 +528,7 @@ pub fn push_tag(
 }
 
 /// `path` inside `repo`, refusing anything that could point outside it.
-fn file_in_repo(repo: &Path, path: &str) -> Result<PathBuf> {
+pub(crate) fn file_in_repo(repo: &Path, path: &str) -> Result<PathBuf> {
     use std::path::Component;
     let relative = Path::new(path);
     if path.is_empty()

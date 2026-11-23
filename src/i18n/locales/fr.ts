@@ -54,8 +54,7 @@ const messages: Messages = {
   'changespanel.copilot-s-message': 'Message de Copilot',
   'changespanel.discard-changes': 'Abandonner les modifications',
   'changespanel.discard-changes-2': 'Abandonner les modifications…',
-  'changespanel.discard-file-body':
-    'Abandonner les modifications de {path} ? Cette action est irréversible.',
+  'changespanel.discard-file-body': 'Abandonner les modifications de {path} ?',
   'changespanel.editing-history-of': "Modification de l'historique de",
   'changespanel.generate-commit-message-with-copilot':
     'Générer le message de commit avec Copilot',
@@ -117,9 +116,9 @@ const messages: Messages = {
   'commitactions.hard': 'Hard',
   'commitactions.hard-reset': 'Reset hard',
   'commitactions.hard-reset-clean':
-    "Tous les commits après celui-ci seront perdus. Impossible d'annuler depuis GitGud.",
+    'Tous les commits après celui-ci seront perdus.',
   'commitactions.hard-reset-dirty':
-    "Vos modifications non commitées et tous les commits après celui-ci seront perdus. Impossible d'annuler depuis GitGud.",
+    'Vos modifications non commitées et tous les commits après celui-ci seront perdus.',
   'commitactions.hint-hard':
     'Supprimer les commits suivants et toutes les modifications non commitées.',
   'commitactions.hint-mixed':
@@ -174,10 +173,8 @@ const messages: Messages = {
   'diffview.clear': 'Effacer',
   'diffview.discard-hunk': 'Abandonner le bloc',
   'diffview.discard-lines': 'Abandonner les lignes',
-  'diffview.discard-lines-body.one':
-    'Abandonner {count} ligne modifiée ? Cette action est irréversible.',
-  'diffview.discard-lines-body.other':
-    'Abandonner {count} lignes modifiées ? Cette action est irréversible.',
+  'diffview.discard-lines-body.one': 'Abandonner {count} ligne modifiée ?',
+  'diffview.discard-lines-body.other': 'Abandonner {count} lignes modifiées ?',
   'diffview.lines-selected.one': '{count} ligne sélectionnée',
   'diffview.lines-selected.other': '{count} lignes sélectionnées',
   'diffview.only-whitespace': 'Seuls des espaces ont changé.',
@@ -309,6 +306,14 @@ const messages: Messages = {
   'rebasedialog.squash': 'Squash',
   'rebasedialog.squash-first':
     "Le premier commit gardé n'a rien au-dessus de lui dans quoi fusionner.",
+  'reflogdialog.create-branch': 'Créer une branche ici…',
+  'reflogdialog.deleted-stashes': 'Stashes supprimés',
+  'reflogdialog.empty': 'Rien ici.',
+  'reflogdialog.everything': 'HEAD (tout)',
+  'reflogdialog.recover': 'Récupérer ce stash',
+  'reflogdialog.reset': 'Réinitialiser la branche actuelle ici…',
+  'reflogdialog.show': 'Afficher le commit',
+  'reflogdialog.source': 'Afficher les mouvements de',
   'remotesdialog.add': 'Ajouter le dépôt distant',
   'remotesdialog.add-parent':
     "Ajouter {repo}, à l'origine de ce fork, sous le nom {name}",
@@ -354,6 +359,7 @@ const messages: Messages = {
   'repocommands.pick-a-repository': 'Choisir un dépôt',
   'repocommands.pick-a-theme': 'Choisir un thème',
   'repocommands.publish-to-github': 'Publier sur GitHub',
+  'repocommands.reflog': 'Reflog et stashes perdus…',
   'repocommands.search-history': "Rechercher dans l'historique",
   'repocommands.show-changes': 'Afficher les modifications',
   'repocommands.show-history': "Afficher l'historique",
@@ -392,8 +398,7 @@ const messages: Messages = {
   'stashpanel.apply-keep-the-stash': 'Appliquer (garder le stash)',
   'stashpanel.delete': 'Supprimer',
   'stashpanel.delete-stash': 'Supprimer le stash',
-  'stashpanel.delete-stash-body':
-    'Supprimer le stash « {message} » ? Cette action est irréversible.',
+  'stashpanel.delete-stash-body': 'Supprimer le stash « {message} » ?',
   'stashpanel.no-stashes': 'Aucun stash',
   'stashpanel.pop-apply-and-delete': 'Pop (appliquer et supprimer)',
   'stashpanel.stash-your-changes-from-the-changes-tab-to-set-them-aside-for-later':
@@ -477,6 +482,18 @@ const messages: Messages = {
   'toolbar.upstream-of': 'Branche distante que {name} tire et pousse',
   'toolbar.your-branch-and-its-upstream-have-different-histories':
     'Votre branche et sa branche amont ont des historiques différents',
+  'undo.done-amend': 'Commit modifié',
+  'undo.done-cherryPick': 'Cherry-pick effectué',
+  'undo.done-commit': 'Commit créé',
+  'undo.done-deleteBranch': 'Branche supprimée',
+  'undo.done-discard': 'Modifications abandonnées',
+  'undo.done-dropStash': 'Stash supprimé',
+  'undo.done-merge': 'Fusionné',
+  'undo.done-rebase': 'Historique modifié',
+  'undo.done-reset': 'Branche réinitialisée',
+  'undo.done-revert': 'Commit annulé',
+  'undo.undo': 'Annuler',
+  'undo.undo-last': 'Annuler la dernière action',
   'updatenotice.close': 'Fermer',
   'updatenotice.couldn-t-check-for-updates':
     'Impossible de rechercher des mises à jour',

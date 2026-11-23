@@ -30,6 +30,8 @@ import { useTranslation } from '../i18n'
 
 interface Props {
   repo: RepoInfo
+  /** Kept mounted behind other tabs, so a typed message isn't lost. */
+  hidden?: boolean
   files: FileChange[]
   /** Set while a merge, cherry-pick or revert is in progress, e.g.
    *  "Merge branch 'feature'". */
@@ -52,6 +54,7 @@ interface Props {
 
 export default function ChangesPanel({
   repo,
+  hidden = false,
   files,
   merging,
   operation = 'merge',
@@ -84,6 +87,12 @@ export default function ChangesPanel({
   useEffect(() => {
     if (!canAmend) setAmending(null)
   }, [canAmend])
+  // So does leaving the tab: the last commit may be another one afterwards.
+  useEffect(() => {
+    if (!hidden || !amending) return
+    setMessage(amending.draft)
+    setAmending(null)
+  }, [hidden, amending])
   const { menu, open } = useContextMenu()
   const conflicts = files.filter((f) => f.conflicted)
   const staged = files.filter(isStaged)
@@ -272,7 +281,7 @@ export default function ChangesPanel({
     selection.file.path === f.path
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className={hidden ? 'hidden' : 'flex min-h-0 flex-1 flex-col'}>
       {(merging || rebasing) && (
         <div className="border-b border-line bg-modified/10 px-3 py-2">
           <div className="flex items-center gap-2 font-medium">

@@ -50,8 +50,7 @@ const messages: Messages = {
   'changespanel.copilot-s-message': 'Copilot のメッセージ',
   'changespanel.discard-changes': '変更を破棄',
   'changespanel.discard-changes-2': '変更を破棄…',
-  'changespanel.discard-file-body':
-    '{path} の変更を破棄しますか？元に戻せません。',
+  'changespanel.discard-file-body': '{path} の変更を破棄しますか？',
   'changespanel.editing-history-of': '履歴を編集中:',
   'changespanel.generate-commit-message-with-copilot':
     'Copilot でコミットメッセージを生成',
@@ -111,10 +110,9 @@ const messages: Messages = {
     'タグ {name} を削除しますか？プッシュ済みの場合、リモートのコピーは残ります。',
   'commitactions.hard': 'Hard',
   'commitactions.hard-reset': 'ハードリセット',
-  'commitactions.hard-reset-clean':
-    'これより後のコミットはすべて失われます。GitGud からは元に戻せません。',
+  'commitactions.hard-reset-clean': 'これより後のコミットはすべて失われます。',
   'commitactions.hard-reset-dirty':
-    'コミットしていない変更と、これより後のコミットがすべて失われます。GitGud からは元に戻せません。',
+    'コミットしていない変更と、これより後のコミットがすべて失われます。',
   'commitactions.hint-hard':
     '後のコミットとコミットしていない変更をすべて破棄します。',
   'commitactions.hint-mixed': '後のコミットの変更を、ステージせずに残します。',
@@ -164,8 +162,7 @@ const messages: Messages = {
   'diffview.clear': 'クリア',
   'diffview.discard-hunk': 'ハンクを破棄',
   'diffview.discard-lines': '行を破棄',
-  'diffview.discard-lines-body.other':
-    '変更された {count} 行を破棄しますか？元に戻せません。',
+  'diffview.discard-lines-body.other': '変更された {count} 行を破棄しますか？',
   'diffview.lines-selected.other': '{count} 行を選択中',
   'diffview.only-whitespace': '空白のみが変更されています。',
   'diffview.select-hint': 'クリックで選択、Shift+クリックで範囲選択',
@@ -291,6 +288,14 @@ const messages: Messages = {
   'rebasedialog.squash': 'スカッシュ',
   'rebasedialog.squash-first':
     '残す最初のコミットの上には、まとめる先のコミットがありません。',
+  'reflogdialog.create-branch': 'ここにブランチを作成…',
+  'reflogdialog.deleted-stashes': '削除されたスタッシュ',
+  'reflogdialog.empty': '何もありません。',
+  'reflogdialog.everything': 'HEAD（すべて）',
+  'reflogdialog.recover': 'このスタッシュを復元',
+  'reflogdialog.reset': '現在のブランチをここにリセット…',
+  'reflogdialog.show': 'コミットを表示',
+  'reflogdialog.source': '表示する対象',
   'remotesdialog.add': 'リモートを追加',
   'remotesdialog.add-parent': 'フォーク元の {repo} を {name} として追加',
   'remotesdialog.cancel': 'キャンセル',
@@ -335,6 +340,7 @@ const messages: Messages = {
   'repocommands.pick-a-repository': 'リポジトリを選択',
   'repocommands.pick-a-theme': 'テーマを選択',
   'repocommands.publish-to-github': 'GitHub に公開',
+  'repocommands.reflog': 'Reflog と失われたスタッシュ…',
   'repocommands.search-history': '履歴を検索',
   'repocommands.show-changes': '変更を表示',
   'repocommands.show-history': '履歴を表示',
@@ -372,8 +378,7 @@ const messages: Messages = {
   'stashpanel.apply-keep-the-stash': '適用 (スタッシュを残す)',
   'stashpanel.delete': '削除',
   'stashpanel.delete-stash': 'スタッシュを削除',
-  'stashpanel.delete-stash-body':
-    'スタッシュ「{message}」を削除しますか？元に戻せません。',
+  'stashpanel.delete-stash-body': 'スタッシュ「{message}」を削除しますか？',
   'stashpanel.no-stashes': 'スタッシュはありません',
   'stashpanel.pop-apply-and-delete': 'ポップ (適用して削除)',
   'stashpanel.stash-your-changes-from-the-changes-tab-to-set-them-aside-for-later':
@@ -455,6 +460,18 @@ const messages: Messages = {
   'toolbar.upstream-of': '{name} のプルとプッシュの対象になるリモートブランチ',
   'toolbar.your-branch-and-its-upstream-have-different-histories':
     'ブランチとアップストリームの履歴が異なります',
+  'undo.done-amend': 'コミットを修正しました',
+  'undo.done-cherryPick': 'チェリーピックしました',
+  'undo.done-commit': 'コミットしました',
+  'undo.done-deleteBranch': 'ブランチを削除しました',
+  'undo.done-discard': '変更を破棄しました',
+  'undo.done-dropStash': 'スタッシュを削除しました',
+  'undo.done-merge': 'マージしました',
+  'undo.done-rebase': '履歴を編集しました',
+  'undo.done-reset': 'ブランチをリセットしました',
+  'undo.done-revert': 'コミットを打ち消しました',
+  'undo.undo': '元に戻す',
+  'undo.undo-last': '直前の操作を元に戻す',
   'updatenotice.close': '閉じる',
   'updatenotice.couldn-t-check-for-updates':
     'アップデートを確認できませんでした',

@@ -21,8 +21,10 @@ import { test as base, expect } from '@playwright/test'
 function installTauriMock({
   withRepo,
   signedIn,
+  withChanges,
 }: {
   withRepo: boolean
+  withChanges: boolean
   signedIn: boolean
 }) {
   const home = '/home/e2e'
@@ -47,6 +49,8 @@ function installTauriMock({
     refs: [],
     graph: { lane: 0, color: 0, width: 1, segments: [] },
   }
+  let dirty = withChanges
+  let undoable: { id: number; kind: string } | null = null
   const branchNames = ['main', 'feature/login', 'fix/typo']
 
   const callbacks = new Map<number, (data: unknown) => void>()
@@ -63,7 +67,17 @@ function installTauriMock({
       upstream: `origin/${current}`,
       ahead: 0,
       behind: 0,
-      files: [],
+      files: dirty
+        ? [
+            {
+              path: 'src/app.ts',
+              index: '.',
+              worktree: 'M',
+              untracked: false,
+              conflicted: false,
+            },
+          ]
+        : [],
       merging: null,
       operation: null,
       rebasing: null,
@@ -129,6 +143,29 @@ function installTauriMock({
       return null
     },
     fetch: () => null,
+    undo_available: () => undoable,
+    delete_branch: () => {
+      undoable = { id: 1, kind: 'deleteBranch' }
+      return { notMerged: false }
+    },
+    undo_last: () => {
+      undoable = null
+      return null
+    },
+    reflog: () => [
+      {
+        hash: commit.hash,
+        shortHash: commit.shortHash,
+        time: commit.time,
+        action: 'commit: Add b',
+        subject: commit.subject,
+      },
+    ],
+    diff: () => '',
+    discard: () => {
+      dirty = false
+      return null
+    },
     stashes: () => [],
     switch_branch: (args) => {
       current = String(args.name)
@@ -191,7 +228,13 @@ function installTauriMock({
     'plugin:window|set_theme': () => null,
     // @tauri-apps/plugin-dialog: no native file picker in a browser
     'plugin:dialog|open': () => null,
-    'plugin:dialog|message': () => 'Ok',
+    // Confirms: the answer is the label of the button, when it has its own.
+    'plugin:dialog|message': (args) => {
+      const buttons = args.buttons as { OkCancelCustom?: string[] } | string
+      return (
+        (typeof buttons === 'object' && buttons?.OkCancelCustom?.[0]) || 'Ok'
+      )
+    },
     ...(withRepo ? repoCommands : {}),
     ...(signedIn ? githubCommands : {}),
   }
@@ -255,6 +298,7 @@ function installTauriMock({
 export const test = base.extend<{
   withRepo: boolean
   signedIn: boolean
+  withChanges: boolean
   tauri: void
   errors: string[]
 }>({
@@ -262,10 +306,16 @@ export const test = base.extend<{
   withRepo: [false, { option: true }],
   // `test.use({ signedIn: true })` adds a GitHub account and pull requests.
   signedIn: [false, { option: true }],
+  // `test.use({ withChanges: true })` has an uncommitted change in it.
+  withChanges: [false, { option: true }],
 
   tauri: [
-    async ({ page, withRepo, signedIn }, use) => {
-      await page.addInitScript(installTauriMock, { withRepo, signedIn })
+    async ({ page, withRepo, signedIn, withChanges }, use) => {
+      await page.addInitScript(installTauriMock, {
+        withRepo,
+        signedIn,
+        withChanges,
+      })
       await use()
     },
     { auto: true },

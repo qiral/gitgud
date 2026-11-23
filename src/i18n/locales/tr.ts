@@ -52,7 +52,7 @@ const messages: Messages = {
   'changespanel.discard-changes': 'Değişiklikleri at',
   'changespanel.discard-changes-2': 'Değişiklikleri at…',
   'changespanel.discard-file-body':
-    '{path} dosyasındaki değişiklikler atılsın mı? Bu geri alınamaz.',
+    '{path} dosyasındaki değişiklikler atılsın mı?',
   'changespanel.editing-history-of': 'Geçmişi düzenleniyor:',
   'changespanel.generate-commit-message-with-copilot':
     'Commit mesajını Copilot ile yaz',
@@ -112,10 +112,9 @@ const messages: Messages = {
     '{name} etiketi silinsin mi? Push edildiyse uzak depodaki kopyası kalır.',
   'commitactions.hard': 'Hard',
   'commitactions.hard-reset': 'Hard reset',
-  'commitactions.hard-reset-clean':
-    "Bundan sonraki tüm commit'ler kaybolur. Bu, GitGud'dan geri alınamaz.",
+  'commitactions.hard-reset-clean': "Bundan sonraki tüm commit'ler kaybolur.",
   'commitactions.hard-reset-dirty':
-    "Commit edilmemiş değişiklikleriniz ve bundan sonraki tüm commit'ler kaybolur. Bu, GitGud'dan geri alınamaz.",
+    "Commit edilmemiş değişiklikleriniz ve bundan sonraki tüm commit'ler kaybolur.",
   'commitactions.hint-hard':
     "Sonraki commit'leri ve commit edilmemiş tüm değişiklikleri at.",
   'commitactions.hint-mixed':
@@ -168,10 +167,8 @@ const messages: Messages = {
   'diffview.clear': 'Temizle',
   'diffview.discard-hunk': 'Parçayı at',
   'diffview.discard-lines': 'Satırları at',
-  'diffview.discard-lines-body.one':
-    'Değişen {count} satır atılsın mı? Bu geri alınamaz.',
-  'diffview.discard-lines-body.other':
-    'Değişen {count} satır atılsın mı? Bu geri alınamaz.',
+  'diffview.discard-lines-body.one': 'Değişen {count} satır atılsın mı?',
+  'diffview.discard-lines-body.other': 'Değişen {count} satır atılsın mı?',
   'diffview.lines-selected.one': '{count} satır seçildi',
   'diffview.lines-selected.other': '{count} satır seçildi',
   'diffview.only-whitespace': 'Yalnızca boşluklar değişti.',
@@ -298,6 +295,14 @@ const messages: Messages = {
   'rebasedialog.squash': 'Squash',
   'rebasedialog.squash-first':
     "Tutulan ilk commit'in üstünde squash yapılacak commit yok.",
+  'reflogdialog.create-branch': 'Burada dal oluştur…',
+  'reflogdialog.deleted-stashes': "Silinmiş stash'ler",
+  'reflogdialog.empty': 'Burada bir şey yok.',
+  'reflogdialog.everything': 'HEAD (hepsi)',
+  'reflogdialog.recover': "Bu stash'i kurtar",
+  'reflogdialog.reset': 'Geçerli dalı buraya sıfırla…',
+  'reflogdialog.show': "Commit'i göster",
+  'reflogdialog.source': 'Hareketleri göster',
   'remotesdialog.add': 'Uzak depo ekle',
   'remotesdialog.add-parent':
     "Fork'un kaynağı {repo} deposunu {name} olarak ekle",
@@ -343,6 +348,7 @@ const messages: Messages = {
   'repocommands.pick-a-repository': 'Bir depo seçin',
   'repocommands.pick-a-theme': 'Bir tema seçin',
   'repocommands.publish-to-github': "GitHub'da yayımla",
+  'repocommands.reflog': "Reflog ve kayıp stash'ler…",
   'repocommands.search-history': 'Geçmişte ara',
   'repocommands.show-changes': 'Değişiklikleri göster',
   'repocommands.show-history': 'Geçmişi göster',
@@ -380,8 +386,7 @@ const messages: Messages = {
   'stashpanel.apply-keep-the-stash': 'Uygula (stash kalsın)',
   'stashpanel.delete': 'Sil',
   'stashpanel.delete-stash': "Stash'i sil",
-  'stashpanel.delete-stash-body':
-    '"{message}" stash\'i silinsin mi? Bu geri alınamaz.',
+  'stashpanel.delete-stash-body': '"{message}" stash\'i silinsin mi?',
   'stashpanel.no-stashes': 'Stash yok',
   'stashpanel.pop-apply-and-delete': 'Pop (uygula ve sil)',
   'stashpanel.stash-your-changes-from-the-changes-tab-to-set-them-aside-for-later':
@@ -465,6 +470,18 @@ const messages: Messages = {
   'toolbar.upstream-of': '{name} dalının pull ve push yaptığı uzak dal',
   'toolbar.your-branch-and-its-upstream-have-different-histories':
     "Dalınızla upstream'inin geçmişi farklı",
+  'undo.done-amend': 'Commit düzeltildi',
+  'undo.done-cherryPick': 'Cherry-pick yapıldı',
+  'undo.done-commit': 'Commit edildi',
+  'undo.done-deleteBranch': 'Dal silindi',
+  'undo.done-discard': 'Değişiklikler atıldı',
+  'undo.done-dropStash': 'Stash silindi',
+  'undo.done-merge': 'Merge edildi',
+  'undo.done-rebase': 'Geçmiş düzenlendi',
+  'undo.done-reset': 'Dal sıfırlandı',
+  'undo.done-revert': 'Commit revert edildi',
+  'undo.undo': 'Geri al',
+  'undo.undo-last': 'Son işlemi geri al',
   'updatenotice.close': 'Kapat',
   'updatenotice.couldn-t-check-for-updates': 'Güncellemeler denetlenemedi',
   'updatenotice.download-it-manually': 'Elle indirin',

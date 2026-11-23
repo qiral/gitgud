@@ -23,8 +23,15 @@ import {
   RefreshCw,
   Search,
   Server,
+  Undo2,
 } from 'lucide-react'
-import { git, type Branch, type RepoInfo, type Status } from '../lib/git'
+import {
+  git,
+  type Branch,
+  type RepoInfo,
+  type Status,
+  type Undoable,
+} from '../lib/git'
 import { copyText } from '../lib/copy'
 import { readTheme, setTheme, THEMES } from '../lib/prefs'
 import { isTyping, matches } from '../lib/shortcuts'
@@ -58,6 +65,9 @@ interface Options {
   onSignOut: () => void
   onManageHosts: () => void
   onManageRemotes: () => void
+  undoable: Undoable | null
+  onUndo: (id: number) => void
+  onReflog: () => void
   /** More commands from other features, e.g. pull requests. */
   extra?: Command[]
 }
@@ -258,6 +268,24 @@ export function useRepoCommands(o: Options) {
       shortcut: 'mod+shift+s',
       disabled: !o.status?.files.length,
       run: o.onStash,
+    },
+
+    {
+      id: 'undo',
+      group: t('repocommands.group-branch'),
+      label: t('undo.undo-last'),
+      detail: o.undoable ? t(`undo.done-${o.undoable.kind}`) : undefined,
+      icon: Undo2,
+      disabled: o.busy || !o.undoable,
+      run: () => o.undoable && o.onUndo(o.undoable.id),
+    },
+    {
+      id: 'reflog',
+      group: t('repocommands.group-branch'),
+      label: t('repocommands.reflog'),
+      keywords: 'lost recover deleted stash undo',
+      icon: History,
+      run: o.onReflog,
     },
 
     // View

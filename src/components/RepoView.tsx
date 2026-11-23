@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   canBlame,
   copilot,
@@ -15,6 +15,7 @@ import {
   type RepoInfo,
   type Stash,
   type Status,
+  type Undoable,
 } from '../lib/git'
 import { splitDiff } from '../lib/diff'
 import Toolbar from './Toolbar'
@@ -31,6 +32,8 @@ import ConflictView from './ConflictView'
 import RebaseDialog from './RebaseDialog'
 import SignInDialog from './SignInDialog'
 import HostsDialog from './HostsDialog'
+import ReflogDialog from './ReflogDialog'
+import UndoToast from './UndoToast'
 import RemotesDialog from './RemotesDialog'
 import PublishDialog from './PublishDialog'
 import ExplainDialog from './ExplainDialog'
@@ -91,10 +94,11 @@ export default function RepoView({
   const [branches, setBranches] = useState<Branch[]>([])
   const [commits, setCommits] = useState<Commit[]>([])
   const [remotes, setRemotes] = useState<Remote[]>([])
+  const [undoable, setUndoable] = useState<Undoable | null>(null)
   const [remoteBranches, setRemoteBranches] = useState<string[]>([])
   const [stashes, setStashes] = useState<Stash[]>([])
   const [dialog, setDialog] = useState<
-    'signIn' | 'hosts' | 'publish' | 'stash' | 'remotes' | null
+    'signIn' | 'hosts' | 'publish' | 'stash' | 'remotes' | 'reflog' | null
   >(null)
   const [rebaseFrom, setRebaseFrom] = useState<Commit | null>(null)
   const [selection, setSelection] = useState<Selection | null>(null)
@@ -112,13 +116,14 @@ export default function RepoView({
 
   const refresh = useCallback(async () => {
     try {
-      const [s, b, c, st, r, rb] = await Promise.all([
+      const [s, b, c, st, r, rb, u] = await Promise.all([
         git.status(repo.path),
         git.branches(repo.path),
         git.log(repo.path, logLimit),
         git.stashes(repo.path),
         git.remotes(repo.path),
         git.remoteBranches(repo.path),
+        git.undoAvailable(repo.path),
       ])
       setStatus(s)
       setBranches(b)
@@ -126,6 +131,7 @@ export default function RepoView({
       setStashes(st)
       setRemotes(r)
       setRemoteBranches(rb)
+      setUndoable(u)
     } catch (e) {
       setError(errorMessage(e))
     }
@@ -287,6 +293,19 @@ export default function RepoView({
         ) ?? null)
       : null
 
+  // With nothing to commit, History is more useful than an empty list. Only
+  // when the repository opens or the last change goes away, so Changes can
+  // still be opened by hand, e.g. to amend.
+  const dirty = useRef<boolean | null>(null)
+  useEffect(() => {
+    if (!status) return
+    const before = dirty.current
+    dirty.current = status.files.length > 0
+    if (dirty.current || before === false) return
+    if (status.merging || status.rebasing || commits.length === 0) return
+    setTab((t) => (t === 'changes' ? 'history' : t))
+  }, [status, commits])
+
   // A merge or rebase that stops with conflicts needs the Changes tab.
   const stopped = status?.merging ?? status?.rebasing?.step ?? null
   useEffect(() => {
@@ -331,6 +350,8 @@ export default function RepoView({
     },
     [ai.run],
   )
+
+  const undo = (id: number) => act('undo', () => git.undo(repo.path, id))
 
   const signOut = () =>
     act('signOut', async () => {
@@ -380,6 +401,9 @@ export default function RepoView({
     onSignOut: signOut,
     onManageHosts: () => setDialog('hosts'),
     onManageRemotes: () => setDialog('remotes'),
+    undoable,
+    onUndo: undo,
+    onReflog: () => setDialog('reflog'),
     extra: pullRequests.commands,
   })
 
@@ -427,6 +451,20 @@ export default function RepoView({
         />
       )}
       {dialog === 'hosts' && <HostsDialog onClose={() => setDialog(null)} />}
+      <UndoToast undoable={undoable} disabled={busy !== null} onUndo={undo} />
+      {dialog === 'reflog' && (
+        <ReflogDialog
+          repo={repo}
+          branches={branches}
+          onShow={showCommit}
+          onCreateBranch={commitActions.actions.createBranch}
+          onReset={commitActions.actions.reset}
+          onRecover={(hash) =>
+            act('stash', () => git.recoverStash(repo.path, hash))
+          }
+          onClose={() => setDialog(null)}
+        />
+      )}
       {dialog === 'remotes' && (
         <RemotesDialog
           repo={repo}
@@ -482,26 +520,26 @@ export default function RepoView({
             ))}
           </div>
 
-          {tab === 'changes' ? (
-            <ChangesPanel
-              repo={repo}
-              files={status?.files ?? []}
-              merging={status?.merging ?? null}
-              operation={status?.operation ?? null}
-              rebasing={status?.rebasing ?? null}
-              hasCommits={commits.length > 0}
-              selection={selection}
-              onSelect={setSelection}
-              busy={busy !== null}
-              onStash={() => setDialog('stash')}
-              onFileHistory={showFileHistory}
-              onBlame={blameOnDisk}
-              onGenerateMessage={() =>
-                ai.run(() => copilot.commitMessage(repo.path))
-              }
-              act={act}
-            />
-          ) : tab === 'history' ? (
+          <ChangesPanel
+            repo={repo}
+            hidden={tab !== 'changes' || (!status && !error)}
+            files={status?.files ?? []}
+            merging={status?.merging ?? null}
+            operation={status?.operation ?? null}
+            rebasing={status?.rebasing ?? null}
+            hasCommits={commits.length > 0}
+            selection={selection}
+            onSelect={setSelection}
+            busy={busy !== null}
+            onStash={() => setDialog('stash')}
+            onFileHistory={showFileHistory}
+            onBlame={blameOnDisk}
+            onGenerateMessage={() =>
+              ai.run(() => copilot.commitMessage(repo.path))
+            }
+            act={act}
+          />
+          {tab === 'changes' ? null : tab === 'history' ? (
             <HistoryPanel
               repoPath={repo.path}
               commits={commits}

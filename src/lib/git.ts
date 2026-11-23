@@ -111,6 +111,35 @@ export interface Blame {
   lines: { origin: number; original: number; text: string }[]
 }
 
+export type UndoKind =
+  | 'commit'
+  | 'amend'
+  | 'merge'
+  | 'cherryPick'
+  | 'revert'
+  | 'rebase'
+  | 'reset'
+  | 'deleteBranch'
+  | 'dropStash'
+  | 'discard'
+
+/** What can be undone right now; see src-tauri/src/undo.rs. */
+export interface Undoable {
+  /** Grows with every action. */
+  id: number
+  kind: UndoKind
+}
+
+/** A place HEAD or a branch has been, or a deleted stash. */
+export interface ReflogEntry {
+  hash: string
+  shortHash: string
+  time: number
+  /** What moved it there, e.g. "reset: moving to HEAD~1". */
+  action: string
+  subject: string
+}
+
 export interface Stash {
   index: number
   message: string
@@ -428,6 +457,17 @@ export const git = {
     invoke<void>('stash_drop', { repo, index }),
   stashShow: (repo: string, index: number, ignoreWhitespace = false) =>
     invoke<string>('stash_show', { repo, index, ignoreWhitespace }),
+  undoAvailable: (repo: string) =>
+    invoke<Undoable | null>('undo_available', { repo }),
+  /** Fails when `id` isn't what `undoAvailable` offers anymore. */
+  undo: (repo: string, id: number) => invoke<void>('undo_last', { repo, id }),
+  /** Newest first; null for HEAD. */
+  reflog: (repo: string, branch: string | null) =>
+    invoke<ReflogEntry[]>('reflog', { repo, branch }),
+  lostStashes: (repo: string) =>
+    invoke<ReflogEntry[]>('lost_stashes', { repo }),
+  recoverStash: (repo: string, hash: string) =>
+    invoke<void>('recover_stash', { repo, hash }),
   /** Without a remote, fetches all of them. */
   fetch: (repo: string, remote: string | null, prune: boolean) =>
     invoke<void>('fetch', { repo, remote, prune }),

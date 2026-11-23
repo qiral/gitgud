@@ -55,8 +55,7 @@ const messages: Messages = {
   'changespanel.copilot-s-message': 'Mensaje de Copilot',
   'changespanel.discard-changes': 'Descartar cambios',
   'changespanel.discard-changes-2': 'Descartar cambios…',
-  'changespanel.discard-file-body':
-    '¿Descartar los cambios de {path}? No se puede deshacer.',
+  'changespanel.discard-file-body': '¿Descartar los cambios de {path}?',
   'changespanel.editing-history-of': 'Editando el historial de',
   'changespanel.generate-commit-message-with-copilot':
     'Generar el mensaje de commit con Copilot',
@@ -117,9 +116,9 @@ const messages: Messages = {
   'commitactions.hard': 'Hard',
   'commitactions.hard-reset': 'Reset hard',
   'commitactions.hard-reset-clean':
-    'Se pierden todos los commits posteriores a este. No se puede deshacer desde GitGud.',
+    'Se pierden todos los commits posteriores a este.',
   'commitactions.hard-reset-dirty':
-    'Se pierden tus cambios sin commit y todos los commits posteriores a este. No se puede deshacer desde GitGud.',
+    'Se pierden tus cambios sin commit y todos los commits posteriores a este.',
   'commitactions.hint-hard':
     'Descartar los commits posteriores y todos los cambios sin commit.',
   'commitactions.hint-mixed':
@@ -173,10 +172,8 @@ const messages: Messages = {
   'diffview.clear': 'Limpiar',
   'diffview.discard-hunk': 'Descartar bloque',
   'diffview.discard-lines': 'Descartar líneas',
-  'diffview.discard-lines-body.one':
-    '¿Descartar {count} línea modificada? No se puede deshacer.',
-  'diffview.discard-lines-body.other':
-    '¿Descartar {count} líneas modificadas? No se puede deshacer.',
+  'diffview.discard-lines-body.one': '¿Descartar {count} línea modificada?',
+  'diffview.discard-lines-body.other': '¿Descartar {count} líneas modificadas?',
   'diffview.lines-selected.one': '{count} línea seleccionada',
   'diffview.lines-selected.other': '{count} líneas seleccionadas',
   'diffview.only-whitespace': 'Solo cambiaron espacios en blanco.',
@@ -307,6 +304,14 @@ const messages: Messages = {
   'rebasedialog.squash': 'Squash',
   'rebasedialog.squash-first':
     'El primer commit conservado no tiene nada arriba con lo que combinarse.',
+  'reflogdialog.create-branch': 'Crear una rama aquí…',
+  'reflogdialog.deleted-stashes': 'Stashes eliminados',
+  'reflogdialog.empty': 'No hay nada aquí.',
+  'reflogdialog.everything': 'HEAD (todo)',
+  'reflogdialog.recover': 'Recuperar este stash',
+  'reflogdialog.reset': 'Restablecer la rama actual aquí…',
+  'reflogdialog.show': 'Mostrar commit',
+  'reflogdialog.source': 'Mostrar movimientos de',
   'remotesdialog.add': 'Añadir remoto',
   'remotesdialog.add-parent':
     'Añadir {repo}, el origen de este fork, como {name}',
@@ -352,6 +357,7 @@ const messages: Messages = {
   'repocommands.pick-a-repository': 'Elige un repositorio',
   'repocommands.pick-a-theme': 'Elige un tema',
   'repocommands.publish-to-github': 'Publicar en GitHub',
+  'repocommands.reflog': 'Reflog y stashes perdidos…',
   'repocommands.search-history': 'Buscar en el historial',
   'repocommands.show-changes': 'Mostrar cambios',
   'repocommands.show-history': 'Mostrar historial',
@@ -390,8 +396,7 @@ const messages: Messages = {
   'stashpanel.apply-keep-the-stash': 'Aplicar (conservar el stash)',
   'stashpanel.delete': 'Eliminar',
   'stashpanel.delete-stash': 'Eliminar stash',
-  'stashpanel.delete-stash-body':
-    '¿Eliminar el stash "{message}"? No se puede deshacer.',
+  'stashpanel.delete-stash-body': '¿Eliminar el stash "{message}"?',
   'stashpanel.no-stashes': 'No hay stashes',
   'stashpanel.pop-apply-and-delete': 'Pop (aplicar y eliminar)',
   'stashpanel.stash-your-changes-from-the-changes-tab-to-set-them-aside-for-later':
@@ -475,6 +480,18 @@ const messages: Messages = {
     'Rama remota de la que {name} hace pull y a la que hace push',
   'toolbar.your-branch-and-its-upstream-have-different-histories':
     'Tu rama y su upstream tienen historiales distintos',
+  'undo.done-amend': 'Commit enmendado',
+  'undo.done-cherryPick': 'Cherry-pick hecho',
+  'undo.done-commit': 'Commit creado',
+  'undo.done-deleteBranch': 'Rama eliminada',
+  'undo.done-discard': 'Cambios descartados',
+  'undo.done-dropStash': 'Stash eliminado',
+  'undo.done-merge': 'Fusionado',
+  'undo.done-rebase': 'Historial editado',
+  'undo.done-reset': 'Rama restablecida',
+  'undo.done-revert': 'Commit revertido',
+  'undo.undo': 'Deshacer',
+  'undo.undo-last': 'Deshacer la última acción',
   'updatenotice.close': 'Cerrar',
   'updatenotice.couldn-t-check-for-updates':
     'No se pudieron buscar actualizaciones',

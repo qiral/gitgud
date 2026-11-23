@@ -54,8 +54,7 @@ const messages: Messages = {
   'changespanel.copilot-s-message': 'Nachricht von Copilot',
   'changespanel.discard-changes': 'Änderungen verwerfen',
   'changespanel.discard-changes-2': 'Änderungen verwerfen…',
-  'changespanel.discard-file-body':
-    'Änderungen an {path} verwerfen? Das kann nicht rückgängig gemacht werden.',
+  'changespanel.discard-file-body': 'Änderungen an {path} verwerfen?',
   'changespanel.editing-history-of': 'Verlauf wird bearbeitet:',
   'changespanel.generate-commit-message-with-copilot':
     'Commit-Nachricht mit Copilot erzeugen',
@@ -115,10 +114,9 @@ const messages: Messages = {
     'Den Tag {name} löschen? Wurde er gepusht, behält der Remote seine Kopie.',
   'commitactions.hard': 'Hard',
   'commitactions.hard-reset': 'Hard Reset',
-  'commitactions.hard-reset-clean':
-    'Alle Commits nach diesem gehen verloren. Das kann in GitGud nicht rückgängig gemacht werden.',
+  'commitactions.hard-reset-clean': 'Alle Commits nach diesem gehen verloren.',
   'commitactions.hard-reset-dirty':
-    'Deine nicht committeten Änderungen und alle Commits nach diesem gehen verloren. Das kann in GitGud nicht rückgängig gemacht werden.',
+    'Deine nicht committeten Änderungen und alle Commits nach diesem gehen verloren.',
   'commitactions.hint-hard':
     'Die späteren Commits und alle nicht committeten Änderungen verwerfen.',
   'commitactions.hint-mixed':
@@ -172,10 +170,8 @@ const messages: Messages = {
   'diffview.clear': 'Leeren',
   'diffview.discard-hunk': 'Hunk verwerfen',
   'diffview.discard-lines': 'Zeilen verwerfen',
-  'diffview.discard-lines-body.one':
-    '{count} geänderte Zeile verwerfen? Das kann nicht rückgängig gemacht werden.',
-  'diffview.discard-lines-body.other':
-    '{count} geänderte Zeilen verwerfen? Das kann nicht rückgängig gemacht werden.',
+  'diffview.discard-lines-body.one': '{count} geänderte Zeile verwerfen?',
+  'diffview.discard-lines-body.other': '{count} geänderte Zeilen verwerfen?',
   'diffview.lines-selected.one': '{count} Zeile ausgewählt',
   'diffview.lines-selected.other': '{count} Zeilen ausgewählt',
   'diffview.only-whitespace': 'Nur Leerzeichen wurden geändert.',
@@ -309,6 +305,14 @@ const messages: Messages = {
   'rebasedialog.squash': 'Squash',
   'rebasedialog.squash-first':
     'Über dem ersten behaltenen Commit gibt es nichts, in das gesquasht werden kann.',
+  'reflogdialog.create-branch': 'Hier Branch erstellen…',
+  'reflogdialog.deleted-stashes': 'Gelöschte Stashes',
+  'reflogdialog.empty': 'Hier ist nichts.',
+  'reflogdialog.everything': 'HEAD (alles)',
+  'reflogdialog.recover': 'Diesen Stash wiederherstellen',
+  'reflogdialog.reset': 'Aktuellen Branch hierher zurücksetzen…',
+  'reflogdialog.show': 'Commit anzeigen',
+  'reflogdialog.source': 'Bewegungen anzeigen von',
   'remotesdialog.add': 'Remote hinzufügen',
   'remotesdialog.add-parent':
     '{repo}, von dem geforkt wurde, als {name} hinzufügen',
@@ -354,6 +358,7 @@ const messages: Messages = {
   'repocommands.pick-a-repository': 'Repository auswählen',
   'repocommands.pick-a-theme': 'Design auswählen',
   'repocommands.publish-to-github': 'Auf GitHub veröffentlichen',
+  'repocommands.reflog': 'Reflog und verlorene Stashes…',
   'repocommands.search-history': 'Verlauf durchsuchen',
   'repocommands.show-changes': 'Änderungen anzeigen',
   'repocommands.show-history': 'Verlauf anzeigen',
@@ -392,8 +397,7 @@ const messages: Messages = {
   'stashpanel.apply-keep-the-stash': 'Anwenden (Stash behalten)',
   'stashpanel.delete': 'Löschen',
   'stashpanel.delete-stash': 'Stash löschen',
-  'stashpanel.delete-stash-body':
-    'Den Stash „{message}“ löschen? Das kann nicht rückgängig gemacht werden.',
+  'stashpanel.delete-stash-body': 'Den Stash „{message}“ löschen?',
   'stashpanel.no-stashes': 'Keine Stashes',
   'stashpanel.pop-apply-and-delete': 'Pop (anwenden und löschen)',
   'stashpanel.stash-your-changes-from-the-changes-tab-to-set-them-aside-for-later':
@@ -478,6 +482,18 @@ const messages: Messages = {
     'Remote-Branch, von dem {name} pullt und zu dem es pusht',
   'toolbar.your-branch-and-its-upstream-have-different-histories':
     'Dein Branch und sein Upstream haben unterschiedliche Verläufe',
+  'undo.done-amend': 'Commit geändert',
+  'undo.done-cherryPick': 'Cherry-Pick erledigt',
+  'undo.done-commit': 'Committet',
+  'undo.done-deleteBranch': 'Branch gelöscht',
+  'undo.done-discard': 'Änderungen verworfen',
+  'undo.done-dropStash': 'Stash gelöscht',
+  'undo.done-merge': 'Gemergt',
+  'undo.done-rebase': 'Verlauf bearbeitet',
+  'undo.done-reset': 'Branch zurückgesetzt',
+  'undo.done-revert': 'Commit rückgängig gemacht',
+  'undo.undo': 'Rückgängig',
+  'undo.undo-last': 'Letzte Aktion rückgängig machen',
   'updatenotice.close': 'Schließen',
   'updatenotice.couldn-t-check-for-updates': 'Konnte nicht nach Updates suchen',
   'updatenotice.download-it-manually': 'Manuell herunterladen',
