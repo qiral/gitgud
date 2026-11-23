@@ -10,6 +10,7 @@ mod patch;
 mod pulls;
 mod rebase;
 mod remotes;
+mod undo;
 
 use blame::Blame;
 use conflict::{Choice, Part};
@@ -26,6 +27,7 @@ use rebase::{RebaseOutcome, RebasePlan, TodoItem};
 use remotes::Remote;
 use std::path::Path;
 use tauri::{Emitter, Manager};
+use undo::{Kind, ReflogEntry, UndoLog, Undoable};
 
 // Commands are marked `async` so git runs on a worker thread instead of
 // blocking the UI thread.
@@ -57,13 +59,24 @@ fn unstage(repo: String, paths: Vec<String>) -> Result<()> {
 }
 
 #[tauri::command(async)]
-fn discard(repo: String, paths: Vec<String>) -> Result<()> {
-    git::discard(Path::new(&repo), &paths)
+fn discard(undo: tauri::State<UndoLog>, repo: String, paths: Vec<String>) -> Result<()> {
+    let repo = Path::new(&repo);
+    undo.discard(repo, &paths)
 }
 
 #[tauri::command(async)]
-fn apply_lines(repo: String, diff: String, lines: Vec<usize>, action: LineAction) -> Result<()> {
-    git::apply_lines(Path::new(&repo), &diff, &lines, action)
+fn apply_lines(
+    undo: tauri::State<UndoLog>,
+    repo: String,
+    diff: String,
+    lines: Vec<usize>,
+    action: LineAction,
+) -> Result<()> {
+    let repo = Path::new(&repo);
+    match action {
+        LineAction::Discard => undo.discard_lines(repo, &diff, &lines),
+        _ => git::apply_lines(repo, &diff, &lines, action),
+    }
 }
 
 #[tauri::command(async)]
@@ -71,14 +84,27 @@ fn ignore(repo: String, path: String, kind: IgnoreKind) -> Result<()> {
     ignore::add(Path::new(&repo), &path, kind)
 }
 
-#[tauri::command(async)]
-fn commit(repo: String, message: String) -> Result<()> {
-    git::commit(Path::new(&repo), &message)
+/// What committing now would finish, if anything is in progress.
+fn finishing(repo: &Path) -> Result<Option<Kind>> {
+    Ok(git::status(repo)?.operation.map(|op| match op {
+        git::Operation::CherryPick => Kind::CherryPick,
+        git::Operation::Revert => Kind::Revert,
+        git::Operation::Merge => Kind::Merge,
+    }))
 }
 
 #[tauri::command(async)]
-fn amend(repo: String, message: String) -> Result<()> {
-    git::amend(Path::new(&repo), &message)
+fn commit(undo: tauri::State<UndoLog>, repo: String, message: String) -> Result<()> {
+    let repo = Path::new(&repo);
+    // With a message typed, this is also how a merge or pick is finished.
+    let kind = finishing(repo)?.unwrap_or(Kind::Commit);
+    undo.track(repo, kind, || git::commit(repo, &message))
+}
+
+#[tauri::command(async)]
+fn amend(undo: tauri::State<UndoLog>, repo: String, message: String) -> Result<()> {
+    let repo = Path::new(&repo);
+    undo.track(repo, Kind::Amend, || git::amend(repo, &message))
 }
 
 #[tauri::command(async)]
@@ -119,8 +145,14 @@ fn create_branch(repo: String, name: String) -> Result<()> {
 }
 
 #[tauri::command(async)]
-fn delete_branch(repo: String, name: String, force: bool) -> Result<DeleteBranchOutcome> {
-    git::delete_branch(Path::new(&repo), &name, force)
+fn delete_branch(
+    undo: tauri::State<UndoLog>,
+    repo: String,
+    name: String,
+    force: bool,
+) -> Result<DeleteBranchOutcome> {
+    let repo = Path::new(&repo);
+    undo.delete_branch(repo, &name, force)
 }
 
 #[tauri::command(async)]
@@ -173,8 +205,9 @@ fn show_commit(repo: String, hash: String, ignore_whitespace: bool) -> Result<St
 }
 
 #[tauri::command(async)]
-fn merge(repo: String, branch: String) -> Result<MergeOutcome> {
-    git::merge(Path::new(&repo), &branch)
+fn merge(undo: tauri::State<UndoLog>, repo: String, branch: String) -> Result<MergeOutcome> {
+    let repo = Path::new(&repo);
+    undo.track(repo, Kind::Merge, || git::merge(repo, &branch))
 }
 
 #[tauri::command(async)]
@@ -183,23 +216,28 @@ fn merge_abort(repo: String) -> Result<()> {
 }
 
 #[tauri::command(async)]
-fn merge_commit(repo: String) -> Result<()> {
-    git::merge_commit(Path::new(&repo))
+fn merge_commit(undo: tauri::State<UndoLog>, repo: String) -> Result<()> {
+    let repo = Path::new(&repo);
+    let kind = finishing(repo)?.unwrap_or(Kind::Merge);
+    undo.track(repo, kind, || git::merge_commit(repo))
 }
 
 #[tauri::command(async)]
-fn cherry_pick(repo: String, hash: String) -> Result<MergeOutcome> {
-    git::cherry_pick(Path::new(&repo), &hash)
+fn cherry_pick(undo: tauri::State<UndoLog>, repo: String, hash: String) -> Result<MergeOutcome> {
+    let repo = Path::new(&repo);
+    undo.track(repo, Kind::CherryPick, || git::cherry_pick(repo, &hash))
 }
 
 #[tauri::command(async)]
-fn revert(repo: String, hash: String) -> Result<MergeOutcome> {
-    git::revert(Path::new(&repo), &hash)
+fn revert(undo: tauri::State<UndoLog>, repo: String, hash: String) -> Result<MergeOutcome> {
+    let repo = Path::new(&repo);
+    undo.track(repo, Kind::Revert, || git::revert(repo, &hash))
 }
 
 #[tauri::command(async)]
-fn reset(repo: String, hash: String, mode: ResetMode) -> Result<()> {
-    git::reset(Path::new(&repo), &hash, mode)
+fn reset(undo: tauri::State<UndoLog>, repo: String, hash: String, mode: ResetMode) -> Result<()> {
+    let repo = Path::new(&repo);
+    undo.reset(repo, &hash, mode)
 }
 
 #[tauri::command(async)]
@@ -258,13 +296,20 @@ fn rebase_plan(repo: String, from: String) -> Result<RebasePlan> {
 }
 
 #[tauri::command(async)]
-fn rebase_start(repo: String, from: String, items: Vec<TodoItem>) -> Result<RebaseOutcome> {
-    rebase::start(Path::new(&repo), &from, &items)
+fn rebase_start(
+    undo: tauri::State<UndoLog>,
+    repo: String,
+    from: String,
+    items: Vec<TodoItem>,
+) -> Result<RebaseOutcome> {
+    let repo = Path::new(&repo);
+    undo.track(repo, Kind::Rebase, || rebase::start(repo, &from, &items))
 }
 
 #[tauri::command(async)]
-fn rebase_continue(repo: String) -> Result<RebaseOutcome> {
-    rebase::continue_(Path::new(&repo))
+fn rebase_continue(undo: tauri::State<UndoLog>, repo: String) -> Result<RebaseOutcome> {
+    let repo = Path::new(&repo);
+    undo.track_continue(repo, || rebase::continue_(repo))
 }
 
 #[tauri::command(async)]
@@ -298,13 +343,40 @@ fn stash_pop(repo: String, index: u32) -> Result<()> {
 }
 
 #[tauri::command(async)]
-fn stash_drop(repo: String, index: u32) -> Result<()> {
-    git::stash_drop(Path::new(&repo), index)
+fn stash_drop(undo: tauri::State<UndoLog>, repo: String, index: u32) -> Result<()> {
+    let repo = Path::new(&repo);
+    undo.drop_stash(repo, index)
 }
 
 #[tauri::command(async)]
 fn stash_show(repo: String, index: u32, ignore_whitespace: bool) -> Result<String> {
     git::stash_show(Path::new(&repo), index, ignore_whitespace)
+}
+
+/// What `undo` would take back, if anything.
+#[tauri::command(async)]
+fn undo_available(undo: tauri::State<UndoLog>, repo: String) -> Result<Option<Undoable>> {
+    undo.available(Path::new(&repo))
+}
+
+#[tauri::command(async)]
+fn undo_last(undo: tauri::State<UndoLog>, repo: String, id: u64) -> Result<()> {
+    undo.undo(Path::new(&repo), id)
+}
+
+#[tauri::command(async)]
+fn reflog(repo: String, branch: Option<String>) -> Result<Vec<ReflogEntry>> {
+    undo::reflog(Path::new(&repo), branch.as_deref())
+}
+
+#[tauri::command(async)]
+fn lost_stashes(repo: String) -> Result<Vec<ReflogEntry>> {
+    undo::lost_stashes(Path::new(&repo))
+}
+
+#[tauri::command(async)]
+fn recover_stash(repo: String, hash: String) -> Result<()> {
+    undo::recover_stash(Path::new(&repo), &hash)
 }
 
 #[tauri::command(async)]
@@ -554,6 +626,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(CloneCancel::default())
         .manage(Copilot::default())
+        .manage(UndoLog::default())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -608,6 +681,11 @@ pub fn run() {
             stash_pop,
             stash_drop,
             stash_show,
+            undo_available,
+            undo_last,
+            reflog,
+            lost_stashes,
+            recover_stash,
             fetch,
             pull,
             push,

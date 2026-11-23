@@ -54,8 +54,7 @@ const messages: Messages = {
   'changespanel.copilot-s-message': 'Messaggio di Copilot',
   'changespanel.discard-changes': 'Scarta modifiche',
   'changespanel.discard-changes-2': 'Scarta modifiche…',
-  'changespanel.discard-file-body':
-    "Scartare le modifiche a {path}? L'operazione non può essere annullata.",
+  'changespanel.discard-file-body': 'Scartare le modifiche a {path}?',
   'changespanel.editing-history-of': 'Modifica della cronologia di',
   'changespanel.generate-commit-message-with-copilot':
     'Genera il messaggio di commit con Copilot',
@@ -116,9 +115,9 @@ const messages: Messages = {
   'commitactions.hard': 'Hard',
   'commitactions.hard-reset': 'Reset hard',
   'commitactions.hard-reset-clean':
-    'Tutti i commit successivi a questo andranno persi. Non è possibile annullare da GitGud.',
+    'Tutti i commit successivi a questo andranno persi.',
   'commitactions.hard-reset-dirty':
-    'Le modifiche non committate e tutti i commit successivi a questo andranno persi. Non è possibile annullare da GitGud.',
+    'Le modifiche non committate e tutti i commit successivi a questo andranno persi.',
   'commitactions.hint-hard':
     'Elimina i commit successivi e tutte le modifiche non committate.',
   'commitactions.hint-mixed':
@@ -170,10 +169,8 @@ const messages: Messages = {
   'diffview.clear': 'Cancella',
   'diffview.discard-hunk': 'Scarta blocco',
   'diffview.discard-lines': 'Scarta righe',
-  'diffview.discard-lines-body.one':
-    "Scartare {count} riga modificata? L'operazione non può essere annullata.",
-  'diffview.discard-lines-body.other':
-    "Scartare {count} righe modificate? L'operazione non può essere annullata.",
+  'diffview.discard-lines-body.one': 'Scartare {count} riga modificata?',
+  'diffview.discard-lines-body.other': 'Scartare {count} righe modificate?',
   'diffview.lines-selected.one': '{count} riga selezionata',
   'diffview.lines-selected.other': '{count} righe selezionate',
   'diffview.only-whitespace': 'Sono cambiati solo gli spazi.',
@@ -307,6 +304,14 @@ const messages: Messages = {
   'rebasedialog.squash': 'Squash',
   'rebasedialog.squash-first':
     "Sopra il primo commit mantenuto non c'è nulla in cui fare squash.",
+  'reflogdialog.create-branch': 'Crea un branch qui…',
+  'reflogdialog.deleted-stashes': 'Stash eliminati',
+  'reflogdialog.empty': "Non c'è nulla qui.",
+  'reflogdialog.everything': 'HEAD (tutto)',
+  'reflogdialog.recover': 'Recupera questo stash',
+  'reflogdialog.reset': 'Reimposta il branch corrente qui…',
+  'reflogdialog.show': 'Mostra commit',
+  'reflogdialog.source': 'Mostra movimenti di',
   'remotesdialog.add': 'Aggiungi remoto',
   'remotesdialog.add-parent':
     'Aggiungi {repo}, da cui deriva il fork, come {name}',
@@ -352,6 +357,7 @@ const messages: Messages = {
   'repocommands.pick-a-repository': 'Scegli un repository',
   'repocommands.pick-a-theme': 'Scegli un tema',
   'repocommands.publish-to-github': 'Pubblica su GitHub',
+  'repocommands.reflog': 'Reflog e stash persi…',
   'repocommands.search-history': 'Cerca nella cronologia',
   'repocommands.show-changes': 'Mostra modifiche',
   'repocommands.show-history': 'Mostra cronologia',
@@ -390,8 +396,7 @@ const messages: Messages = {
   'stashpanel.apply-keep-the-stash': 'Applica (mantieni lo stash)',
   'stashpanel.delete': 'Elimina',
   'stashpanel.delete-stash': 'Elimina stash',
-  'stashpanel.delete-stash-body':
-    'Eliminare lo stash "{message}"? L\'operazione non può essere annullata.',
+  'stashpanel.delete-stash-body': 'Eliminare lo stash "{message}"?',
   'stashpanel.no-stashes': 'Nessuno stash',
   'stashpanel.pop-apply-and-delete': 'Pop (applica ed elimina)',
   'stashpanel.stash-your-changes-from-the-changes-tab-to-set-them-aside-for-later':
@@ -475,6 +480,18 @@ const messages: Messages = {
   'toolbar.upstream-of': 'Branch remoto da cui {name} fa pull e su cui fa push',
   'toolbar.your-branch-and-its-upstream-have-different-histories':
     'Il tuo branch e il suo upstream hanno cronologie diverse',
+  'undo.done-amend': 'Commit modificato',
+  'undo.done-cherryPick': 'Cherry-pick eseguito',
+  'undo.done-commit': 'Commit creato',
+  'undo.done-deleteBranch': 'Branch eliminato',
+  'undo.done-discard': 'Modifiche scartate',
+  'undo.done-dropStash': 'Stash eliminato',
+  'undo.done-merge': 'Merge eseguito',
+  'undo.done-rebase': 'Cronologia modificata',
+  'undo.done-reset': 'Branch reimpostato',
+  'undo.done-revert': 'Commit annullato con revert',
+  'undo.undo': 'Annulla',
+  'undo.undo-last': "Annulla l'ultima azione",
   'updatenotice.close': 'Chiudi',
   'updatenotice.couldn-t-check-for-updates':
     'Impossibile controllare gli aggiornamenti',

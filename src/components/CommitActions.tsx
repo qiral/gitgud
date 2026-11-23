@@ -14,23 +14,26 @@ import Dialog from './Dialog'
 import PromptDialog from './PromptDialog'
 import { useTranslation, type Translate } from '../i18n'
 
+/** What the branch, tag and reset dialogs need to know. */
+export type CommitRef = Pick<Commit, 'hash' | 'shortHash' | 'subject'>
+
 /** What can be done to a commit in History. Unset entries are hidden. */
 export interface CommitActions {
-  createBranch: (c: Commit) => void
+  createBranch: (c: CommitRef) => void
   createTag: (c: Commit) => void
   deleteTag: (name: string) => void
   pushTag: (name: string) => void
   cherryPick?: (c: Commit) => void
   revert?: (c: Commit) => void
-  reset?: (c: Commit) => void
+  reset?: (c: CommitRef) => void
 }
 
 type Act = (label: string, action: () => Promise<unknown>) => Promise<boolean>
 
 type Open =
-  | { kind: 'branch'; commit: Commit }
+  | { kind: 'branch'; commit: CommitRef }
   | { kind: 'tag'; commit: Commit }
-  | { kind: 'reset'; commit: Commit }
+  | { kind: 'reset'; commit: CommitRef }
   | { kind: 'pushTag'; name: string }
 
 /**
@@ -88,7 +91,7 @@ export function useCommitActions(
       cherryPick: (c: Commit) =>
         act('cherryPick', () => git.cherryPick(repo, c.hash)),
       revert,
-      reset: (commit: Commit) => setOpen({ kind: 'reset', commit }),
+      reset: (commit: CommitRef) => setOpen({ kind: 'reset', commit }),
     }),
   }
 
@@ -208,7 +211,7 @@ export function ResetDialog({
 }: {
   repo: string
   branch: string
-  commit: Commit
+  commit: CommitRef
   /** There are uncommitted changes, which a hard reset loses. */
   dirty: boolean
   act: Act

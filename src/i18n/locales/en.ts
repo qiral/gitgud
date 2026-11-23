@@ -55,8 +55,7 @@ const messages: Messages = {
   'changespanel.ctrl-enter': 'Ctrl+Enter',
   'changespanel.discard-changes': 'Discard changes',
   'changespanel.discard-changes-2': 'Discard changes…',
-  'changespanel.discard-file-body':
-    'Discard changes to {path}? This cannot be undone.',
+  'changespanel.discard-file-body': 'Discard changes to {path}?',
   'changespanel.editing-history-of': 'Editing history of',
   'changespanel.generate-commit-message-with-copilot':
     'Generate commit message with Copilot',
@@ -117,10 +116,9 @@ const messages: Messages = {
     'Delete the tag {name}? If it was pushed, the remote keeps its copy.',
   'commitactions.hard': 'Hard',
   'commitactions.hard-reset': 'Hard reset',
-  'commitactions.hard-reset-clean':
-    'Every commit after this one is lost. This cannot be undone from GitGud.',
+  'commitactions.hard-reset-clean': 'Every commit after this one is lost.',
   'commitactions.hard-reset-dirty':
-    'Your uncommitted changes and every commit after this one are lost. This cannot be undone from GitGud.',
+    'Your uncommitted changes and every commit after this one are lost.',
   'commitactions.hint-hard':
     'Throw away the later commits and all uncommitted changes.',
   'commitactions.hint-mixed':
@@ -173,10 +171,8 @@ const messages: Messages = {
   'diffview.clear': 'Clear',
   'diffview.discard-hunk': 'Discard hunk',
   'diffview.discard-lines': 'Discard lines',
-  'diffview.discard-lines-body.one':
-    'Discard {count} changed line? This cannot be undone.',
-  'diffview.discard-lines-body.other':
-    'Discard {count} changed lines? This cannot be undone.',
+  'diffview.discard-lines-body.one': 'Discard {count} changed line?',
+  'diffview.discard-lines-body.other': 'Discard {count} changed lines?',
   'diffview.lines-selected.one': '{count} line selected',
   'diffview.lines-selected.other': '{count} lines selected',
   'diffview.only-whitespace': 'Only whitespace changed.',
@@ -306,6 +302,15 @@ const messages: Messages = {
   'rebasedialog.squash': 'Squash',
   'rebasedialog.squash-first':
     'The first kept commit has nothing above it to squash into.',
+  'reflogdialog.create-branch': 'Create a branch here…',
+  'reflogdialog.deleted-stashes': 'Deleted stashes',
+  'reflogdialog.empty': 'Nothing here.',
+  'reflogdialog.everything': 'HEAD (everything)',
+  'reflogdialog.recover': 'Recover this stash',
+  'reflogdialog.reset': 'Reset the current branch to here…',
+  'reflogdialog.show': 'Show commit',
+  'reflogdialog.source': 'Show moves of',
+  'reflogdialog.title': 'Reflog',
   'remotesdialog.add': 'Add remote',
   'remotesdialog.add-parent':
     'Add {repo}, the repository this was forked from, as {name}',
@@ -353,6 +358,7 @@ const messages: Messages = {
   'repocommands.pick-a-repository': 'Pick a repository',
   'repocommands.pick-a-theme': 'Pick a theme',
   'repocommands.publish-to-github': 'Publish to GitHub',
+  'repocommands.reflog': 'Reflog and lost stashes…',
   'repocommands.search-history': 'Search history',
   'repocommands.show-changes': 'Show changes',
   'repocommands.show-history': 'Show history',
@@ -390,8 +396,7 @@ const messages: Messages = {
   'stashpanel.apply-keep-the-stash': 'Apply (keep the stash)',
   'stashpanel.delete': 'Delete',
   'stashpanel.delete-stash': 'Delete stash',
-  'stashpanel.delete-stash-body':
-    'Delete the stash "{message}"? This cannot be undone.',
+  'stashpanel.delete-stash-body': 'Delete the stash "{message}"?',
   'stashpanel.no-stashes': 'No stashes',
   'stashpanel.pop-apply-and-delete': 'Pop (apply and delete)',
   'stashpanel.stash-your-changes-from-the-changes-tab-to-set-them-aside-for-later':
@@ -475,6 +480,18 @@ const messages: Messages = {
   'toolbar.upstream-of': 'Remote branch that {name} pulls from and pushes to',
   'toolbar.your-branch-and-its-upstream-have-different-histories':
     'Your branch and its upstream have different histories',
+  'undo.done-amend': 'Commit amended',
+  'undo.done-cherryPick': 'Cherry-picked',
+  'undo.done-commit': 'Committed',
+  'undo.done-deleteBranch': 'Branch deleted',
+  'undo.done-discard': 'Changes discarded',
+  'undo.done-dropStash': 'Stash deleted',
+  'undo.done-merge': 'Merged',
+  'undo.done-rebase': 'History edited',
+  'undo.done-reset': 'Branch reset',
+  'undo.done-revert': 'Commit reverted',
+  'undo.undo': 'Undo',
+  'undo.undo-last': 'Undo the last action',
   'updatenotice.close': 'Close',
   'updatenotice.couldn-t-check-for-updates': "Couldn't check for updates",
   'updatenotice.download-it-manually': 'Download it manually',

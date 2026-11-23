@@ -47,8 +47,7 @@ const messages: Messages = {
   'changespanel.copilot-s-message': 'Copilot의 메시지',
   'changespanel.discard-changes': '변경 사항 버리기',
   'changespanel.discard-changes-2': '변경 사항 버리기…',
-  'changespanel.discard-file-body':
-    '{path}의 변경 사항을 버릴까요? 되돌릴 수 없습니다.',
+  'changespanel.discard-file-body': '{path}의 변경 사항을 버릴까요?',
   'changespanel.editing-history-of': '기록 편집 중:',
   'changespanel.generate-commit-message-with-copilot':
     'Copilot으로 커밋 메시지 생성',
@@ -108,10 +107,9 @@ const messages: Messages = {
     '태그 {name}을(를) 삭제할까요? 푸시했다면 원격의 사본은 남아 있습니다.',
   'commitactions.hard': 'Hard',
   'commitactions.hard-reset': '하드 리셋',
-  'commitactions.hard-reset-clean':
-    '이 커밋 이후의 모든 커밋이 사라집니다. GitGud에서 되돌릴 수 없습니다.',
+  'commitactions.hard-reset-clean': '이 커밋 이후의 모든 커밋이 사라집니다.',
   'commitactions.hard-reset-dirty':
-    '커밋하지 않은 변경 사항과 이 커밋 이후의 모든 커밋이 사라집니다. GitGud에서 되돌릴 수 없습니다.',
+    '커밋하지 않은 변경 사항과 이 커밋 이후의 모든 커밋이 사라집니다.',
   'commitactions.hint-hard':
     '이후 커밋과 커밋하지 않은 모든 변경 사항을 버립니다.',
   'commitactions.hint-mixed':
@@ -162,8 +160,7 @@ const messages: Messages = {
   'diffview.clear': '지우기',
   'diffview.discard-hunk': '헝크 버리기',
   'diffview.discard-lines': '줄 버리기',
-  'diffview.discard-lines-body.other':
-    '변경된 {count}줄을 버릴까요? 되돌릴 수 없습니다.',
+  'diffview.discard-lines-body.other': '변경된 {count}줄을 버릴까요?',
   'diffview.lines-selected.other': '{count}줄 선택됨',
   'diffview.only-whitespace': '공백만 변경되었습니다.',
   'diffview.select-hint': '클릭해서 선택, Shift+클릭으로 범위 선택',
@@ -285,6 +282,14 @@ const messages: Messages = {
   'rebasedialog.squash': '스쿼시',
   'rebasedialog.squash-first':
     '처음 유지하는 커밋 위에는 합칠 커밋이 없습니다.',
+  'reflogdialog.create-branch': '여기에 브랜치 만들기…',
+  'reflogdialog.deleted-stashes': '삭제된 스태시',
+  'reflogdialog.empty': '아무것도 없습니다.',
+  'reflogdialog.everything': 'HEAD(전체)',
+  'reflogdialog.recover': '이 스태시 복구',
+  'reflogdialog.reset': '현재 브랜치를 여기로 재설정…',
+  'reflogdialog.show': '커밋 보기',
+  'reflogdialog.source': '이동 기록 대상',
   'remotesdialog.add': '원격 추가',
   'remotesdialog.add-parent': '포크 원본 {repo}을(를) {name}(으)로 추가',
   'remotesdialog.cancel': '취소',
@@ -329,6 +334,7 @@ const messages: Messages = {
   'repocommands.pick-a-repository': '저장소 선택',
   'repocommands.pick-a-theme': '테마 선택',
   'repocommands.publish-to-github': 'GitHub에 게시',
+  'repocommands.reflog': 'Reflog 및 잃어버린 스태시…',
   'repocommands.search-history': '기록 검색',
   'repocommands.show-changes': '변경 사항 보기',
   'repocommands.show-history': '기록 보기',
@@ -366,8 +372,7 @@ const messages: Messages = {
   'stashpanel.apply-keep-the-stash': '적용 (스태시 유지)',
   'stashpanel.delete': '삭제',
   'stashpanel.delete-stash': '스태시 삭제',
-  'stashpanel.delete-stash-body':
-    '스태시 "{message}"을(를) 삭제할까요? 되돌릴 수 없습니다.',
+  'stashpanel.delete-stash-body': '스태시 "{message}"을(를) 삭제할까요?',
   'stashpanel.no-stashes': '스태시 없음',
   'stashpanel.pop-apply-and-delete': '팝 (적용 후 삭제)',
   'stashpanel.stash-your-changes-from-the-changes-tab-to-set-them-aside-for-later':
@@ -449,6 +454,18 @@ const messages: Messages = {
   'toolbar.upstream-of': '{name}이(가) 풀하고 푸시할 원격 브랜치',
   'toolbar.your-branch-and-its-upstream-have-different-histories':
     '브랜치와 업스트림의 기록이 다릅니다',
+  'undo.done-amend': '커밋을 수정했습니다',
+  'undo.done-cherryPick': '체리픽했습니다',
+  'undo.done-commit': '커밋했습니다',
+  'undo.done-deleteBranch': '브랜치를 삭제했습니다',
+  'undo.done-discard': '변경 사항을 버렸습니다',
+  'undo.done-dropStash': '스태시를 삭제했습니다',
+  'undo.done-merge': '병합했습니다',
+  'undo.done-rebase': '기록을 편집했습니다',
+  'undo.done-reset': '브랜치를 재설정했습니다',
+  'undo.done-revert': '커밋을 되돌렸습니다',
+  'undo.undo': '실행 취소',
+  'undo.undo-last': '마지막 작업 실행 취소',
   'updatenotice.close': '닫기',
   'updatenotice.couldn-t-check-for-updates': '업데이트를 확인할 수 없습니다',
   'updatenotice.download-it-manually': '직접 다운로드',

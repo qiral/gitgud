@@ -42,6 +42,9 @@ Pick a commit to browse its changed files one by one, right-click anything to co
 - History with a commit graph across all branches, remote branches and tags; pick a commit or stash to browse its changed files one by one
 - Search History by message, author or hash, and see the history of a single file (right-click it anywhere and pick "Show file history"), following renames
 - Blame a file on disk or at any commit (right-click it and pick "Blame"): see who last changed each line, jump to that commit in History, or keep walking back through parents; optionally ignore whitespace and follow moved lines
+- A repository with nothing to commit opens on History, one with changes on Changes
+- Undo right after a commit, amend, merge, cherry-pick, revert, history edit, reset (even a hard one), branch or stash deletion or discarded files and lines; nothing done since then gets overwritten
+- Browse the reflog of HEAD or a branch, and recover deleted stashes (`Ctrl+K`, "Reflog")
 - Copy file names, paths, commit hashes and messages from right-click menus or the copy buttons, and show a file in its folder
 - Fetch, pull and push, including publishing new branches; when your branch and its upstream have both moved on, pull asks whether to merge or rebase (or follows your `pull.rebase` setting)
 - Manage remotes from the Repository menu: add, rename, edit, fetch or remove them, and add a fork's parent as `upstream` in one click. Merge any remote branch (`Ctrl+Shift+M`), set a branch's upstream from its menu, and pick the remote when publishing a branch or pushing a tag
