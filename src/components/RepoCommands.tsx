@@ -14,6 +14,7 @@ import {
   GitBranch,
   GitBranchPlus,
   GitMerge,
+  Globe,
   History,
   Keyboard,
   LogIn,
@@ -41,6 +42,7 @@ interface Options {
   repo: RepoInfo
   status: Status | null
   branches: Branch[]
+  remoteBranches: string[]
   recents: RepoInfo[]
   signedIn: boolean
   sync: Sync
@@ -55,6 +57,7 @@ interface Options {
   onSignIn: () => void
   onSignOut: () => void
   onManageHosts: () => void
+  onManageRemotes: () => void
   /** More commands from other features, e.g. pull requests. */
   extra?: Command[]
 }
@@ -174,6 +177,14 @@ export function useRepoCommands(o: Options) {
       disabled: o.busy || !current,
       run: sync.push,
     },
+    {
+      id: 'remotes',
+      group: t('repocommands.group-remote'),
+      label: t('repocommands.manage-remotes'),
+      keywords: 'origin upstream fork url',
+      icon: Globe,
+      run: o.onManageRemotes,
+    },
     ...(o.extra ?? []),
 
     // Branch
@@ -216,19 +227,27 @@ export function useRepoCommands(o: Options) {
         : t('repocommands.merge-branch'),
       icon: GitMerge,
       shortcut: 'mod+shift+m',
-      disabled: !current || others.length === 0,
+      disabled: !current || others.length + o.remoteBranches.length === 0,
       page: {
         placeholder: t('repocommands.branch-to-merge-into', {
           branch: current,
         }),
-        items: () =>
-          others.map((b) => ({
+        items: () => [
+          ...others.map((b) => ({
             id: `merge:${b.name}`,
             group: t('repocommands.group-branches'),
             label: b.name,
             icon: GitMerge,
             run: () => mergeIn(b.name),
           })),
+          ...o.remoteBranches.map((name) => ({
+            id: `merge:remote:${name}`,
+            group: t('repocommands.group-remote-branches'),
+            label: name,
+            icon: Globe,
+            run: () => mergeIn(name),
+          })),
+        ],
       },
     },
     {

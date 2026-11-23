@@ -12,6 +12,8 @@ import {
   FolderOpen,
   GitMerge,
   GitBranch,
+  Globe,
+  Link2,
   Loader2,
   LogOut,
   MoreHorizontal,
@@ -30,6 +32,7 @@ import { readTheme, setTheme, THEMES, type ThemeInfo } from '../lib/prefs'
 import type { Sync } from './SyncActions'
 import { shortcutKeys } from '../lib/shortcuts'
 import PromptDialog from './PromptDialog'
+import ChoiceDialog from './ChoiceDialog'
 import { useContextMenu, type MenuItem } from './ContextMenu'
 import {
   git,
@@ -44,6 +47,7 @@ interface Props {
   repo: RepoInfo
   status: Status | null
   branches: Branch[]
+  remoteBranches: string[]
   account: Account | null
   busy: string | null
   onOpenOther: () => void
@@ -53,6 +57,7 @@ interface Props {
   onSignIn: () => void
   onSignOut: () => void
   onManageHosts: () => void
+  onManageRemotes: () => void
   sync: Sync
   onPalette: () => void
   /** The pull request button, when the branch can have one. */
@@ -64,6 +69,7 @@ export default function Toolbar({
   repo,
   status,
   branches,
+  remoteBranches,
   account,
   busy,
   onOpenOther,
@@ -73,6 +79,7 @@ export default function Toolbar({
   onSignIn,
   onSignOut,
   onManageHosts,
+  onManageRemotes,
   sync,
   onPalette,
   pullRequest,
@@ -89,8 +96,15 @@ export default function Toolbar({
         onOpenRecent={onOpenRecent}
         onOpenOther={onOpenOther}
         onClone={onClone}
+        onManageRemotes={onManageRemotes}
       />
-      <BranchMenu repo={repo} status={status} branches={branches} act={act} />
+      <BranchMenu
+        repo={repo}
+        status={status}
+        branches={branches}
+        remoteBranches={remoteBranches}
+        act={act}
+      />
 
       <div className="flex-1" />
 
@@ -141,7 +155,7 @@ export default function Toolbar({
               ? ahead > 0
                 ? txp('toolbar.ahead', ahead)
                 : tx('toolbar.up-to-date')
-              : tx('toolbar.origin')
+              : (sync.publishTo ?? tx('toolbar.choose-remote'))
           }
           icon={<Spin active={busy === 'push'} icon={ArrowUp} />}
         />
@@ -236,9 +250,15 @@ function RepoMenu({
   onOpenRecent,
   onOpenOther,
   onClone,
+  onManageRemotes,
 }: Pick<
   Props,
-  'repo' | 'recents' | 'onOpenRecent' | 'onOpenOther' | 'onClone'
+  | 'repo'
+  | 'recents'
+  | 'onOpenRecent'
+  | 'onOpenOther'
+  | 'onClone'
+  | 'onManageRemotes'
 >) {
   const { t: tx } = useTranslation()
   const others = recents.filter((r) => r.path !== repo.path)
@@ -302,6 +322,11 @@ function RepoMenu({
             tx('toolbar.clone-repository'),
             <Download className="size-4" />,
             onClone,
+          )}
+          {item(
+            tx('toolbar.manage-remotes'),
+            <Globe className="size-4" />,
+            onManageRemotes,
           )}
         </div>
       )}
@@ -553,16 +578,29 @@ function useClickOutside(
   }, [ref, active, onOutside])
 }
 
+/** The branch's upstream, else a remote branch of the same name. */
+function suggestUpstream(b: Branch, remoteBranches: string[]) {
+  const find = (want: (name: string) => boolean) => remoteBranches.find(want)
+  return (
+    find((r) => r === b.upstream) ??
+    find((r) => r === `origin/${b.name}`) ??
+    find((r) => r.endsWith(`/${b.name}`)) ??
+    ''
+  )
+}
+
 function BranchMenu({
   repo,
   status,
   branches,
+  remoteBranches,
   act,
-}: Pick<Props, 'repo' | 'status' | 'branches' | 'act'>) {
+}: Pick<Props, 'repo' | 'status' | 'branches' | 'remoteBranches' | 'act'>) {
   const { t: tx } = useTranslation()
   const [open, setOpen] = useState(false)
   const [newName, setNewName] = useState('')
   const [renaming, setRenaming] = useState<Branch | null>(null)
+  const [tracking, setTracking] = useState<Branch | null>(null)
   const ref = useRef<HTMLDivElement>(null)
   const { menu, open: openMenu } = useContextMenu()
   useClickOutside(ref, open, () => setOpen(false))
@@ -640,6 +678,15 @@ function BranchMenu({
         onClick: () => {
           setOpen(false)
           setRenaming(b)
+        },
+      },
+      {
+        label: tx('toolbar.set-upstream'),
+        icon: Link2,
+        disabled: remoteBranches.length === 0 && !b.upstream,
+        onClick: () => {
+          setOpen(false)
+          setTracking(b)
         },
       },
       {
@@ -753,6 +800,25 @@ function BranchMenu({
         </div>
       )}
       {menu}
+      {tracking && (
+        <ChoiceDialog
+          title={tx('toolbar.set-upstream-title')}
+          label={tx('toolbar.upstream-of', { name: tracking.name })}
+          options={[
+            { value: '', label: tx('toolbar.no-upstream') },
+            ...remoteBranches.map((name) => ({ value: name, label: name })),
+          ]}
+          initial={suggestUpstream(tracking, remoteBranches)}
+          current={tracking.upstream ?? ''}
+          submitLabel={tx('toolbar.save')}
+          onSubmit={(upstream) =>
+            act('branch', () =>
+              git.setUpstream(repo.path, tracking.name, upstream || null),
+            )
+          }
+          onClose={() => setTracking(null)}
+        />
+      )}
       {renaming && (
         <PromptDialog
           title={tx('toolbar.rename-branch')}

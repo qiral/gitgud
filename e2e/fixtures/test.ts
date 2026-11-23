@@ -29,6 +29,13 @@ function installTauriMock({
   const repo = { path: `${home}/demo`, name: 'demo' }
   // The repository's state, changed by the commands that change it.
   let current = 'main'
+  let remotes: { name: string; url: string; pushUrl: string | null }[] = [
+    {
+      name: 'origin',
+      url: 'https://github.com/e2e/demo.git',
+      pushUrl: null,
+    },
+  ]
   const branchNames = ['main', 'feature/login', 'fix/typo']
 
   const callbacks = new Map<number, (data: unknown) => void>()
@@ -57,7 +64,21 @@ function installTauriMock({
         upstream: `origin/${name}`,
       })),
     log: () => [],
-    origin_url: () => 'https://github.com/e2e/demo.git',
+    remotes: () => remotes,
+    remote_branches: () => remotes.map((r) => `${r.name}/main`),
+    add_remote: (args) => {
+      remotes.push({
+        name: String(args.name),
+        url: String(args.url),
+        pushUrl: null,
+      })
+      return null
+    },
+    remove_remote: (args) => {
+      remotes = remotes.filter((r) => r.name !== args.name)
+      return null
+    },
+    fetch: () => null,
     stashes: () => [],
     switch_branch: (args) => {
       current = String(args.name)
@@ -85,6 +106,10 @@ function installTauriMock({
       defaultBase: 'main',
       existing: pull,
     }),
+    github_parent: () =>
+      remotes.some((r) => r.url.includes('qiral/'))
+        ? null
+        : { fullName: 'qiral/demo', url: 'https://github.com/qiral/demo.git' },
     github_branches: () => ['main', 'dev'],
     github_compare: () => ({
       mergeBase: 'abc1234',

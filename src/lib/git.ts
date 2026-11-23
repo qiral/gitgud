@@ -79,6 +79,20 @@ export interface Commit {
   graph: GraphRow
 }
 
+export interface Remote {
+  name: string
+  url: string
+  /** Set when pushes go somewhere other than `url`. */
+  pushUrl: string | null
+}
+
+/** The repository a fork was made from. */
+export interface Parent {
+  /** owner/repo */
+  fullName: string
+  url: string
+}
+
 export interface Stash {
   index: number
   message: string
@@ -211,6 +225,8 @@ export const github = {
       body,
       draft,
     }),
+  /** Null unless `origin` is a fork whose parent isn't a remote yet. */
+  parent: (repo: string) => invoke<Parent | null>('github_parent', { repo }),
   account: () => invoke<Account | null>('github_account'),
   startSignIn: () => invoke<DeviceCode>('github_start_sign_in'),
   pollSignIn: (deviceCode: string, interval: number) =>
@@ -349,8 +365,9 @@ export const git = {
     invoke<void>('create_tag', { repo, name, hash, message }),
   deleteTag: (repo: string, name: string) =>
     invoke<void>('delete_tag', { repo, name }),
-  pushTag: (repo: string, name: string) =>
-    invoke<void>('push_tag', { repo, name }),
+  /** Without a remote, pushes to the current branch's. */
+  pushTag: (repo: string, name: string, remote: string | null = null) =>
+    invoke<void>('push_tag', { repo, name, remote }),
   conflictParts: (repo: string, path: string) =>
     invoke<ConflictPart[]>('conflict_parts', { repo, path }),
   resolveBlock: (
@@ -384,7 +401,9 @@ export const git = {
     invoke<void>('stash_drop', { repo, index }),
   stashShow: (repo: string, index: number, ignoreWhitespace = false) =>
     invoke<string>('stash_show', { repo, index, ignoreWhitespace }),
-  fetch: (repo: string) => invoke<void>('fetch', { repo }),
+  /** Without a remote, fetches all of them. */
+  fetch: (repo: string, remote: string | null, prune: boolean) =>
+    invoke<void>('fetch', { repo, remote, prune }),
   /** Without a mode, follows `pull.rebase` or only fast-forwards. */
   pull: (repo: string, mode: PullMode | null = null, remember = false) =>
     invoke<{ diverged: boolean; conflicts: boolean }>('pull', {
@@ -392,12 +411,28 @@ export const git = {
       mode,
       remember,
     }),
-  push: (repo: string) => invoke<void>('push', { repo }),
+  /** `remote` is where a branch without an upstream gets published. */
+  push: (repo: string, remote: string | null = null) =>
+    invoke<void>('push', { repo, remote }),
   clone: (url: string, parent: string, name: string) =>
     invoke<RepoInfo>('clone_repo', { url, parent, name }),
   /** Makes a running `clone` fail; it removes the half-cloned folder first. */
   cancelClone: () => invoke<void>('cancel_clone'),
-  originUrl: (repo: string) => invoke<string | null>('origin_url', { repo }),
+  remotes: (repo: string) => invoke<Remote[]>('remotes', { repo }),
+  /** Branches of all remotes, e.g. "origin/main". */
+  remoteBranches: (repo: string) =>
+    invoke<string[]>('remote_branches', { repo }),
+  addRemote: (repo: string, name: string, url: string) =>
+    invoke<void>('add_remote', { repo, name, url }),
+  renameRemote: (repo: string, old: string, newName: string) =>
+    invoke<void>('rename_remote', { repo, old, new: newName }),
+  setRemoteUrl: (repo: string, name: string, url: string) =>
+    invoke<void>('set_remote_url', { repo, name, url }),
+  removeRemote: (repo: string, name: string) =>
+    invoke<void>('remove_remote', { repo, name }),
+  /** Null clears the branch's upstream. */
+  setUpstream: (repo: string, branch: string, upstream: string | null) =>
+    invoke<void>('set_upstream', { repo, branch, upstream }),
 }
 
 /** A change shown in the "Staged" list, i.e. something in the index. */

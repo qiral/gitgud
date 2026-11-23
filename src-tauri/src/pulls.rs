@@ -10,6 +10,7 @@ use std::path::Path;
 
 use crate::git::{self, GitError, Result};
 use crate::github::{api_get, http_error, token, USER_AGENT};
+use crate::remotes::{self, Remote};
 
 /// `owner/repo` for a remote URL on github.com, in the forms git accepts.
 pub fn parse_remote(url: &str) -> Option<(String, String)> {
@@ -227,6 +228,54 @@ pub fn target(repo: &Path) -> Result<Option<PullTarget>> {
 }
 
 // ---------------------------------------------------------------------------
+// Forks
+
+/// The repository that `origin` was forked from.
+#[derive(Debug, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Parent {
+    /// `owner/repo`
+    pub full_name: String,
+    /// Uses SSH when `origin` does.
+    pub url: String,
+}
+
+/// None when `origin` isn't a fork on github.com, or a remote already points
+/// at the parent.
+pub fn parent(repo: &Path) -> Result<Option<Parent>> {
+    let list = remotes::list(repo)?;
+    let Some(origin) = list.iter().find(|r| r.name == "origin") else {
+        return Ok(None);
+    };
+    let Some((owner, name)) = parse_remote(&origin.url) else {
+        return Ok(None);
+    };
+    let fork: ApiRepo = get(
+        &token()?,
+        &format!("/repos/{owner}/{name}"),
+        &[],
+        "read the repository",
+    )?;
+    Ok(fork
+        .parent
+        .and_then(|p| missing_parent(&list, &origin.url, p.full_name)))
+}
+
+fn missing_parent(list: &[Remote], origin_url: &str, full_name: String) -> Option<Parent> {
+    let known = list.iter().any(|r| {
+        parse_remote(&r.url)
+            .is_some_and(|(o, n)| format!("{o}/{n}").eq_ignore_ascii_case(&full_name))
+    });
+    let ssh = origin_url.starts_with("git@") || origin_url.starts_with("ssh://");
+    let url = if ssh {
+        format!("git@github.com:{full_name}.git")
+    } else {
+        format!("https://github.com/{full_name}.git")
+    };
+    (!known).then_some(Parent { full_name, url })
+}
+
+// ---------------------------------------------------------------------------
 // Creating one
 
 /// Branch names of a repository, for picking the base.
@@ -321,6 +370,29 @@ pub fn create(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn offers_the_parent_of_a_fork_once() {
+        let remote = |name: &str, url: &str| Remote {
+            name: name.into(),
+            url: url.into(),
+            push_url: None,
+        };
+        let https = "https://github.com/me/app.git";
+        let ssh = "git@github.com:me/app.git";
+        let url =
+            |list: &[Remote]| missing_parent(list, &list[0].url, "them/App".into()).map(|p| p.url);
+        assert_eq!(
+            url(&[remote("origin", https)]).as_deref(),
+            Some("https://github.com/them/App.git")
+        );
+        assert_eq!(
+            url(&[remote("origin", ssh)]).as_deref(),
+            Some("git@github.com:them/App.git")
+        );
+        let known = remote("up", "https://github.com/Them/app");
+        assert_eq!(url(&[remote("origin", https), known]), None);
+    }
 
     #[test]
     fn parses_github_remotes() {

@@ -1,7 +1,15 @@
 import { useState } from 'react'
 import { confirm } from '@tauri-apps/plugin-dialog'
 import { Loader2 } from 'lucide-react'
-import { git, type Commit, type ResetMode, type Status } from '../lib/git'
+import {
+  git,
+  type Commit,
+  type Remote,
+  type ResetMode,
+  type Status,
+} from '../lib/git'
+import { defaultRemote } from '../lib/remotes'
+import ChoiceDialog from './ChoiceDialog'
 import Dialog from './Dialog'
 import PromptDialog from './PromptDialog'
 import { useTranslation, type Translate } from '../i18n'
@@ -23,6 +31,7 @@ type Open =
   | { kind: 'branch'; commit: Commit }
   | { kind: 'tag'; commit: Commit }
   | { kind: 'reset'; commit: Commit }
+  | { kind: 'pushTag'; name: string }
 
 /**
  * The commit actions for History, plus the dialogs some of them open.
@@ -31,6 +40,7 @@ type Open =
 export function useCommitActions(
   repo: string,
   status: Status | null,
+  remotes: Remote[],
   act: Act,
 ): { actions: CommitActions; dialogs: React.ReactNode } {
   const { t } = useTranslation()
@@ -70,7 +80,10 @@ export function useCommitActions(
     createBranch: (commit) => setOpen({ kind: 'branch', commit }),
     createTag: (commit) => setOpen({ kind: 'tag', commit }),
     deleteTag,
-    pushTag: (name) => act('push', () => git.pushTag(repo, name)),
+    pushTag: (name) =>
+      remotes.length > 1
+        ? setOpen({ kind: 'pushTag', name })
+        : act('push', () => git.pushTag(repo, name)),
     ...(onBranch && {
       cherryPick: (c: Commit) =>
         act('cherryPick', () => git.cherryPick(repo, c.hash)),
@@ -97,6 +110,18 @@ export function useCommitActions(
       />
     ) : open?.kind === 'tag' ? (
       <TagDialog repo={repo} commit={open.commit} act={act} onClose={close} />
+    ) : open?.kind === 'pushTag' ? (
+      <ChoiceDialog
+        title={t('commitactions.push-tag')}
+        label={t('commitactions.push-tag-to', { name: open.name })}
+        options={remotes.map((r) => ({ value: r.name, label: r.name }))}
+        initial={defaultRemote(remotes, status?.upstream)?.name ?? ''}
+        submitLabel={t('toolbar.push')}
+        onSubmit={(remote) =>
+          act('push', () => git.pushTag(repo, open.name, remote))
+        }
+        onClose={close}
+      />
     ) : open?.kind === 'reset' && branch ? (
       <ResetDialog
         repo={repo}

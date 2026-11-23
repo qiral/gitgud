@@ -9,6 +9,7 @@ use serde::Serialize;
 use crate::conflict;
 use crate::graph::{self, GraphRow};
 use crate::patch;
+use crate::remotes;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Output, Stdio};
@@ -489,7 +490,7 @@ pub fn delete_tag(repo: &Path, name: &str) -> Result<()> {
     run(repo, &["tag", "-d", "--", name]).map(drop)
 }
 
-/// The remote to push tags to: the current branch's, else `origin`.
+/// The remote to push tags to: the current branch's, else the default one.
 fn push_remote(repo: &Path) -> Result<String> {
     if let Some(branch) = run(repo, &["symbolic-ref", "-q", "--short", "HEAD"])
         .ok()
@@ -504,12 +505,24 @@ fn push_remote(repo: &Path) -> Result<String> {
             }
         }
     }
-    Ok("origin".into())
+    remotes::default(repo)
 }
 
-pub fn push_tag(repo: &Path, name: &str, env: &[(String, String)]) -> Result<()> {
+/// Pushes a tag to `remote`, or to where the current branch is pushed.
+pub fn push_tag(
+    repo: &Path,
+    name: &str,
+    remote: Option<&str>,
+    env: &[(String, String)],
+) -> Result<()> {
     check_tag_name(repo, name)?;
-    let remote = push_remote(repo)?;
+    let remote = match remote {
+        Some(r) => {
+            remotes::check_exists(repo, r)?;
+            r.to_string()
+        }
+        None => push_remote(repo)?,
+    };
     let refspec = format!("refs/tags/{name}");
     run_with_env(repo, &["push", &remote, &refspec], env).map(drop)
 }
@@ -1173,8 +1186,20 @@ pub fn stash_show(repo: &Path, index: u32, ignore_whitespace: bool) -> Result<St
 
 // `env` carries credentials for hosts the user signed in to (see `hosts::git_env`).
 
-pub fn fetch(repo: &Path, env: &[(String, String)]) -> Result<()> {
-    run_with_env(repo, &["fetch", "--all", "--prune"], env).map(drop)
+/// Fetches one remote, or all of them. `prune` forgets the branches that were
+/// deleted there.
+pub fn fetch(
+    repo: &Path,
+    remote: Option<&str>,
+    prune: bool,
+    env: &[(String, String)],
+) -> Result<()> {
+    if let Some(r) = remote {
+        remotes::check_exists(repo, r)?;
+    }
+    let prune = if prune { "--prune" } else { "--no-prune" };
+    let args = ["fetch", prune, remote.unwrap_or("--all")];
+    run_with_env(repo, &args, env).map(drop)
 }
 
 #[derive(Debug, Clone, Copy, serde::Deserialize, PartialEq)]
@@ -1294,8 +1319,9 @@ pub fn pull(
     }
 }
 
-pub fn push(repo: &Path, env: &[(String, String)]) -> Result<()> {
-    // Publish branches that don't have an upstream yet.
+/// Pushes the current branch. One without an upstream is published to
+/// `remote`, or to the default remote.
+pub fn push(repo: &Path, remote: Option<&str>, env: &[(String, String)]) -> Result<()> {
     let branch = run(repo, &["symbolic-ref", "--short", "HEAD"])?;
     let has_upstream = output(repo, &["rev-parse", "--abbrev-ref", "@{upstream}"])?
         .status
@@ -1303,7 +1329,14 @@ pub fn push(repo: &Path, env: &[(String, String)]) -> Result<()> {
     if has_upstream {
         run_with_env(repo, &["push"], env).map(drop)
     } else {
-        run_with_env(repo, &["push", "-u", "origin", branch.trim()], env).map(drop)
+        let remote = match remote {
+            Some(r) => {
+                remotes::check_exists(repo, r)?;
+                r.to_string()
+            }
+            None => remotes::default(repo)?,
+        };
+        run_with_env(repo, &["push", "-u", &remote, branch.trim()], env).map(drop)
     }
 }
 
@@ -1338,7 +1371,7 @@ pub struct CloneProgress {
 
 /// Accepts the URL forms people actually paste, and nothing that could make
 /// git run a helper program (such as `ext::`) or be read as an option.
-fn is_allowed_clone_url(url: &str) -> bool {
+pub(crate) fn is_allowed_clone_url(url: &str) -> bool {
     let schemes = ["https://", "http://", "ssh://", "git://"];
     if schemes.iter().any(|s| url.starts_with(s)) {
         return true;
@@ -1726,7 +1759,7 @@ mod tests {
         let _ = std::fs::remove_dir_all(&remote);
         run(repo, &["init", "-q", "--bare", remote.to_str().unwrap()]).unwrap();
         run(repo, &["remote", "add", "origin", remote.to_str().unwrap()]).unwrap();
-        push_tag(repo, "v1.1", &[]).unwrap();
+        push_tag(repo, "v1.1", None, &[]).unwrap();
         assert!(run(&remote, &["tag", "-l"]).unwrap().contains("v1.1"));
         std::fs::remove_dir_all(&remote).unwrap();
         std::fs::remove_dir_all(&dir).unwrap();
