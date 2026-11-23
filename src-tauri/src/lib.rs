@@ -1,3 +1,4 @@
+mod blame;
 mod conflict;
 mod copilot;
 pub mod git;
@@ -10,6 +11,7 @@ mod pulls;
 mod rebase;
 mod remotes;
 
+use blame::Blame;
 use conflict::{Choice, Part};
 use copilot::{Copilot, InstallProgress};
 use git::{
@@ -139,6 +141,23 @@ fn search_log(repo: String, query: String, limit: u32) -> Result<Vec<Commit>> {
 #[tauri::command(async)]
 fn file_log(repo: String, path: String, limit: u32) -> Result<Vec<Commit>> {
     git::file_log(Path::new(&repo), &path, limit)
+}
+
+#[tauri::command(async)]
+fn blame(
+    repo: String,
+    path: String,
+    rev: Option<String>,
+    ignore_whitespace: bool,
+    follow_moves: bool,
+) -> Result<Blame> {
+    blame::blame(
+        Path::new(&repo),
+        &path,
+        rev.as_deref(),
+        ignore_whitespace,
+        follow_moves,
+    )
 }
 
 /// Lays out the graph again for a subset of the history, e.g. with some
@@ -560,6 +579,7 @@ pub fn run() {
             log,
             search_log,
             file_log,
+            blame,
             graph_layout,
             show_commit,
             merge,

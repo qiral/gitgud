@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
+  canBlame,
   copilot,
   errorMessage,
   git,
@@ -25,6 +26,7 @@ import DiffView from './DiffView'
 import PatchView from './PatchView'
 import FileHeader from './FileHeader'
 import { CommitHeader, StashHeader } from './CommitHeader'
+import BlameView, { type BlameTarget } from './BlameView'
 import ConflictView from './ConflictView'
 import RebaseDialog from './RebaseDialog'
 import SignInDialog from './SignInDialog'
@@ -96,6 +98,9 @@ export default function RepoView({
   >(null)
   const [rebaseFrom, setRebaseFrom] = useState<Commit | null>(null)
   const [selection, setSelection] = useState<Selection | null>(null)
+  /** Covers the right-hand pane until something else is picked. */
+  const [blame, setBlame] = useState<BlameTarget | null>(null)
+  const [reveal, setReveal] = useState<{ hash: string } | null>(null)
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter | null>(null)
   const [filtered, setFiltered] = useState<Commit[] | null>(null)
   const [logLimit, setLogLimit] = useState(HISTORY_PAGE)
@@ -177,6 +182,31 @@ export default function RepoView({
     },
     [changeFilter],
   )
+
+  const blameOnDisk = useCallback(
+    (path: string) => setBlame({ path, rev: null }),
+    [],
+  )
+  useEffect(() => setBlame(null), [selection])
+
+  /** Selects a commit in History, however old it is. */
+  async function showCommit(hash: string) {
+    try {
+      const loaded = commits.find((c) => c.hash === hash)
+      // Others can mention the hash in their message, so look for it.
+      const commit =
+        loaded ??
+        (await git.searchLog(repo.path, hash)).find((c) => c.hash === hash)
+      if (!commit) throw tx('repoview.commit-not-found', { hash })
+      setTab('history')
+      // Not scrolled far enough for the list to have it: list only that one.
+      changeFilter(loaded ? null : { kind: 'search', query: hash })
+      setReveal({ hash })
+      setSelection({ kind: 'commit', commit })
+    } catch (e) {
+      setError(errorMessage(e))
+    }
+  }
 
   // Pick up changes made outside the app (editor saves, terminal commands).
   useEffect(() => {
@@ -313,6 +343,8 @@ export default function RepoView({
   const showTab = (t: Tab) => {
     setTab(t)
     setSelection(null)
+    setBlame(null)
+    setReveal(null)
     setFocusSearch(0)
   }
   const pullRequests = usePullRequests({
@@ -463,6 +495,7 @@ export default function RepoView({
               busy={busy !== null}
               onStash={() => setDialog('stash')}
               onFileHistory={showFileHistory}
+              onBlame={blameOnDisk}
               onGenerateMessage={() =>
                 ai.run(() => copilot.commitMessage(repo.path))
               }
@@ -480,6 +513,7 @@ export default function RepoView({
               onFilter={changeFilter}
               filtered={filtered}
               focusSearch={focusSearch}
+              reveal={reveal}
               onExplain={(c) =>
                 explain(c.shortHash, () => git.showCommit(repo.path, c.hash))
               }
@@ -502,7 +536,18 @@ export default function RepoView({
         </aside>
 
         <section className="isolate flex min-w-0 flex-1 flex-col overflow-hidden">
-          {selection?.kind === 'file' && conflictedSelection ? (
+          {blame ? (
+            <BlameView
+              repo={repo.path}
+              target={blame}
+              version={status}
+              onShowCommit={showCommit}
+              onExplain={(hash) =>
+                explain(hash.slice(0, 7), () => git.showCommit(repo.path, hash))
+              }
+              onClose={() => setBlame(null)}
+            />
+          ) : selection?.kind === 'file' && conflictedSelection ? (
             <div className="min-h-0 flex-1 overflow-auto">
               <ConflictView
                 repo={repo}
@@ -524,6 +569,7 @@ export default function RepoView({
                 historyFilter?.kind === 'file' ? historyFilter.path : undefined
               }
               onFileHistory={showFileHistory}
+              onBlame={(path) => setBlame({ path, rev: selection.commit.hash })}
               onExplainFile={(path, fileDiff) =>
                 explain(path, async () => fileDiff)
               }
@@ -551,6 +597,7 @@ export default function RepoView({
                 onHistory={
                   selection.file.untracked ? undefined : showFileHistory
                 }
+                onBlame={canBlame(selection.file) ? blameOnDisk : undefined}
                 additions={fileStats.additions}
                 deletions={fileStats.deletions}
                 onExplain={

@@ -37,6 +37,8 @@ interface Props {
   exists: boolean
   /** Opens the file's history; unset to leave it out of the menu. */
   onHistory?: (path: string) => void
+  /** Opens the file's blame; unset to leave it out of the menu. */
+  onBlame?: (path: string) => void
   /** Asks Copilot to explain the diff; unset to hide the button. */
   onExplain?: () => void
 }
@@ -50,13 +52,20 @@ export default function FileHeader({
   deletions,
   exists,
   onHistory,
+  onBlame,
   onExplain,
 }: Props) {
   const { t } = useTranslation()
   const { menu, open } = useContextMenu()
   const prefs = useDiffPrefs()
   const items = () =>
-    fileMenuItems(repo, path, exists, onHistory && (() => onHistory(path)))
+    fileMenuItems(
+      repo,
+      path,
+      exists,
+      onHistory && (() => onHistory(path)),
+      onBlame && (() => onBlame(path)),
+    )
   const dir = dirname(path)
 
   return (
@@ -109,7 +118,7 @@ export default function FileHeader({
 }
 
 /** An icon button that stays highlighted while its setting is on. */
-function Toggle({
+export function Toggle({
   on,
   title,
   onClick,

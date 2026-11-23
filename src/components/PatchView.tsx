@@ -18,6 +18,8 @@ interface Props {
   /** Selects this file first when the patch has it, e.g. in file history. */
   focusPath?: string
   onFileHistory?: (path: string) => void
+  /** Blames a file of the patch; not offered for deleted ones. */
+  onBlame?: (path: string) => void
   /** Asks Copilot to explain one file's diff; unset to hide the button. */
   onExplainFile?: (path: string, diff: string) => void
 }
@@ -32,6 +34,7 @@ export default function PatchView({
   header,
   focusPath,
   onFileHistory,
+  onBlame,
   onExplainFile,
 }: Props) {
   const { t } = useTranslation()
@@ -114,6 +117,9 @@ export default function PatchView({
                           f.path,
                           exists(f.status),
                           onFileHistory && (() => onFileHistory(f.path)),
+                          onBlame && exists(f.status)
+                            ? () => onBlame(f.path)
+                            : undefined,
                         ),
                       )
                     }
@@ -148,6 +154,7 @@ export default function PatchView({
               deletions={file.deletions}
               exists={exists(file.status)}
               onHistory={onFileHistory}
+              onBlame={exists(file.status) ? onBlame : undefined}
               onExplain={
                 onExplainFile && (() => onExplainFile(file.path, file.diff))
               }

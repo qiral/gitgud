@@ -36,6 +36,17 @@ function installTauriMock({
       pushUrl: null,
     },
   ]
+  const commit = {
+    hash: 'abc1234'.padEnd(40, '0'),
+    shortHash: 'abc1234',
+    author: 'Grace',
+    email: 'grace@example.com',
+    time: 1700000000,
+    subject: 'Add b',
+    parents: ['def5678'.padEnd(40, '0')],
+    refs: [],
+    graph: { lane: 0, color: 0, width: 1, segments: [] },
+  }
   const branchNames = ['main', 'feature/login', 'fix/typo']
 
   const callbacks = new Map<number, (data: unknown) => void>()
@@ -63,7 +74,46 @@ function installTauriMock({
         current: name === current,
         upstream: `origin/${name}`,
       })),
-    log: () => [],
+    log: () => [commit],
+    show_commit: () =>
+      [
+        commit.subject,
+        '',
+        'diff --git a/src/app.ts b/src/app.ts',
+        '--- a/src/app.ts',
+        '+++ b/src/app.ts',
+        '@@ -1 +1,2 @@',
+        ' const a = 1',
+        '+const b = 2',
+        '',
+      ].join('\n'),
+    blame: (args) =>
+      args.rev === commit.hash
+        ? {
+            origins: [
+              {
+                hash: commit.parents[0],
+                author: 'Ada',
+                time: 1600000000,
+                subject: 'Start',
+                path: 'src/app.ts',
+                previous: null,
+              },
+              {
+                hash: commit.hash,
+                author: commit.author,
+                time: commit.time,
+                subject: commit.subject,
+                path: 'src/app.ts',
+                previous: { hash: commit.parents[0], path: 'src/app.ts' },
+              },
+            ],
+            lines: [
+              { origin: 0, original: 1, text: 'const a = 1' },
+              { origin: 1, original: 2, text: 'const b = 2' },
+            ],
+          }
+        : { origins: [], lines: [] },
     remotes: () => remotes,
     remote_branches: () => remotes.map((r) => `${r.name}/main`),
     add_remote: (args) => {

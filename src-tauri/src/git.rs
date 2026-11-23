@@ -379,7 +379,7 @@ fn pick_state(repo: &Path) -> Result<Option<(Operation, String)>> {
     Ok(Some((op, format!("{verb} {}", subject.trim()))))
 }
 
-fn check_hash(hash: &str) -> Result<()> {
+pub(crate) fn check_hash(hash: &str) -> Result<()> {
     if hash.is_empty() || !hash.chars().all(|c| c.is_ascii_hexdigit()) {
         return Err(GitError::Failed(format!("invalid commit hash: {hash}")));
     }
