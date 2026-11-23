@@ -43,6 +43,7 @@ Pick a commit to browse its changed files one by one, right-click anything to co
 - Search History by message, author or hash, and see the history of a single file (right-click it anywhere and pick "Show file history"), following renames
 - Copy file names, paths, commit hashes and messages from right-click menus or the copy buttons, and show a file in its folder
 - Fetch, pull and push, including publishing new branches; when your branch and its upstream have both moved on, pull asks whether to merge or rebase (or follows your `pull.rebase` setting)
+- Manage remotes from the Repository menu: add, rename, edit, fetch or remove them, and add a fork's parent as `upstream` in one click. Merge any remote branch (`Ctrl+Shift+M`), set a branch's upstream from its menu, and pick the remote when publishing a branch or pushing a tag
 - Sign in with GitHub (device flow, token kept in the OS keychain) to push over HTTPS
 - Sign in to GitLab, Gitea, Forgejo or any other HTTPS host with a personal access token; each token is only sent to its own host
 - Publish a local repository to GitHub in one step

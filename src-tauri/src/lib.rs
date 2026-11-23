@@ -8,6 +8,7 @@ mod ignore;
 mod patch;
 mod pulls;
 mod rebase;
+mod remotes;
 
 use conflict::{Choice, Part};
 use copilot::{Copilot, InstallProgress};
@@ -18,8 +19,9 @@ use git::{
 use github::{Account, CreatedRepo, DeviceCode, PollResult, RemoteRepo};
 use hosts::{Host, HostKind};
 use ignore::IgnoreKind;
-use pulls::{Comparison, PullRequest, PullTarget};
+use pulls::{Comparison, Parent, PullRequest, PullTarget};
 use rebase::{RebaseOutcome, RebasePlan, TodoItem};
+use remotes::Remote;
 use std::path::Path;
 use tauri::{Emitter, Manager};
 
@@ -197,8 +199,13 @@ fn delete_tag(repo: String, name: String) -> Result<()> {
 }
 
 #[tauri::command(async)]
-fn push_tag(repo: String, name: String) -> Result<()> {
-    git::push_tag(Path::new(&repo), &name, &hosts::git_env())
+fn push_tag(repo: String, name: String, remote: Option<String>) -> Result<()> {
+    git::push_tag(
+        Path::new(&repo),
+        &name,
+        remote.as_deref(),
+        &hosts::git_env(),
+    )
 }
 
 #[tauri::command(async)]
@@ -282,8 +289,13 @@ fn stash_show(repo: String, index: u32, ignore_whitespace: bool) -> Result<Strin
 }
 
 #[tauri::command(async)]
-fn fetch(repo: String) -> Result<()> {
-    git::fetch(Path::new(&repo), &hosts::git_env())
+fn fetch(repo: String, remote: Option<String>, prune: bool) -> Result<()> {
+    git::fetch(
+        Path::new(&repo),
+        remote.as_deref(),
+        prune,
+        &hosts::git_env(),
+    )
 }
 
 #[tauri::command(async)]
@@ -292,13 +304,48 @@ fn pull(repo: String, mode: Option<PullMode>, remember: bool) -> Result<PullOutc
 }
 
 #[tauri::command(async)]
-fn push(repo: String) -> Result<()> {
-    git::push(Path::new(&repo), &hosts::git_env())
+fn push(repo: String, remote: Option<String>) -> Result<()> {
+    git::push(Path::new(&repo), remote.as_deref(), &hosts::git_env())
 }
 
 #[tauri::command(async)]
-fn origin_url(repo: String) -> Result<Option<String>> {
-    git::origin_url(Path::new(&repo))
+fn remotes(repo: String) -> Result<Vec<Remote>> {
+    remotes::list(Path::new(&repo))
+}
+
+#[tauri::command(async)]
+fn remote_branches(repo: String) -> Result<Vec<String>> {
+    remotes::branches(Path::new(&repo))
+}
+
+#[tauri::command(async)]
+fn add_remote(repo: String, name: String, url: String) -> Result<()> {
+    remotes::add(Path::new(&repo), &name, &url)
+}
+
+#[tauri::command(async)]
+fn rename_remote(repo: String, old: String, new: String) -> Result<()> {
+    remotes::rename(Path::new(&repo), &old, &new)
+}
+
+#[tauri::command(async)]
+fn set_remote_url(repo: String, name: String, url: String) -> Result<()> {
+    remotes::set_url(Path::new(&repo), &name, &url)
+}
+
+#[tauri::command(async)]
+fn remove_remote(repo: String, name: String) -> Result<()> {
+    remotes::remove(Path::new(&repo), &name)
+}
+
+#[tauri::command(async)]
+fn set_upstream(repo: String, branch: String, upstream: Option<String>) -> Result<()> {
+    remotes::set_upstream(Path::new(&repo), &branch, upstream.as_deref())
+}
+
+#[tauri::command(async)]
+fn github_parent(repo: String) -> Result<Option<Parent>> {
+    pulls::parent(Path::new(&repo))
 }
 
 #[tauri::command(async)]
@@ -352,7 +399,7 @@ fn publish_to_github(
     }
     let created = github::create_repo(&name, &description, private)?;
     git::add_origin(path, &created.clone_url)?;
-    git::push(path, &hosts::git_env())?;
+    git::push(path, Some("origin"), &hosts::git_env())?;
     Ok(created)
 }
 
@@ -544,7 +591,14 @@ pub fn run() {
             fetch,
             pull,
             push,
-            origin_url,
+            remotes,
+            remote_branches,
+            add_remote,
+            rename_remote,
+            set_remote_url,
+            remove_remote,
+            set_upstream,
+            github_parent,
             github_account,
             github_start_sign_in,
             github_poll_sign_in,

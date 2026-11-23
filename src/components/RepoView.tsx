@@ -10,6 +10,7 @@ import {
   type Branch,
   type Commit,
   type FileChange,
+  type Remote,
   type RepoInfo,
   type Stash,
   type Status,
@@ -28,6 +29,7 @@ import ConflictView from './ConflictView'
 import RebaseDialog from './RebaseDialog'
 import SignInDialog from './SignInDialog'
 import HostsDialog from './HostsDialog'
+import RemotesDialog from './RemotesDialog'
 import PublishDialog from './PublishDialog'
 import ExplainDialog from './ExplainDialog'
 import { useResizable } from './Resizable'
@@ -86,10 +88,11 @@ export default function RepoView({
   const [status, setStatus] = useState<Status | null>(null)
   const [branches, setBranches] = useState<Branch[]>([])
   const [commits, setCommits] = useState<Commit[]>([])
-  const [originUrl, setOriginUrl] = useState<string | null>(null)
+  const [remotes, setRemotes] = useState<Remote[]>([])
+  const [remoteBranches, setRemoteBranches] = useState<string[]>([])
   const [stashes, setStashes] = useState<Stash[]>([])
   const [dialog, setDialog] = useState<
-    'signIn' | 'hosts' | 'publish' | 'stash' | null
+    'signIn' | 'hosts' | 'publish' | 'stash' | 'remotes' | null
   >(null)
   const [rebaseFrom, setRebaseFrom] = useState<Commit | null>(null)
   const [selection, setSelection] = useState<Selection | null>(null)
@@ -104,18 +107,20 @@ export default function RepoView({
 
   const refresh = useCallback(async () => {
     try {
-      const [s, b, c, o, st] = await Promise.all([
+      const [s, b, c, st, r, rb] = await Promise.all([
         git.status(repo.path),
         git.branches(repo.path),
         git.log(repo.path, logLimit),
-        git.originUrl(repo.path),
         git.stashes(repo.path),
+        git.remotes(repo.path),
+        git.remoteBranches(repo.path),
       ])
       setStatus(s)
       setBranches(b)
       setCommits(c)
-      setOriginUrl(o)
       setStashes(st)
+      setRemotes(r)
+      setRemoteBranches(rb)
     } catch (e) {
       setError(errorMessage(e))
     }
@@ -277,7 +282,7 @@ export default function RepoView({
     [refresh],
   )
 
-  const commitActions = useCommitActions(repo.path, status, act)
+  const commitActions = useCommitActions(repo.path, status, remotes, act)
   const openSignIn = useCallback(() => setDialog('signIn'), [])
   const ai = useCopilot(setError, account !== null, openSignIn)
   const [explaining, setExplaining] = useState<{
@@ -302,7 +307,7 @@ export default function RepoView({
       await github.signOut()
       onAccountChange(null)
     })
-  const sync = useSync(repo, status, originUrl, act, () =>
+  const sync = useSync(repo, status, remotes, act, () =>
     setDialog(account ? 'publish' : 'signIn'),
   )
   const showTab = (t: Tab) => {
@@ -322,6 +327,7 @@ export default function RepoView({
     repo,
     status,
     branches,
+    remoteBranches,
     recents,
     signedIn: account !== null,
     sync,
@@ -341,6 +347,7 @@ export default function RepoView({
     onSignIn: openSignIn,
     onSignOut: signOut,
     onManageHosts: () => setDialog('hosts'),
+    onManageRemotes: () => setDialog('remotes'),
     extra: pullRequests.commands,
   })
 
@@ -361,6 +368,7 @@ export default function RepoView({
         repo={repo}
         status={status}
         branches={branches}
+        remoteBranches={remoteBranches}
         account={account}
         busy={busy}
         onOpenOther={onOpenOther}
@@ -370,6 +378,7 @@ export default function RepoView({
         onSignIn={() => setDialog('signIn')}
         onSignOut={signOut}
         onManageHosts={() => setDialog('hosts')}
+        onManageRemotes={() => setDialog('remotes')}
         sync={sync}
         onPalette={palette.openPalette}
         pullRequest={pullRequests.button}
@@ -386,6 +395,15 @@ export default function RepoView({
         />
       )}
       {dialog === 'hosts' && <HostsDialog onClose={() => setDialog(null)} />}
+      {dialog === 'remotes' && (
+        <RemotesDialog
+          repo={repo}
+          remotes={remotes}
+          signedIn={account !== null}
+          onChanged={refresh}
+          onClose={() => setDialog(null)}
+        />
+      )}
       {rebaseFrom && (
         <RebaseDialog
           repo={repo}
