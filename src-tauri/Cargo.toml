@@ -29,7 +29,9 @@ thiserror = "2"
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
 ureq = { version = "3", features = ["json"] }
 base64 = "0.22"
-tauri-plugin-updater = "2"
+# Without "zip", which unpacks zipped updates: ours are never zipped, and it
+# pulls in an old zip crate with known vulnerabilities.
+tauri-plugin-updater = { version = "2", default-features = false, features = ["rustls-tls", "system-proxy"] }
 tauri-plugin-process = "2"
 github-copilot-sdk = { version = "=1.0.35", default-features = false, features = ["runtime"] }
 sha2 = "0.10"
