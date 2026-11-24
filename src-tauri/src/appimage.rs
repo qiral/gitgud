@@ -19,10 +19,20 @@ const ALWAYS_REMOVE: [&str; 6] = [
     "PYTHONDONTWRITEBYTECODE",
 ];
 
-/// `value` without the entries inside `appdir`: None if nothing is left, the
+/// Whether `entry` belongs to an AppImage: ours, or one that started us. After
+/// an update GitGud is started by the version it replaces, so that one's mount
+/// is in the variables too, and APPDIR only names the newest.
+fn in_appimage(entry: &Path, appdir: &Path) -> bool {
+    entry.starts_with(appdir)
+        || entry
+            .components()
+            .any(|part| part.as_os_str().as_encoded_bytes().starts_with(b".mount_"))
+}
+
+/// `value` without the entries inside an AppImage: None if nothing is left, the
 /// value as it was if there were none.
 fn without_appdir(value: &OsStr, appdir: &Path) -> Option<OsString> {
-    let inside = |entry: &Path| entry.starts_with(appdir);
+    let inside = |entry: &Path| in_appimage(entry, appdir);
     if !std::env::split_paths(value).any(|entry| inside(&entry)) {
         return Some(value.to_owned());
     }
@@ -98,13 +108,19 @@ mod tests {
     #[test]
     fn drops_only_what_the_appimage_added() {
         let vars = [
-            ("LD_LIBRARY_PATH", "/tmp/.mount_x/usr/lib/:"),
-            ("PATH", "/tmp/.mount_x/usr/bin/:/home/me/bin:/usr/bin"),
+            (
+                "LD_LIBRARY_PATH",
+                "/tmp/.mount_x/usr/lib/:/tmp/.mount_old/usr/lib/:",
+            ),
+            (
+                "PATH",
+                "/tmp/.mount_x/usr/bin/:/tmp/.mount_old/bin/:/home/me/bin:/usr/bin",
+            ),
             ("PYTHONHOME", "/tmp/.mount_x/usr/"),
             ("GTK_PATH", "/tmp/.mount_x//usr/lib/gtk-3.0"),
             ("GTK_THEME", "Adwaita:dark"),
             ("HOME", "/home/me"),
-            ("OTHER", "/tmp/.mount_xy:/a::b"),
+            ("OTHER", "/tmp/mount_x:/a::b"),
         ];
         let mut cmd = Command::new("true");
         clean(
