@@ -70,6 +70,7 @@ const messages: Messages = {
   'changespanel.rebasing': 'リベース中:',
   'changespanel.replace-the-last-commit-with-these-changes-and-this-message':
     '直前のコミットをこの変更とメッセージで置き換えます',
+  'changespanel.review-with-copilot': 'Copilot でレビュー',
   'changespanel.stage': 'ステージ',
   'changespanel.stage-all': 'すべてステージ',
   'changespanel.staged': 'ステージ済み',
@@ -183,6 +184,7 @@ const messages: Messages = {
   'diffview.unstage-hunk': 'ハンクのステージを解除',
   'diffview.unstage-lines': '行のステージを解除',
   'explaindialog.asking-copilot': 'Copilot に問い合わせ中',
+  'explaindialog.copy': 'コピー',
   'explaindialog.explain-title': '{title} を説明',
   'fileheader.copy-path': 'パスをコピー',
   'fileheader.explain-with-copilot': 'Copilot で説明',
@@ -365,6 +367,7 @@ const messages: Messages = {
   'repoview.diff-error': '差分を読み込めませんでした:',
   'repoview.dismiss': '閉じる',
   'repoview.history-empty': 'コミットを選択すると変更内容が表示されます',
+  'repoview.review-of-staged-changes': 'ステージした変更のレビュー',
   'repoview.stashes-empty': 'スタッシュを選択すると内容が表示されます',
   'repoview.tab-changes': '変更',
   'repoview.tab-history': '履歴',

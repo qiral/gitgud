@@ -75,6 +75,7 @@ const messages: Messages = {
   'changespanel.rebasing': 'Rebasing',
   'changespanel.replace-the-last-commit-with-these-changes-and-this-message':
     'Replace the last commit with these changes and this message',
+  'changespanel.review-with-copilot': 'Review with Copilot',
   'changespanel.stage': 'Stage',
   'changespanel.stage-all': 'Stage all',
   'changespanel.staged': 'Staged',
@@ -194,6 +195,7 @@ const messages: Messages = {
   'diffview.unstage-hunk': 'Unstage hunk',
   'diffview.unstage-lines': 'Unstage lines',
   'explaindialog.asking-copilot': 'Asking Copilot',
+  'explaindialog.copy': 'Copy',
   'explaindialog.explain-title': 'Explain {title}',
   'fileheader.copy-path': 'Copy path',
   'fileheader.explain-with-copilot': 'Explain with Copilot',
@@ -383,6 +385,7 @@ const messages: Messages = {
   'repoview.diff-error': 'Could not load diff:',
   'repoview.dismiss': 'Dismiss',
   'repoview.history-empty': 'Select a commit to see what changed',
+  'repoview.review-of-staged-changes': 'Review of staged changes',
   'repoview.stashes-empty': 'Select a stash to see what it contains',
   'repoview.tab-changes': 'Changes',
   'repoview.tab-history': 'History',

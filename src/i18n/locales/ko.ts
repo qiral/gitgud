@@ -67,6 +67,7 @@ const messages: Messages = {
   'changespanel.rebasing': '리베이스 중:',
   'changespanel.replace-the-last-commit-with-these-changes-and-this-message':
     '마지막 커밋을 이 변경 사항과 메시지로 바꿉니다',
+  'changespanel.review-with-copilot': 'Copilot으로 검토',
   'changespanel.stage': '스테이지',
   'changespanel.stage-all': '모두 스테이지',
   'changespanel.staged': '스테이지됨',
@@ -181,6 +182,7 @@ const messages: Messages = {
   'diffview.unstage-hunk': '헝크 스테이지 해제',
   'diffview.unstage-lines': '줄 스테이지 해제',
   'explaindialog.asking-copilot': 'Copilot에게 묻는 중',
+  'explaindialog.copy': '복사',
   'explaindialog.explain-title': '{title} 설명',
   'fileheader.copy-path': '경로 복사',
   'fileheader.explain-with-copilot': 'Copilot으로 설명',
@@ -359,6 +361,7 @@ const messages: Messages = {
   'repoview.diff-error': '차이를 불러올 수 없습니다:',
   'repoview.dismiss': '닫기',
   'repoview.history-empty': '커밋을 선택하면 바뀐 내용이 표시됩니다',
+  'repoview.review-of-staged-changes': '스테이징된 변경 사항 검토 결과',
   'repoview.stashes-empty': '스태시를 선택하면 내용이 표시됩니다',
   'repoview.tab-changes': '변경 사항',
   'repoview.tab-history': '기록',

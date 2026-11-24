@@ -66,6 +66,7 @@ const messages: Messages = {
   'changespanel.rebasing': '正在变基：',
   'changespanel.replace-the-last-commit-with-these-changes-and-this-message':
     '用这些更改和这条消息替换上一次提交',
+  'changespanel.review-with-copilot': '使用 Copilot 审查',
   'changespanel.stage': '暂存',
   'changespanel.stage-all': '全部暂存',
   'changespanel.staged': '已暂存',
@@ -175,6 +176,7 @@ const messages: Messages = {
   'diffview.unstage-hunk': '取消暂存此块',
   'diffview.unstage-lines': '取消暂存这些行',
   'explaindialog.asking-copilot': '正在询问 Copilot',
+  'explaindialog.copy': '复制',
   'explaindialog.explain-title': '解释 {title}',
   'fileheader.copy-path': '复制路径',
   'fileheader.explain-with-copilot': '用 Copilot 解释',
@@ -345,6 +347,7 @@ const messages: Messages = {
   'repoview.diff-error': '无法加载差异：',
   'repoview.dismiss': '关闭',
   'repoview.history-empty': '选择一个提交以查看更改内容',
+  'repoview.review-of-staged-changes': '暂存更改的审查结果',
   'repoview.stashes-empty': '选择一个贮藏以查看其内容',
   'repoview.tab-changes': '更改',
   'repoview.tab-history': '历史',

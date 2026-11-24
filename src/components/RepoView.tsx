@@ -336,22 +336,27 @@ export default function RepoView({
   const openSignIn = useCallback(() => setDialog('signIn'), [])
   const ai = useCopilot(setError, account !== null, openSignIn)
   const copilotOn = useCopilotPrefs()
-  const [explaining, setExplaining] = useState<{
+  const [answer, setAnswer] = useState<{
     title: string
     text: string | null
   } | null>(null)
 
-  /** Shows Copilot's explanation of a diff; closes again if it fails. */
-  const explain = useCallback(
-    async (title: string, load: () => Promise<string>) => {
-      setExplaining({ title, text: null })
-      const text = await ai.run(async () => copilot.explain(await load()))
-      setExplaining((shown) =>
+  /** Shows a Copilot answer in a dialog; closes again if it fails. */
+  const showAnswer = useCallback(
+    async (title: string, ask: () => Promise<string>) => {
+      setAnswer({ title, text: null })
+      const text = await ai.run(ask)
+      setAnswer((shown) =>
         shown?.title !== title ? shown : text === null ? null : { title, text },
       )
     },
     [ai.run],
   )
+
+  const explain = (title: string, load: () => Promise<string>) =>
+    showAnswer(tx('explaindialog.explain-title', { title }), async () =>
+      copilot.explain(await load()),
+    )
 
   const undo = (id: number) => act('undo', () => git.undo(repo.path, id))
 
@@ -415,11 +420,11 @@ export default function RepoView({
       {pullRequests.dialog}
       {commitActions.dialogs}
       {ai.dialog}
-      {explaining && !ai.dialog && (
+      {answer && !ai.dialog && (
         <ExplainDialog
-          title={explaining.title}
-          explanation={explaining.text}
-          onClose={() => setExplaining(null)}
+          title={answer.title}
+          explanation={answer.text}
+          onClose={() => setAnswer(null)}
         />
       )}
       <Toolbar
@@ -536,6 +541,14 @@ export default function RepoView({
             onStash={() => setDialog('stash')}
             onFileHistory={showFileHistory}
             onBlame={blameOnDisk}
+            onReview={
+              copilotOn.review
+                ? () =>
+                    showAnswer(tx('repoview.review-of-staged-changes'), () =>
+                      copilot.review(repo.path),
+                    )
+                : undefined
+            }
             onGenerateMessage={
               copilotOn.commitMessage
                 ? () => ai.run(() => copilot.commitMessage(repo.path))

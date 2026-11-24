@@ -74,6 +74,7 @@ const messages: Messages = {
   'changespanel.rebasing': 'Rebase de',
   'changespanel.replace-the-last-commit-with-these-changes-and-this-message':
     'Remplacer le dernier commit par ces modifications et ce message',
+  'changespanel.review-with-copilot': 'Relire avec Copilot',
   'changespanel.stage': 'Indexer',
   'changespanel.stage-all': 'Tout indexer',
   'changespanel.staged': 'Indexé',
@@ -196,6 +197,7 @@ const messages: Messages = {
   'diffview.unstage-hunk': 'Désindexer le bloc',
   'diffview.unstage-lines': 'Désindexer les lignes',
   'explaindialog.asking-copilot': 'Copilot réfléchit',
+  'explaindialog.copy': 'Copier',
   'explaindialog.explain-title': 'Expliquer {title}',
   'fileheader.copy-path': 'Copier le chemin',
   'fileheader.explain-with-copilot': 'Expliquer avec Copilot',
@@ -385,6 +387,7 @@ const messages: Messages = {
   'repoview.diff-error': 'Impossible de charger le diff :',
   'repoview.dismiss': 'Fermer',
   'repoview.history-empty': 'Sélectionnez un commit pour voir ce qui a changé',
+  'repoview.review-of-staged-changes': 'Relecture des modifications indexées',
   'repoview.stashes-empty': 'Sélectionnez un stash pour voir son contenu',
   'repoview.tab-changes': 'Modifications',
   'repoview.tab-history': 'Historique',

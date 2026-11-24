@@ -477,6 +477,19 @@ impl Copilot {
 }
 
 impl Copilot {
+    /// Likely problems in the staged changes, before they're committed.
+    pub async fn review(&self, app_data: &Path, repo: PathBuf) -> Result<String> {
+        let (stat, diff) =
+            blocking(move || Ok((git::staged_stat(&repo)?, git::staged_diff(&repo)?))).await?;
+        if diff.trim().is_empty() {
+            return Err(GitError::Failed("Stage some changes first".into()));
+        }
+        let review = self.ask(app_data, review_prompt(&stat, &diff)).await?;
+        Ok(review.trim().to_string())
+    }
+}
+
+impl Copilot {
     /// A title and description for a pull request with these commits, made
     /// of everything since `merge_base`. The reply's first line is the title.
     pub async fn pull_request(
@@ -585,6 +598,22 @@ fn commit_prompt(stat: &str, diff: &str, subjects: &[String]) -> String {
         cap(diff, MAX_INPUT)
     ));
     prompt
+}
+
+/// What a review with nothing to report says, so the reply stays short.
+const NOTHING_FOUND: &str = "Nothing stood out.";
+
+fn review_prompt(stat: &str, diff: &str) -> String {
+    format!(
+        "Review the staged changes below before they are committed. Point out only \
+         real problems: likely bugs, leftover debug code (print or log statements, \
+         dbg!, commented-out code), secrets or credentials, and changes that look \
+         accidental. For each, name the file, quote the line, say what's wrong and \
+         how to fix it in one sentence, as a short bullet list. Skip style nitpicks. \
+         If nothing stands out, reply exactly: {NOTHING_FOUND}\n\n\
+         Staged files:\n{stat}\nStaged changes:\n{}",
+        cap(diff, MAX_INPUT)
+    )
 }
 
 fn pull_request_prompt(commits: &[String], stat: &str, diff: &str) -> String {
@@ -960,6 +989,23 @@ mod tests {
             )),
             "Copilot failed: something odd"
         );
+    }
+
+    #[test]
+    fn review_prompt_asks_for_real_problems_in_the_staged_diff() {
+        let prompt = review_prompt(" src/a.rs | 2 +-\n", "+dbg!(x);\n");
+        for expected in [
+            "bug",
+            "debug",
+            "secret",
+            "src/a.rs | 2 +-",
+            "+dbg!(x);",
+            NOTHING_FOUND,
+        ] {
+            assert!(prompt.contains(expected), "missing {expected}");
+        }
+        let huge = review_prompt("", &"+x\n".repeat(100_000));
+        assert!(huge.contains("[… truncated]"));
     }
 
     #[test]

@@ -72,6 +72,7 @@ const messages: Messages = {
   'changespanel.rebasing': 'Rebase ediliyor:',
   'changespanel.replace-the-last-commit-with-these-changes-and-this-message':
     "Son commit'i bu değişiklikler ve bu mesajla değiştir",
+  'changespanel.review-with-copilot': 'Copilot ile incele',
   'changespanel.stage': 'Hazırla',
   'changespanel.stage-all': 'Tümünü hazırla',
   'changespanel.staged': 'Hazırlananlar',
@@ -189,6 +190,7 @@ const messages: Messages = {
   'diffview.unstage-hunk': 'Parçayı hazırlıktan çıkar',
   'diffview.unstage-lines': 'Satırları hazırlıktan çıkar',
   'explaindialog.asking-copilot': "Copilot'a soruluyor",
+  'explaindialog.copy': 'Kopyala',
   'explaindialog.explain-title': 'Açıkla: {title}',
   'fileheader.copy-path': 'Yolu kopyala',
   'fileheader.explain-with-copilot': 'Copilot ile açıkla',
@@ -373,6 +375,7 @@ const messages: Messages = {
   'repoview.diff-error': 'Fark yüklenemedi:',
   'repoview.dismiss': 'Kapat',
   'repoview.history-empty': 'Neyin değiştiğini görmek için bir commit seçin',
+  'repoview.review-of-staged-changes': 'Hazırlanan değişikliklerin incelemesi',
   'repoview.stashes-empty': 'İçeriğini görmek için bir stash seçin',
   'repoview.tab-changes': 'Değişiklikler',
   'repoview.tab-history': 'Geçmiş',

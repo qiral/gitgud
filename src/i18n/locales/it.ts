@@ -74,6 +74,7 @@ const messages: Messages = {
   'changespanel.rebasing': 'Rebase di',
   'changespanel.replace-the-last-commit-with-these-changes-and-this-message':
     "Sostituisci l'ultimo commit con queste modifiche e questo messaggio",
+  'changespanel.review-with-copilot': 'Rivedi con Copilot',
   'changespanel.stage': "Aggiungi all'area di stage",
   'changespanel.stage-all': 'Aggiungi tutto',
   'changespanel.staged': 'In stage',
@@ -193,6 +194,7 @@ const messages: Messages = {
   'diffview.unstage-hunk': 'Rimuovi blocco dallo stage',
   'diffview.unstage-lines': 'Rimuovi righe dallo stage',
   'explaindialog.asking-copilot': 'Chiedo a Copilot',
+  'explaindialog.copy': 'Copia',
   'explaindialog.explain-title': 'Spiega {title}',
   'fileheader.copy-path': 'Copia percorso',
   'fileheader.explain-with-copilot': 'Spiega con Copilot',
@@ -383,6 +385,7 @@ const messages: Messages = {
   'repoview.diff-error': 'Impossibile caricare il diff:',
   'repoview.dismiss': 'Chiudi',
   'repoview.history-empty': 'Seleziona un commit per vedere cosa è cambiato',
+  'repoview.review-of-staged-changes': 'Revisione delle modifiche in stage',
   'repoview.stashes-empty': 'Seleziona uno stash per vederne il contenuto',
   'repoview.tab-changes': 'Modifiche',
   'repoview.tab-history': 'Cronologia',

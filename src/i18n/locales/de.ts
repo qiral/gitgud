@@ -74,6 +74,7 @@ const messages: Messages = {
   'changespanel.rebasing': 'Rebase von',
   'changespanel.replace-the-last-commit-with-these-changes-and-this-message':
     'Den letzten Commit durch diese Änderungen und diese Nachricht ersetzen',
+  'changespanel.review-with-copilot': 'Mit Copilot prüfen',
   'changespanel.stage': 'Stagen',
   'changespanel.stage-all': 'Alle stagen',
   'changespanel.staged': 'Gestaged',
@@ -194,6 +195,7 @@ const messages: Messages = {
   'diffview.unstage-hunk': 'Hunk unstagen',
   'diffview.unstage-lines': 'Zeilen unstagen',
   'explaindialog.asking-copilot': 'Copilot wird gefragt',
+  'explaindialog.copy': 'Kopieren',
   'explaindialog.explain-title': '{title} erklären',
   'fileheader.copy-path': 'Pfad kopieren',
   'fileheader.explain-with-copilot': 'Mit Copilot erklären',
@@ -384,6 +386,7 @@ const messages: Messages = {
   'repoview.dismiss': 'Schließen',
   'repoview.history-empty':
     'Wähle einen Commit, um zu sehen, was sich geändert hat',
+  'repoview.review-of-staged-changes': 'Prüfung der vorgemerkten Änderungen',
   'repoview.stashes-empty': 'Wähle einen Stash, um seinen Inhalt zu sehen',
   'repoview.tab-changes': 'Änderungen',
   'repoview.tab-history': 'Verlauf',

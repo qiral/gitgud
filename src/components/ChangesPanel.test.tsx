@@ -195,3 +195,34 @@ it('adds an untracked file to .gitignore from its menu', async () => {
     ]),
   )
 })
+
+function renderWithReview(onReview: () => void, files = [stagedFile]) {
+  render(
+    <ChangesPanel
+      repo={repo}
+      files={files}
+      merging={null}
+      rebasing={null}
+      hasCommits
+      selection={null}
+      onSelect={() => {}}
+      busy={false}
+      onStash={() => {}}
+      onReview={onReview}
+      act={act}
+    />,
+  )
+  return screen.getByRole('button', {
+    name: 'Review with Copilot',
+  }) as HTMLButtonElement
+}
+
+it('asks Copilot to review what is staged', () => {
+  const onReview = vi.fn()
+  fireEvent.click(renderWithReview(onReview))
+  expect(onReview).toHaveBeenCalled()
+})
+
+it('has nothing to review without staged files', () => {
+  expect(renderWithReview(() => {}, []).disabled).toBe(true)
+})

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { confirm } from '@tauri-apps/plugin-dialog'
 import {
   Archive,
+  ScanSearch,
   EyeOff,
   GitMerge,
   Loader2,
@@ -49,6 +50,8 @@ interface Props {
   onBlame?: (path: string) => void
   /** Asks Copilot for a message for the staged changes; null on failure. */
   onGenerateMessage?: () => Promise<string | null>
+  /** Asks Copilot to look over the staged changes; unset to hide. */
+  onReview?: () => void
   act: (label: string, action: () => Promise<unknown>) => Promise<boolean>
 }
 
@@ -67,6 +70,7 @@ export default function ChangesPanel({
   onFileHistory,
   onBlame,
   onGenerateMessage,
+  onReview,
   act,
 }: Props) {
   const { t, tp } = useTranslation()
@@ -465,6 +469,22 @@ export default function ChangesPanel({
                     ? tp('changespanel.commit-files', staged.length)
                     : t('changespanel.commit')}
           </button>
+          {onReview && (
+            <button
+              onClick={onReview}
+              disabled={
+                busy ||
+                staged.length === 0 ||
+                merging !== null ||
+                rebasing !== null
+              }
+              title={t('changespanel.review-with-copilot')}
+              aria-label={t('changespanel.review-with-copilot')}
+              className="flex items-center rounded border border-line px-2 hover:bg-hover disabled:opacity-40"
+            >
+              <ScanSearch className="size-4" />
+            </button>
+          )}
           <button
             onClick={onStash}
             disabled={

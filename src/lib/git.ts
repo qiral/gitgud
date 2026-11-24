@@ -241,6 +241,8 @@ export const copilot = {
   commitMessage: (repo: string) =>
     invoke<string>('copilot_commit_message', { repo }),
   explain: (diff: string) => invoke<string>('copilot_explain', { diff }),
+  /** Likely bugs, leftover debug code or secrets in the staged changes. */
+  review: (repo: string) => invoke<string>('copilot_review', { repo }),
   /** A pull request title, a blank line, then its description. */
   pullRequest: (repo: string, mergeBase: string, commits: string[]) =>
     invoke<string>('copilot_pull_request', { repo, mergeBase, commits }),
