@@ -155,7 +155,8 @@ pub fn plan(repo: &Path, from: &str) -> Result<RebasePlan> {
 /// Forward slashes keep Windows paths working in Git for Windows' shell.
 fn shell_path(path: &Path) -> Result<String> {
     let p = path.display().to_string().replace('\\', "/");
-    if p.contains('\'') {
+    // A quote ends the quoting; a line break would start a new todo line.
+    if p.contains(['\'', '\n', '\r']) {
         return Err(GitError::Failed(format!(
             "Unsupported character in path: {p}"
         )));
@@ -484,5 +485,13 @@ mod tests {
         assert_eq!(subjects(repo), ["two", "three", "one"]);
         assert_eq!(std::fs::read_to_string(dir.join("f.txt")).unwrap(), "2\n");
         std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn paths_that_would_break_a_todo_line_are_refused() {
+        assert!(shell_path(Path::new("/repo/.git/gitgud-rebase/todo")).is_ok());
+        for bad in ["/a'b", "/a\nexec touch x", "/a\rb"] {
+            assert!(shell_path(Path::new(bad)).is_err(), "{bad:?}");
+        }
     }
 }
