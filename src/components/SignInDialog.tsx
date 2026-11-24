@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { openUrl } from '@tauri-apps/plugin-opener'
+import { openUrl } from '../lib/open'
 import { ExternalLink, Loader2 } from 'lucide-react'
 import { errorMessage, github, type Account, type DeviceCode } from '../lib/git'
 import Dialog from './Dialog'

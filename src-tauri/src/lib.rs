@@ -1,3 +1,4 @@
+mod appimage;
 mod blame;
 mod cache;
 mod compare;
@@ -39,6 +40,20 @@ use undo::{Kind, ReflogEntry, UndoLog, Undoable};
 #[tauri::command]
 fn initial_repo() -> Option<String> {
     std::env::args().nth(1)
+}
+
+/// Opens a web page in the default browser.
+#[tauri::command(async)]
+fn open_url(url: String) -> Result<()> {
+    if !url.starts_with("https://") && !url.starts_with("http://") {
+        return Err(GitError::Failed(format!("Not a web page: {url}")));
+    }
+    #[cfg(target_os = "linux")]
+    if std::env::var_os("APPDIR").is_some() {
+        return appimage::open_url(&url)
+            .map_err(|e| GitError::Failed(format!("Couldn't open the browser: {e}")));
+    }
+    tauri_plugin_opener::open_url(url, None::<&str>).map_err(|e| GitError::Failed(e.to_string()))
 }
 
 #[tauri::command(async)]
@@ -782,6 +797,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
             initial_repo,
+            open_url,
             open_repo,
             status,
             stage,

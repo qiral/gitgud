@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
-import { openUrl } from '@tauri-apps/plugin-opener'
+import { openUrl } from '../lib/open'
 import {
   ExternalLink,
   GitPullRequest,

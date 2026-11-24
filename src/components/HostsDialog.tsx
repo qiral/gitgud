@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from 'react'
-import { openUrl } from '@tauri-apps/plugin-opener'
+import { openUrl } from '../lib/open'
 import { ExternalLink, Loader2, Server, Trash2 } from 'lucide-react'
 import { errorMessage, hosts, type Host, type HostKind } from '../lib/git'
 import { guessHostKind, tokenPageUrl } from '../lib/url'

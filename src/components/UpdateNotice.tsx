@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { relaunch } from '@tauri-apps/plugin-process'
-import { openUrl } from '@tauri-apps/plugin-opener'
+import { openUrl } from '../lib/open'
 import { CircleCheck, Download, Loader2, TriangleAlert, X } from 'lucide-react'
 import { errorMessage } from '../lib/git'
 import { useUpdates } from '../lib/updates'

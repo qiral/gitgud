@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { confirm } from '@tauri-apps/plugin-dialog'
-import { openUrl } from '@tauri-apps/plugin-opener'
+import { openUrl } from '../lib/open'
 import {
   ArrowDown,
   ArrowUp,
