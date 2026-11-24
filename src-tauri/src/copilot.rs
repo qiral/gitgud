@@ -477,6 +477,161 @@ impl Copilot {
 }
 
 impl Copilot {
+    /// What `branch` would bring into the current branch: its commits and
+    /// changes since the two split.
+    pub async fn branch_summary(
+        &self,
+        app_data: &Path,
+        repo: PathBuf,
+        branch: String,
+    ) -> Result<String> {
+        let prompt = blocking(move || {
+            let head = git::resolve_commit(&repo, "HEAD")?;
+            let tip = git::resolve_commit(&repo, &branch)?;
+            let base = git::merge_base(&repo, &head, &tip)?;
+            let (messages, stat) = git::range(&repo, &base, &tip)?;
+            if messages.is_empty() {
+                return Err(GitError::Failed(format!(
+                    "{branch} has nothing your branch doesn't already have"
+                )));
+            }
+            let diff = git::diff_between(&repo, &base, &tip)?;
+            let current = git::current_branch(&repo)?.unwrap_or_else(|| "HEAD".into());
+            Ok(branch_summary_prompt(
+                &branch, &current, &messages, &stat, &diff,
+            ))
+        })
+        .await?;
+        Ok(self.ask(app_data, prompt).await?.trim().to_string())
+    }
+}
+
+impl Copilot {
+    /// What a failed git action's error means and what to do next. Only the
+    /// action and the error are sent, with the repository and home folders
+    /// left out.
+    pub async fn explain_error(
+        &self,
+        app_data: &Path,
+        repo: &str,
+        action: &str,
+        error: &str,
+    ) -> Result<String> {
+        let home = std::env::home_dir().map(|h| h.to_string_lossy().into_owned());
+        let reply = self
+            .ask(app_data, error_prompt(action, error, repo, home.as_deref()))
+            .await?;
+        Ok(reply.trim().to_string())
+    }
+}
+
+impl Copilot {
+    /// A one-line message for stashing the uncommitted changes.
+    pub async fn stash_message(
+        &self,
+        app_data: &Path,
+        repo: PathBuf,
+        include_untracked: bool,
+    ) -> Result<String> {
+        let (stat, diff, untracked) =
+            blocking(move || git::uncommitted_changes(&repo, include_untracked)).await?;
+        if diff.trim().is_empty() && untracked.is_empty() {
+            return Err(GitError::Failed("There are no changes to stash".into()));
+        }
+        let reply = self
+            .ask(app_data, stash_prompt(&stat, &diff, &untracked))
+            .await?;
+        Ok(reply.lines().next().unwrap_or("").trim().to_string())
+    }
+}
+
+impl Copilot {
+    /// One message for commits squashed together, oldest first.
+    pub async fn squash_message(
+        &self,
+        app_data: &Path,
+        repo: PathBuf,
+        hashes: Vec<String>,
+    ) -> Result<String> {
+        let commits = blocking(move || {
+            hashes
+                .iter()
+                .map(|hash| git::show_commit(&repo, hash, false))
+                .collect::<Result<Vec<_>>>()
+        })
+        .await?;
+        let message = self.ask(app_data, squash_prompt(&commits)).await?;
+        Ok(message.trim().to_string())
+    }
+}
+
+impl Copilot {
+    /// Release notes for the commits after `from` up to `to` (HEAD when
+    /// unset). Without `from` they start at the last tag. The two can be
+    /// given in either order.
+    pub async fn release_notes(
+        &self,
+        app_data: &Path,
+        repo: PathBuf,
+        from: Option<String>,
+        to: Option<String>,
+    ) -> Result<String> {
+        let (messages, stat) =
+            blocking(move || release_range(&repo, from.as_deref(), to.as_deref())).await?;
+        if messages.is_empty() {
+            return Err(GitError::Failed("No commits in that range".into()));
+        }
+        let notes = self
+            .ask(app_data, release_notes_prompt(&messages, &stat))
+            .await?;
+        Ok(notes.trim().to_string())
+    }
+}
+
+impl Copilot {
+    /// A branch name for the work `description` describes, in the style of
+    /// the repository's existing branches.
+    pub async fn branch_name(
+        &self,
+        app_data: &Path,
+        repo: PathBuf,
+        description: String,
+    ) -> Result<String> {
+        let names = blocking(move || {
+            Ok(git::branches(&repo)?
+                .into_iter()
+                .map(|b| b.name)
+                .take(30)
+                .collect::<Vec<_>>())
+        })
+        .await?;
+        let reply = self
+            .ask(app_data, branch_name_prompt(&description, &names))
+            .await?;
+        let name = clean_branch_name(&reply);
+        if name.is_empty() {
+            return Err(GitError::Failed(
+                "Copilot didn't suggest a usable name. Try describing the work differently.".into(),
+            ));
+        }
+        Ok(name)
+    }
+}
+
+impl Copilot {
+    /// Likely problems in the staged changes, before they're committed.
+    pub async fn review(&self, app_data: &Path, repo: PathBuf) -> Result<String> {
+        let (stat, diff) =
+            blocking(move || Ok((git::staged_stat(&repo)?, git::staged_diff(&repo)?))).await?;
+        if diff.trim().is_empty() {
+            return Err(GitError::Failed("Stage some changes first".into()));
+        }
+        let review = self.ask(app_data, review_prompt(&stat, &diff)).await?;
+        Ok(review.trim().to_string())
+    }
+}
+
+impl Copilot {
     /// A title and description for a pull request with these commits, made
     /// of everything since `merge_base`. The reply's first line is the title.
     pub async fn pull_request(
@@ -543,6 +698,39 @@ impl Copilot {
     }
 }
 
+/// Messages and file stats for release notes: the commits after `from` up to
+/// `to` (HEAD when unset), in whichever order the two were given. Without
+/// `from` it's the last tag, or the one before when `to` is tagged itself.
+fn release_range(
+    repo: &Path,
+    from: Option<&str>,
+    to: Option<&str>,
+) -> Result<(Vec<String>, String)> {
+    let to = git::resolve_commit(repo, to.unwrap_or("HEAD"))?;
+    let from = match from {
+        Some(rev) => git::resolve_commit(repo, rev)?,
+        None => {
+            let no_tag = || {
+                GitError::Failed("There's no earlier tag. Pick a commit in History instead.".into())
+            };
+            let tag = git::last_tag(repo, &to)?.ok_or_else(no_tag)?;
+            let tagged = git::resolve_commit(repo, &tag)?;
+            if tagged == to {
+                let before = git::last_tag(repo, &format!("{to}^"))?.ok_or_else(no_tag)?;
+                git::resolve_commit(repo, &before)?
+            } else {
+                tagged
+            }
+        }
+    };
+    let (from, to) = if git::is_ancestor(repo, &to, &from)? {
+        (to, from)
+    } else {
+        (from, to)
+    };
+    git::range(repo, &from, &to)
+}
+
 async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T> + Send + 'static) -> Result<T> {
     tauri::async_runtime::spawn_blocking(f)
         .await
@@ -585,6 +773,170 @@ fn commit_prompt(stat: &str, diff: &str, subjects: &[String]) -> String {
         cap(diff, MAX_INPUT)
     ));
     prompt
+}
+
+fn branch_summary_prompt(
+    branch: &str,
+    current: &str,
+    messages: &[String],
+    stat: &str,
+    diff: &str,
+) -> String {
+    let mut commits = String::new();
+    for message in messages {
+        commits.push_str(&format!("---\n{}\n", message.trim()));
+    }
+    format!(
+        "Summarize what merging the branch {branch} into {current} would bring \
+         in: a short overview, then 3 to 5 bullets on what changes and anything \
+         that could break or conflict. Plain text, no headings.\n\n\
+         Commits on {branch}, oldest first:\n{}\nChanged files:\n{stat}\nChanges:\n{}",
+        cap(&commits, MAX_INPUT / 5),
+        cap(diff, MAX_INPUT)
+    )
+}
+
+/// `text` with `path` replaced, however its slashes and case are written.
+fn redact(text: &str, path: &str, with: &str) -> String {
+    let mut out = text.to_string();
+    if path.is_empty() {
+        return out;
+    }
+    for variant in [path.replace('\\', "/"), path.replace('/', "\\")] {
+        let needle = variant.to_ascii_lowercase();
+        let mut rest = out.as_str();
+        let mut replaced = String::new();
+        while let Some(at) = rest.to_ascii_lowercase().find(&needle) {
+            replaced.push_str(&rest[..at]);
+            replaced.push_str(with);
+            rest = &rest[at + needle.len()..];
+        }
+        replaced.push_str(rest);
+        out = replaced;
+    }
+    out
+}
+
+fn error_prompt(action: &str, error: &str, repo: &str, home: Option<&str>) -> String {
+    let error = redact(&redact(error, repo, "<repo>"), home.unwrap_or(""), "~");
+    format!(
+        "A git action failed in GitGud, a desktop Git app. In 2 to 4 plain \
+         sentences, say what went wrong and what to do next. Where it fits, \
+         name GitGud's own buttons: Fetch, Pull, Push, Stash, Commit, Undo, or \
+         resolving conflicts in the Changes tab. No headings.\n\n\
+         Action: {action}\nError:\n{}",
+        cap(&error, 5_000)
+    )
+}
+
+fn stash_prompt(stat: &str, diff: &str, untracked: &[String]) -> String {
+    let mut prompt = format!(
+        "Write a one-line note, under 72 characters, saying what this unfinished \
+         work is, to label a git stash. Reply with the note only.\n\n\
+         Changed files:\n{stat}\nChanges:\n{}",
+        cap(diff, MAX_INPUT)
+    );
+    if !untracked.is_empty() {
+        prompt.push_str("\nNew files:\n");
+        for name in untracked.iter().take(100) {
+            prompt.push_str(&format!("  {name}\n"));
+        }
+    }
+    prompt
+}
+
+fn squash_prompt(commits: &[String]) -> String {
+    let share = MAX_INPUT / commits.len().max(1);
+    let mut prompt = String::from(
+        "These commits are being squashed into one. Write a single git commit \
+         message for the result.\n\n\
+         - First line: a summary under 72 characters.\n\
+         - If more explanation helps, add a blank line and a short body.\n\
+         - Reply with the commit message only: no code fences, no commentary.\n\n\
+         Commits, oldest first:\n",
+    );
+    for commit in commits {
+        prompt.push_str(&format!("---\n{}\n", cap(commit, share)));
+    }
+    prompt
+}
+
+fn release_notes_prompt(messages: &[String], stat: &str) -> String {
+    let mut commits = String::new();
+    for message in messages {
+        commits.push_str(&format!("---\n{}\n", message.trim()));
+    }
+    format!(
+        "Draft release notes from the commits below. Write short, user-facing \
+         bullets in Markdown, grouped under headings such as New, Improved and \
+         Fixed (only the ones that apply). Leave out internal chores like CI, \
+         formatting and version bumps. Reply with the notes only.\n\n\
+         Commits, oldest first:\n{}\nChanged files:\n{}",
+        cap(&commits, MAX_INPUT),
+        cap(stat, MAX_INPUT / 10)
+    )
+}
+
+fn branch_name_prompt(description: &str, existing: &[String]) -> String {
+    let mut prompt = format!(
+        "Suggest one git branch name for this work: {}\n\n\
+         - Lowercase words joined by hyphens, under 40 characters.\n\
+         - Use a prefix like feature/ or fix/ only if the existing branches do.\n\
+         - Reply with the branch name only.\n",
+        cap(description, 1_000)
+    );
+    if !existing.is_empty() {
+        prompt.push_str("\nExisting branches:\n");
+        for name in existing {
+            prompt.push_str(&format!("  {name}\n"));
+        }
+    }
+    prompt
+}
+
+/// Copilot's reply as a usable branch name: no quotes, labels or spaces.
+fn clean_branch_name(reply: &str) -> String {
+    let lines: Vec<&str> = reply
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .collect();
+    // Replies sometimes lead with "Here's a name:"; the name has no spaces.
+    let line = lines
+        .iter()
+        .rev()
+        .find(|l| !l.contains(' '))
+        .or(lines.first())
+        .copied()
+        .unwrap_or("");
+    let line = line.rsplit_once(": ").map_or(line, |(_, name)| name);
+    let mut name = String::new();
+    for c in line.to_lowercase().chars() {
+        match c {
+            '`' | '"' | '\'' => {}
+            c if c.is_alphanumeric() || matches!(c, '/' | '_' | '.') => name.push(c),
+            _ if !name.ends_with('-') => name.push('-'),
+            _ => {}
+        }
+    }
+    name.trim_matches(|c| c == '-' || c == '/' || c == '.')
+        .to_string()
+}
+
+/// What a review with nothing to report says, so the reply stays short.
+const NOTHING_FOUND: &str = "Nothing stood out.";
+
+fn review_prompt(stat: &str, diff: &str) -> String {
+    format!(
+        "Review the staged changes below before they are committed. Point out only \
+         real problems: likely bugs, leftover debug code (print or log statements, \
+         dbg!, commented-out code), secrets or credentials, and changes that look \
+         accidental. For each, name the file, quote the line, say what's wrong and \
+         how to fix it in one sentence, as a short bullet list. Skip style nitpicks. \
+         If nothing stands out, reply exactly: {NOTHING_FOUND}\n\n\
+         Staged files:\n{stat}\nStaged changes:\n{}",
+        cap(diff, MAX_INPUT)
+    )
 }
 
 fn pull_request_prompt(commits: &[String], stat: &str, diff: &str) -> String {
@@ -960,6 +1312,180 @@ mod tests {
             )),
             "Copilot failed: something odd"
         );
+    }
+
+    #[test]
+    fn review_prompt_asks_for_real_problems_in_the_staged_diff() {
+        let prompt = review_prompt(" src/a.rs | 2 +-\n", "+dbg!(x);\n");
+        for expected in [
+            "bug",
+            "debug",
+            "secret",
+            "src/a.rs | 2 +-",
+            "+dbg!(x);",
+            NOTHING_FOUND,
+        ] {
+            assert!(prompt.contains(expected), "missing {expected}");
+        }
+        let huge = review_prompt("", &"+x\n".repeat(100_000));
+        assert!(huge.contains("[… truncated]"));
+    }
+
+    #[test]
+    fn branch_name_prompt_shows_the_repos_naming_style() {
+        let prompt = branch_name_prompt(
+            "fix login on phones",
+            &["feature/blame".into(), "fix/typo".into()],
+        );
+        for expected in ["fix login on phones", "feature/blame", "fix/typo"] {
+            assert!(prompt.contains(expected), "missing {expected}");
+        }
+    }
+
+    #[test]
+    fn a_suggested_branch_name_is_cleaned_up() {
+        assert_eq!(clean_branch_name("fix/mobile-login"), "fix/mobile-login");
+        assert_eq!(
+            clean_branch_name("`fix/mobile-login`\n"),
+            "fix/mobile-login"
+        );
+        assert_eq!(
+            clean_branch_name("Branch: \"Fix Mobile Login\""),
+            "fix-mobile-login"
+        );
+        assert_eq!(
+            clean_branch_name("feature/Add  dark mode!"),
+            "feature/add-dark-mode"
+        );
+        assert_eq!(
+            clean_branch_name("Here's a suggestion:\nfix/login-crash"),
+            "fix/login-crash"
+        );
+        assert_eq!(clean_branch_name("  \n"), "");
+    }
+
+    #[test]
+    fn release_notes_prompt_uses_messages_and_files_only() {
+        let prompt = release_notes_prompt(
+            &[
+                "add blame\n\nshows who changed each line".into(),
+                "fix crash".into(),
+            ],
+            " src/blame.rs | 120 +++\n",
+        );
+        for expected in [
+            "add blame",
+            "shows who changed each line",
+            "fix crash",
+            "src/blame.rs | 120 +++",
+        ] {
+            assert!(prompt.contains(expected), "missing {expected}");
+        }
+        let many: Vec<String> = (0..10_000).map(|i| format!("commit number {i}")).collect();
+        assert!(release_notes_prompt(&many, "").len() < MAX_INPUT + 2_000);
+    }
+
+    #[test]
+    fn squash_prompt_shares_the_budget_between_commits() {
+        let prompt = squash_prompt(&["add login\n+form".into(), "fix typo\n+text".into()]);
+        for expected in ["add login", "+form", "fix typo", "+text"] {
+            assert!(prompt.contains(expected), "missing {expected}");
+        }
+        let big = vec!["x".repeat(MAX_INPUT); 4];
+        let prompt = squash_prompt(&big);
+        assert!(prompt.len() < MAX_INPUT + 2_000, "{}", prompt.len());
+        assert_eq!(
+            prompt.matches("[… truncated]").count(),
+            4,
+            "each commit keeps a share"
+        );
+    }
+
+    #[test]
+    fn stash_prompt_names_new_files_without_their_contents() {
+        let prompt = stash_prompt(" a.txt | 2 +-\n", "+two\n", &["new.txt".into()]);
+        for expected in ["a.txt | 2 +-", "+two", "new.txt", "72"] {
+            assert!(prompt.contains(expected), "missing {expected}");
+        }
+        assert!(!stash_prompt("", "+x\n", &[]).contains("New files"));
+    }
+
+    #[test]
+    fn error_prompt_sends_the_error_but_not_where_the_repo_is() {
+        let prompt = error_prompt(
+            "push",
+            "error: failed to push some refs to /home/ada/code/app\nhint: Updates were rejected",
+            "/home/ada/code/app",
+            Some("/home/ada"),
+        );
+        for expected in [
+            "push",
+            "failed to push some refs to <repo>",
+            "Updates were rejected",
+        ] {
+            assert!(prompt.contains(expected), "missing {expected}");
+        }
+        assert!(!prompt.contains("/home/ada"));
+
+        let windows = error_prompt(
+            "commit",
+            "fatal: Unable to create 'c:/Users/Ada/code/app/.git/index.lock': File exists.\n\
+             warning: C:\\Users\\Ada\\.gitconfig is unreadable",
+            "C:\\Users\\Ada\\code\\app",
+            Some("C:\\Users\\Ada"),
+        );
+        assert!(windows.contains("'<repo>/.git/index.lock'"), "{windows}");
+        assert!(windows.contains("~\\.gitconfig"), "{windows}");
+        assert!(!windows.to_lowercase().contains("users"), "{windows}");
+    }
+
+    #[test]
+    fn branch_summary_prompt_says_which_way_the_changes_go() {
+        let prompt = branch_summary_prompt(
+            "feature/login",
+            "main",
+            &["add login form".into()],
+            " login.rs | 40 +++\n",
+            "+fn login() {}\n",
+        );
+        for expected in [
+            "feature/login",
+            "main",
+            "add login form",
+            "login.rs | 40 +++",
+            "+fn login() {}",
+        ] {
+            assert!(prompt.contains(expected), "missing {expected}");
+        }
+        let huge = branch_summary_prompt("f", "main", &[], "", &"+x\n".repeat(100_000));
+        assert!(huge.contains("[… truncated]"));
+    }
+
+    #[test]
+    fn release_notes_right_after_tagging_start_at_the_tag_before() {
+        let dir = temp_dir("tagged-head");
+        let repo = dir.as_path();
+        let git = |args: &[&str]| crate::git::run(repo, args).unwrap();
+        git(&["init", "-q", "-b", "main"]);
+        for (k, v) in [
+            ("user.name", "T"),
+            ("user.email", "t@x"),
+            ("commit.gpgsign", "false"),
+            ("tag.gpgsign", "false"),
+        ] {
+            git(&["config", k, v]);
+        }
+        for (i, msg) in ["first", "second", "third"].iter().enumerate() {
+            std::fs::write(dir.join(format!("{i}.txt")), "x\n").unwrap();
+            git(&["add", "."]);
+            git(&["commit", "-q", "-m", msg]);
+            if i == 0 {
+                git(&["tag", "v1"]);
+            }
+        }
+        git(&["tag", "v2"]);
+        let (messages, _) = release_range(repo, None, None).unwrap();
+        assert_eq!(messages, ["second", "third"]);
     }
 
     #[test]

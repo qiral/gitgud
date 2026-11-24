@@ -594,6 +594,89 @@ async fn copilot_pull_request(
 }
 
 #[tauri::command]
+async fn copilot_branch_summary(
+    app: tauri::AppHandle,
+    copilot: tauri::State<'_, Copilot>,
+    repo: String,
+    branch: String,
+) -> Result<String> {
+    copilot
+        .branch_summary(&app_data(&app)?, repo.into(), branch)
+        .await
+}
+
+#[tauri::command]
+async fn copilot_explain_error(
+    app: tauri::AppHandle,
+    copilot: tauri::State<'_, Copilot>,
+    repo: String,
+    action: String,
+    error: String,
+) -> Result<String> {
+    copilot
+        .explain_error(&app_data(&app)?, &repo, &action, &error)
+        .await
+}
+
+#[tauri::command]
+async fn copilot_stash_message(
+    app: tauri::AppHandle,
+    copilot: tauri::State<'_, Copilot>,
+    repo: String,
+    include_untracked: bool,
+) -> Result<String> {
+    copilot
+        .stash_message(&app_data(&app)?, repo.into(), include_untracked)
+        .await
+}
+
+#[tauri::command]
+async fn copilot_squash_message(
+    app: tauri::AppHandle,
+    copilot: tauri::State<'_, Copilot>,
+    repo: String,
+    hashes: Vec<String>,
+) -> Result<String> {
+    copilot
+        .squash_message(&app_data(&app)?, repo.into(), hashes)
+        .await
+}
+
+#[tauri::command]
+async fn copilot_release_notes(
+    app: tauri::AppHandle,
+    copilot: tauri::State<'_, Copilot>,
+    repo: String,
+    from: Option<String>,
+    to: Option<String>,
+) -> Result<String> {
+    copilot
+        .release_notes(&app_data(&app)?, repo.into(), from, to)
+        .await
+}
+
+#[tauri::command]
+async fn copilot_branch_name(
+    app: tauri::AppHandle,
+    copilot: tauri::State<'_, Copilot>,
+    repo: String,
+    description: String,
+) -> Result<String> {
+    copilot
+        .branch_name(&app_data(&app)?, repo.into(), description)
+        .await
+}
+
+#[tauri::command]
+async fn copilot_review(
+    app: tauri::AppHandle,
+    copilot: tauri::State<'_, Copilot>,
+    repo: String,
+) -> Result<String> {
+    copilot.review(&app_data(&app)?, repo.into()).await
+}
+
+#[tauri::command]
 async fn copilot_explain(
     app: tauri::AppHandle,
     copilot: tauri::State<'_, Copilot>,
@@ -715,6 +798,13 @@ pub fn run() {
             copilot_install,
             copilot_commit_message,
             copilot_explain,
+            copilot_review,
+            copilot_branch_name,
+            copilot_release_notes,
+            copilot_squash_message,
+            copilot_stash_message,
+            copilot_explain_error,
+            copilot_branch_summary,
             copilot_pull_request,
             copilot_resolve,
         ])

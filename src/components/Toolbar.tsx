@@ -23,6 +23,7 @@ import {
   Plus,
   RefreshCw,
   Server,
+  Sparkles,
   SunMoon,
   Trash2,
 } from 'lucide-react'
@@ -42,6 +43,12 @@ import {
   type Status,
 } from '../lib/git'
 import { useTranslation } from '../i18n'
+import {
+  COPILOT_ACTIONS,
+  setCopilotAction,
+  useCopilotPrefs,
+  type CopilotAction,
+} from '../lib/copilotPrefs'
 
 interface Props {
   repo: RepoInfo
@@ -63,6 +70,9 @@ interface Props {
   /** The pull request button, when the branch can have one. */
   pullRequest?: React.ReactNode
   act: (label: string, action: () => Promise<unknown>) => Promise<boolean>
+  /** Asks Copilot what a branch would bring into the current one; unset to
+   *  hide. */
+  onSummarizeBranch?: (name: string) => void
 }
 
 export default function Toolbar({
@@ -84,6 +94,7 @@ export default function Toolbar({
   onPalette,
   pullRequest,
   act,
+  onSummarizeBranch,
 }: Props) {
   const { t: tx, tp: txp } = useTranslation()
   const { ahead, behind, hasUpstream, needsRemote, diverged } = sync
@@ -104,6 +115,7 @@ export default function Toolbar({
         branches={branches}
         remoteBranches={remoteBranches}
         act={act}
+        onSummarizeBranch={onSummarizeBranch}
       />
 
       <div className="flex-1" />
@@ -174,6 +186,7 @@ export default function Toolbar({
       </button>
       <ThemeMenu />
       <LanguageMenu />
+      <CopilotMenu />
       {sync.dialog}
       <AccountMenu
         account={account}
@@ -465,6 +478,64 @@ function LanguageMenu() {
   )
 }
 
+const COPILOT_LABELS: Record<CopilotAction, string> = {
+  commitMessage: 'copilotmenu.commit-messages',
+  stashMessage: 'copilotmenu.stash-messages',
+  review: 'copilotmenu.review-staged-changes',
+  explain: 'copilotmenu.explain-changes',
+  gitErrors: 'copilotmenu.explain-git-errors',
+  conflicts: 'copilotmenu.conflict-help',
+  branchName: 'copilotmenu.branch-names',
+  releaseNotes: 'copilotmenu.release-notes',
+  branchSummary: 'copilotmenu.branch-summaries',
+  squashMessage: 'copilotmenu.squash-messages',
+  pullRequest: 'copilotmenu.pull-request-descriptions',
+}
+
+/** Turns single Copilot actions on and off. */
+export function CopilotMenu() {
+  const { t: tx } = useTranslation()
+  const prefs = useCopilotPrefs()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useClickOutside(ref, open, () => setOpen(false))
+
+  return (
+    <div ref={ref} className="relative flex border-r border-line">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        title={tx('copilotmenu.copilot')}
+        aria-label={tx('copilotmenu.copilot')}
+        className="flex items-center px-3 text-muted hover:bg-hover hover:text-fg"
+      >
+        <Sparkles className="size-4" />
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute top-full right-1 z-10 mt-1 w-64 rounded-md border border-line bg-panel py-1 shadow-lg"
+        >
+          <div className="px-3 py-1 text-xs text-muted">
+            {tx('copilotmenu.copilot')}
+          </div>
+          {COPILOT_ACTIONS.map((action) => (
+            <button
+              key={action}
+              role="menuitemcheckbox"
+              aria-checked={prefs[action]}
+              onClick={() => setCopilotAction(action, !prefs[action])}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-hover"
+            >
+              <span className="flex-1">{tx(COPILOT_LABELS[action])}</span>
+              {prefs[action] && <Check className="size-4 text-accent" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function AccountMenu({
   account,
   onSignIn,
@@ -589,13 +660,22 @@ function suggestUpstream(b: Branch, remoteBranches: string[]) {
   )
 }
 
-function BranchMenu({
+export function BranchMenu({
   repo,
   status,
   branches,
   remoteBranches,
   act,
-}: Pick<Props, 'repo' | 'status' | 'branches' | 'remoteBranches' | 'act'>) {
+  onSummarizeBranch,
+}: Pick<
+  Props,
+  | 'repo'
+  | 'status'
+  | 'branches'
+  | 'remoteBranches'
+  | 'act'
+  | 'onSummarizeBranch'
+>) {
   const { t: tx } = useTranslation()
   const [open, setOpen] = useState(false)
   const [newName, setNewName] = useState('')
@@ -669,6 +749,15 @@ function BranchMenu({
         label: tx('toolbar.merge-into-branch', { branch: status.branch }),
         icon: GitMerge,
         onClick: () => mergeIn(b.name),
+      })
+    if (!b.current && onSummarizeBranch)
+      items.push({
+        label: tx('toolbar.summarize-with-copilot'),
+        icon: Sparkles,
+        onClick: () => {
+          setOpen(false)
+          onSummarizeBranch(b.name)
+        },
       })
     if (items.length > 0) items.push('separator')
     items.push(

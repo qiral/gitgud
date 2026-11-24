@@ -764,6 +764,105 @@ pub fn branch_stat(repo: &Path, merge_base: &str) -> Result<String> {
     run(repo, &["diff", "--no-color", "--stat", merge_base, "HEAD"])
 }
 
+/// Everything not yet committed, against HEAD: file stats, the diff, and
+/// the names (not contents) of new files when `include_untracked`.
+pub fn uncommitted_changes(
+    repo: &Path,
+    include_untracked: bool,
+) -> Result<(String, String, Vec<String>)> {
+    let stat = run(repo, &["diff", "--no-color", "--stat", "HEAD"])?;
+    let diff = run(repo, &["diff", "--no-color", "--no-ext-diff", "HEAD"])?;
+    let untracked = if include_untracked {
+        run(repo, &["ls-files", "--others", "--exclude-standard"])?
+            .lines()
+            .map(str::to_string)
+            .collect()
+    } else {
+        Vec::new()
+    };
+    Ok((stat, diff, untracked))
+}
+
+/// The newest tag reachable from `rev`, if any.
+pub fn last_tag(repo: &Path, rev: &str) -> Result<Option<String>> {
+    let out = output(repo, &["describe", "--tags", "--abbrev=0", rev])?;
+    Ok(out
+        .status
+        .success()
+        .then(|| String::from_utf8_lossy(&out.stdout).trim().to_string())
+        .filter(|tag| !tag.is_empty()))
+}
+
+/// The branch HEAD is on; none when detached.
+pub fn current_branch(repo: &Path) -> Result<Option<String>> {
+    let out = output(repo, &["symbolic-ref", "-q", "--short", "HEAD"])?;
+    Ok(out
+        .status
+        .success()
+        .then(|| String::from_utf8_lossy(&out.stdout).trim().to_string()))
+}
+
+/// The commit id a branch, tag or hash points to.
+pub fn resolve_commit(repo: &Path, rev: &str) -> Result<String> {
+    if rev.starts_with('-') {
+        return Err(GitError::Failed(format!("not a commit: {rev}")));
+    }
+    Ok(run(
+        repo,
+        &[
+            "rev-parse",
+            "--verify",
+            "--quiet",
+            &format!("{rev}^{{commit}}"),
+        ],
+    )
+    .map_err(|_| GitError::Failed(format!("not a commit: {rev}")))?
+    .trim()
+    .to_string())
+}
+
+/// Whether `ancestor` is part of `commit`'s history.
+pub fn is_ancestor(repo: &Path, ancestor: &str, commit: &str) -> Result<bool> {
+    check_sha(ancestor)?;
+    check_sha(commit)?;
+    Ok(
+        output(repo, &["merge-base", "--is-ancestor", ancestor, commit])?
+            .status
+            .success(),
+    )
+}
+
+/// The newest commit both `a` and `b` have in their history.
+pub fn merge_base(repo: &Path, a: &str, b: &str) -> Result<String> {
+    check_sha(a)?;
+    check_sha(b)?;
+    Ok(run(repo, &["merge-base", a, b])?.trim().to_string())
+}
+
+/// Everything that changed from `from` to `to`. Takes commit ids only.
+pub fn diff_between(repo: &Path, from: &str, to: &str) -> Result<String> {
+    check_sha(from)?;
+    check_sha(to)?;
+    run(repo, &["diff", "--no-color", "--no-ext-diff", from, to])
+}
+
+/// Messages of the commits after `from` up to `to`, oldest first, and the
+/// files they changed. Takes commit ids only.
+pub fn range(repo: &Path, from: &str, to: &str) -> Result<(Vec<String>, String)> {
+    check_sha(from)?;
+    check_sha(to)?;
+    let span = format!("{from}..{to}");
+    let log = run(repo, &["log", "--reverse", "--format=%B%x00", &span])?;
+    let messages = log
+        .split('\0')
+        .map(str::trim)
+        .filter(|m| !m.is_empty())
+        .map(str::to_string)
+        .collect();
+    let stat = run(repo, &["diff", "--no-color", "--stat", from, to])?;
+    Ok((messages, stat))
+}
+
 /// Subjects of the last `n` commits on the current branch, newest first.
 pub fn recent_subjects(repo: &Path, n: usize) -> Result<Vec<String>> {
     if !has_head(repo)? {
@@ -1907,6 +2006,132 @@ mod tests {
         assert!(diff.contains("+staged line"));
         assert!(!diff.contains("unstaged"));
         assert!(staged_stat(repo).unwrap().contains("c.txt"));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn uncommitted_changes_for_a_stash() {
+        let dir = std::env::temp_dir().join(format!("gitgud-wip-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = dir.as_path();
+        run(repo, &["init", "-q", "-b", "main"]).unwrap();
+        for (k, v) in [
+            ("user.name", "T"),
+            ("user.email", "t@x"),
+            ("commit.gpgsign", "false"),
+        ] {
+            run(repo, &["config", k, v]).unwrap();
+        }
+        std::fs::write(dir.join("a.txt"), "one\n").unwrap();
+        stage(repo, &["a.txt".into()]).unwrap();
+        commit(repo, "first").unwrap();
+        std::fs::write(dir.join("a.txt"), "two\n").unwrap();
+        std::fs::write(dir.join("new.txt"), "secret stuff\n").unwrap();
+
+        let (stat, diff, untracked) = uncommitted_changes(repo, true).unwrap();
+        assert!(stat.contains("a.txt"));
+        assert!(diff.contains("+two"));
+        assert_eq!(untracked, ["new.txt"]);
+        assert!(!diff.contains("secret stuff"), "only names of new files");
+        assert!(uncommitted_changes(repo, false).unwrap().2.is_empty());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn what_a_branch_brings_in() {
+        let dir = std::env::temp_dir().join(format!("gitgud-brings-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = dir.as_path();
+        run(repo, &["init", "-q", "-b", "main"]).unwrap();
+        for (k, v) in [
+            ("user.name", "T"),
+            ("user.email", "t@x"),
+            ("commit.gpgsign", "false"),
+        ] {
+            run(repo, &["config", k, v]).unwrap();
+        }
+        let head = |repo| {
+            run(repo, &["rev-parse", "HEAD"])
+                .unwrap()
+                .trim()
+                .to_string()
+        };
+        std::fs::write(dir.join("base.txt"), "x\n").unwrap();
+        stage(repo, &["base.txt".into()]).unwrap();
+        commit(repo, "base").unwrap();
+        let base = head(repo);
+        run(repo, &["switch", "-q", "-c", "feature"]).unwrap();
+        std::fs::write(dir.join("feature.txt"), "new\n").unwrap();
+        stage(repo, &["feature.txt".into()]).unwrap();
+        commit(repo, "add feature").unwrap();
+        let tip = head(repo);
+        run(repo, &["switch", "-q", "main"]).unwrap();
+        std::fs::write(dir.join("main.txt"), "m\n").unwrap();
+        stage(repo, &["main.txt".into()]).unwrap();
+        commit(repo, "main moves on").unwrap();
+
+        assert_eq!(merge_base(repo, &head(repo), &tip).unwrap(), base);
+        let diff = diff_between(repo, &base, &tip).unwrap();
+        assert!(diff.contains("+new"));
+        assert!(!diff.contains("main.txt"));
+        assert!(
+            diff_between(repo, "feature", &tip).is_err(),
+            "only commit ids"
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn ranges_and_the_last_tag() {
+        let dir = std::env::temp_dir().join(format!("gitgud-range-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = dir.as_path();
+        run(repo, &["init", "-q", "-b", "main"]).unwrap();
+        for (k, v) in [
+            ("user.name", "T"),
+            ("user.email", "t@x"),
+            ("commit.gpgsign", "false"),
+            ("tag.gpgsign", "false"),
+        ] {
+            run(repo, &["config", k, v]).unwrap();
+        }
+        assert_eq!(last_tag(repo, "HEAD").unwrap(), None);
+
+        let mut hashes = Vec::new();
+        for (file, msg) in [
+            ("a.txt", "first"),
+            ("b.txt", "second\n\nwith a body"),
+            ("c.txt", "third"),
+        ] {
+            std::fs::write(dir.join(file), "x\n").unwrap();
+            stage(repo, &[file.into()]).unwrap();
+            commit(repo, msg).unwrap();
+            hashes.push(
+                run(repo, &["rev-parse", "HEAD"])
+                    .unwrap()
+                    .trim()
+                    .to_string(),
+            );
+            if file == "a.txt" {
+                run(repo, &["tag", "v1"]).unwrap();
+            }
+        }
+        assert_eq!(last_tag(repo, "HEAD").unwrap().as_deref(), Some("v1"));
+        run(repo, &["tag", "v2"]).unwrap();
+        assert_eq!(last_tag(repo, "HEAD").unwrap().as_deref(), Some("v2"));
+        assert_eq!(last_tag(repo, "HEAD^").unwrap().as_deref(), Some("v1"));
+        assert_eq!(resolve_commit(repo, "v1").unwrap(), hashes[0]);
+        assert!(is_ancestor(repo, &hashes[0], &hashes[2]).unwrap());
+        assert!(!is_ancestor(repo, &hashes[2], &hashes[0]).unwrap());
+
+        let (messages, stat) = range(repo, &hashes[0], &hashes[2]).unwrap();
+        assert_eq!(messages, ["second\n\nwith a body", "third"]);
+        assert!(stat.contains("b.txt") && stat.contains("c.txt"));
+        assert!(!stat.contains("a.txt"));
+        assert!(range(repo, "v1", &hashes[2]).is_err(), "only commit ids");
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

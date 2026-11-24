@@ -72,6 +72,7 @@ const messages: Messages = {
   'changespanel.rebasing': 'Rebase ediliyor:',
   'changespanel.replace-the-last-commit-with-these-changes-and-this-message':
     "Son commit'i bu değişiklikler ve bu mesajla değiştir",
+  'changespanel.review-with-copilot': 'Copilot ile incele',
   'changespanel.stage': 'Hazırla',
   'changespanel.stage-all': 'Tümünü hazırla',
   'changespanel.staged': 'Hazırlananlar',
@@ -152,6 +153,18 @@ const messages: Messages = {
   'conflictview.use-theirs': 'Onlarınkini kullan',
   'conflictview.use-theirs-for-the-whole-file':
     'Tüm dosya için onlarınkini kullan',
+  'copilotmenu.branch-names': 'Branch adları',
+  'copilotmenu.branch-summaries': 'Branch özetleri',
+  'copilotmenu.commit-messages': 'Commit mesajları',
+  'copilotmenu.conflict-help': 'Merge çakışması yardımı',
+  'copilotmenu.copilot': 'Copilot',
+  'copilotmenu.explain-changes': 'Değişiklikleri açıkla',
+  'copilotmenu.explain-git-errors': 'Git hatalarını açıkla',
+  'copilotmenu.pull-request-descriptions': 'Pull request açıklamaları',
+  'copilotmenu.release-notes': 'Sürüm notları',
+  'copilotmenu.review-staged-changes': 'Hazırlanan değişiklikleri incele',
+  'copilotmenu.squash-messages': 'Squash mesajları',
+  'copilotmenu.stash-messages': 'Stash mesajları',
   'copilotsetupdialog.cancel': 'Vazgeç',
   'copilotsetupdialog.downloading': 'İndiriliyor…',
   'copilotsetupdialog.set-up-github-copilot': "GitHub Copilot'u kur",
@@ -179,7 +192,9 @@ const messages: Messages = {
   'diffview.staging-paused': 'Boşluk değişiklikleri gizliyken satır seçilemez.',
   'diffview.unstage-hunk': 'Parçayı hazırlıktan çıkar',
   'diffview.unstage-lines': 'Satırları hazırlıktan çıkar',
+  'errorbar.explain-with-copilot': 'Copilot ile açıkla',
   'explaindialog.asking-copilot': "Copilot'a soruluyor",
+  'explaindialog.copy': 'Kopyala',
   'explaindialog.explain-title': 'Açıkla: {title}',
   'fileheader.copy-path': 'Yolu kopyala',
   'fileheader.explain-with-copilot': 'Copilot ile açıkla',
@@ -210,6 +225,10 @@ const messages: Messages = {
   'historypanel.no-commits-match': 'Eşleşen commit yok',
   'historypanel.no-commits-yet': 'Henüz commit yok',
   'historypanel.push-tag': '{name} etiketini push et',
+  'historypanel.release-notes-since-here':
+    'Buradan itibaren sürüm notu taslağı hazırla',
+  'historypanel.release-notes-since-tag':
+    '{name} sonrası için sürüm notu taslağı hazırla',
   'historypanel.reset-current-branch-to-here': 'Geçerli dalı buraya sıfırla…',
   'historypanel.revert-this-commit': "Bu commit'i geri al…",
   'historypanel.search-commits': "Commit'lerde ara",
@@ -220,6 +239,8 @@ const messages: Messages = {
   'historypanel.show-all': 'Tümünü göster',
   'historypanel.show-all-commits': "Tüm commit'leri göster",
   'historypanel.show-lines': 'Dal çizgilerini göster',
+  'historypanel.summarize-changes-between':
+    'Burası ile {hash} arasındaki değişiklikleri özetle',
   'historypanel.tag-title': 'Etiket {name}',
   'hostsdialog.create-one': 'Oluştur',
   'hostsdialog.other': 'Diğer',
@@ -233,6 +254,9 @@ const messages: Messages = {
   'hostsdialog.username': 'Kullanıcı adı',
   'patchview.no-file-changes-in-this-commit':
     "Bu commit'te dosya değişikliği yok.",
+  'promptdialog.name-or-description':
+    'Bir ad yazın ya da işi anlatıp ✨ tuşuna basın',
+  'promptdialog.suggest-a-name-with-copilot': 'Copilot ile ad öner',
   'publishdialog.description-optional': 'Açıklama (isteğe bağlı)',
   'publishdialog.keep-this-repository-private': 'Bu depoyu gizli tut',
   'publishdialog.name': 'Ad',
@@ -274,6 +298,8 @@ const messages: Messages = {
   'pullrequests.write-with-copilot': 'Copilot ile yaz',
   'pullrequests.write-with-copilot-title':
     'Başlığı ve açıklamayı Copilot ile yaz',
+  'rebasedialog.combined-message-placeholder':
+    "Birleşik commit mesajı (git'in mesajını korumak için boş bırakın)",
   'rebasedialog.drop': 'Çıkar',
   'rebasedialog.edit-history': 'Geçmişi düzenle',
   'rebasedialog.fixup': 'Fixup',
@@ -295,6 +321,8 @@ const messages: Messages = {
   'rebasedialog.squash': 'Squash',
   'rebasedialog.squash-first':
     "Tutulan ilk commit'in üstünde squash yapılacak commit yok.",
+  'rebasedialog.write-combined-message-with-copilot':
+    'Birleşik mesajı Copilot ile yaz',
   'reflogdialog.create-branch': 'Burada dal oluştur…',
   'reflogdialog.deleted-stashes': "Silinmiş stash'ler",
   'reflogdialog.empty': 'Burada bir şey yok.',
@@ -359,15 +387,25 @@ const messages: Messages = {
   'repocommands.stash-changes': "Değişiklikleri stash'le…",
   'repocommands.switch-branch': 'Dal değiştir…',
   'repocommands.switch-to-branch': 'Geçilecek dal',
+  'repoview.changes-between': '{from} ile {to} arasındaki değişiklikler',
   'repoview.changes-empty': 'Değişikliklerini görmek için bir dosya seçin',
   'repoview.commit-not-found': "{hash} commit'i bulunamadı",
   'repoview.diff-error': 'Fark yüklenemedi:',
   'repoview.dismiss': 'Kapat',
+  'repoview.draft-release-notes-since-the-last-tag':
+    "Son tag'den bu yana sürüm notu taslağı hazırla",
   'repoview.history-empty': 'Neyin değiştiğini görmek için bir commit seçin',
+  'repoview.release-notes-since': '{name} sonrası sürüm notları',
+  'repoview.release-notes-since-the-last-tag':
+    "Son tag'den bu yana sürüm notları",
+  'repoview.review-of-staged-changes': 'Hazırlanan değişikliklerin incelemesi',
   'repoview.stashes-empty': 'İçeriğini görmek için bir stash seçin',
   'repoview.tab-changes': 'Değişiklikler',
   'repoview.tab-history': 'Geçmiş',
   'repoview.tab-stashes': "Stash'ler",
+  'repoview.what-branch-brings-in':
+    "{branch}, {current} branch'ine neler getiriyor",
+  'repoview.what-went-wrong': 'Ne ters gitti',
   'resizable.drag-to-resize-double-click-to-reset':
     'Boyutlandırmak için sürükleyin, sıfırlamak için çift tıklayın',
   'shortcutsdialog.keyboard-shortcuts': 'Klavye kısayolları',
@@ -383,6 +421,7 @@ const messages: Messages = {
     "Commit edilmemiş değişikliklerinizi kenara alın ve temiz bir çalışma alanıyla devam edin. Onları Stash'ler sekmesinden geri getirebilirsiniz.",
   'stashdialog.stash-changes': "Değişiklikleri stash'le",
   'stashdialog.what-were-you-working-on': 'Ne üzerinde çalışıyordunuz?',
+  'stashdialog.write-the-message-with-copilot': 'Mesajı Copilot ile yaz',
   'stashpanel.apply-keep-the-stash': 'Uygula (stash kalsın)',
   'stashpanel.delete': 'Sil',
   'stashpanel.delete-stash': "Stash'i sil",
@@ -459,6 +498,7 @@ const messages: Messages = {
   'toolbar.sign-in': 'Giriş yap',
   'toolbar.sign-in-to-github': "GitHub'a giriş yap",
   'toolbar.sign-out-of-github': "GitHub'dan çıkış yap",
+  'toolbar.summarize-with-copilot': 'Copilot ile özetle',
   'toolbar.switch-to-branch': 'Dala geç',
   'toolbar.the-current-branch': 'geçerli dal',
   'toolbar.theme': 'Tema',

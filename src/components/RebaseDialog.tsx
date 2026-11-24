@@ -5,6 +5,7 @@ import {
   ArrowUp,
   GripVertical,
   Loader2,
+  Sparkles,
 } from 'lucide-react'
 import {
   errorMessage,
@@ -23,12 +24,28 @@ interface Props {
   from: Commit
   onClose: () => void
   act: (label: string, action: () => Promise<unknown>) => Promise<boolean>
+  /** Writes one message for commits squashed together, oldest first; null
+   *  when it failed. Unset to hide the button. */
+  suggestSquashMessage?: (hashes: string[]) => Promise<string | null>
 }
 
 interface Row {
   commit: PlanCommit
   action: RebaseAction
   message: string
+  /** New message for a kept commit and the ones squashed into it; empty
+   *  keeps git's combined message. */
+  combined: string
+}
+
+/** Hashes of the commits squashed or fixed up into rows[i]. */
+function foldedInto(rows: Row[], i: number) {
+  const hashes: string[] = []
+  for (const row of rows.slice(i + 1)) {
+    if (row.action === 'pick' || row.action === 'reword') break
+    if (row.action !== 'drop') hashes.push(row.commit.hash)
+  }
+  return hashes
 }
 
 const ACTIONS = (
@@ -61,7 +78,13 @@ const ACTIONS = (
   },
 ]
 
-export default function RebaseDialog({ repo, from, onClose, act }: Props) {
+export default function RebaseDialog({
+  repo,
+  from,
+  onClose,
+  act,
+  suggestSquashMessage,
+}: Props) {
   const { t } = useTranslation()
   const [rows, setRows] = useState<Row[] | null>(null)
   const [pushed, setPushed] = useState(false)
@@ -70,6 +93,8 @@ export default function RebaseDialog({ repo, from, onClose, act }: Props) {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [dragging, setDragging] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
+  // The commit Copilot is writing a combined message for.
+  const [suggesting, setSuggesting] = useState<string | null>(null)
 
   useEffect(() => {
     git
@@ -82,6 +107,7 @@ export default function RebaseDialog({ repo, from, onClose, act }: Props) {
             commit,
             action: 'pick',
             message: commit.message,
+            combined: '',
           })),
         )
       })
@@ -92,6 +118,25 @@ export default function RebaseDialog({ repo, from, onClose, act }: Props) {
     setRows(
       (r) => r && r.map((row, j) => (j === i ? { ...row, ...change } : row)),
     )
+  }
+
+  async function suggest(i: number) {
+    if (!rows || !suggestSquashMessage || suggesting) return
+    const hash = rows[i].commit.hash
+    setSuggesting(hash)
+    try {
+      const message = await suggestSquashMessage([hash, ...foldedInto(rows, i)])
+      if (message !== null)
+        setRows(
+          (r) =>
+            r &&
+            r.map((row) =>
+              row.commit.hash === hash ? { ...row, combined: message } : row,
+            ),
+        )
+    } finally {
+      setSuggesting(null)
+    }
   }
 
   function move(src: number, dst: number) {
@@ -125,10 +170,17 @@ export default function RebaseDialog({ repo, from, onClose, act }: Props) {
       git.rebaseStart(
         repo.path,
         from.hash,
-        rows.map((r) => ({
+        rows.map((r, i) => ({
           hash: r.commit.hash,
           action: r.action,
-          message: r.action === 'reword' ? r.message : undefined,
+          message:
+            r.action === 'reword'
+              ? r.message
+              : r.action === 'pick' &&
+                  r.combined.trim() &&
+                  foldedInto(rows, i).length > 0
+                ? r.combined
+                : undefined,
         })),
       ),
     )
@@ -230,12 +282,31 @@ export default function RebaseDialog({ repo, from, onClose, act }: Props) {
                     <ArrowDown className="size-3.5" />
                   </button>
                 </div>
-                {row.action === 'reword' && (
-                  <textarea
-                    value={row.message}
-                    onChange={(e) => update(i, { message: e.target.value })}
-                    rows={3}
-                    className="mt-2 w-full resize-none rounded border border-line bg-panel p-2 font-mono text-xs outline-none select-text focus:border-accent"
+                {(row.action === 'reword' ||
+                  (row.action === 'pick' &&
+                    foldedInto(rows, i).length > 0)) && (
+                  <MessageField
+                    value={row.action === 'reword' ? row.message : row.combined}
+                    placeholder={
+                      row.action === 'pick'
+                        ? t('rebasedialog.combined-message-placeholder')
+                        : undefined
+                    }
+                    onChange={(value) =>
+                      update(
+                        i,
+                        row.action === 'reword'
+                          ? { message: value }
+                          : { combined: value },
+                      )
+                    }
+                    suggesting={suggesting === row.commit.hash}
+                    disabled={suggesting !== null}
+                    onSuggest={
+                      suggestSquashMessage && row.action === 'pick'
+                        ? () => suggest(i)
+                        : undefined
+                    }
                   />
                 )}
               </li>
@@ -245,7 +316,7 @@ export default function RebaseDialog({ repo, from, onClose, act }: Props) {
           {problem && <p className="text-xs text-removed">{problem}</p>}
           <button
             onClick={start}
-            disabled={busy || !!problem || !changed}
+            disabled={busy || !!problem || !changed || suggesting !== null}
             className="flex w-full items-center justify-center gap-2 rounded bg-accent py-2 font-medium text-on-accent hover:opacity-90 disabled:opacity-40"
           >
             {busy && <Loader2 className="size-4 animate-spin" />}
@@ -254,5 +325,50 @@ export default function RebaseDialog({ repo, from, onClose, act }: Props) {
         </div>
       )}
     </Dialog>
+  )
+}
+
+function MessageField({
+  value,
+  placeholder,
+  onChange,
+  suggesting,
+  disabled,
+  onSuggest,
+}: {
+  value: string
+  placeholder?: string
+  onChange: (value: string) => void
+  suggesting: boolean
+  /** Another message is being written. */
+  disabled: boolean
+  onSuggest?: () => void
+}) {
+  const { t } = useTranslation()
+  return (
+    <div className="relative mt-2">
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={3}
+        className="w-full resize-none rounded border border-line bg-panel p-2 pr-8 font-mono text-xs outline-none select-text focus:border-accent"
+      />
+      {onSuggest && (
+        <button
+          onClick={onSuggest}
+          disabled={disabled}
+          title={t('rebasedialog.write-combined-message-with-copilot')}
+          aria-label={t('rebasedialog.write-combined-message-with-copilot')}
+          className="absolute top-1.5 right-1.5 rounded p-1 text-muted hover:bg-hover hover:text-fg disabled:opacity-40"
+        >
+          {suggesting ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Sparkles className="size-4" />
+          )}
+        </button>
+      )}
+    </div>
   )
 }

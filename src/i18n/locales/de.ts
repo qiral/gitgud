@@ -74,6 +74,7 @@ const messages: Messages = {
   'changespanel.rebasing': 'Rebase von',
   'changespanel.replace-the-last-commit-with-these-changes-and-this-message':
     'Den letzten Commit durch diese Änderungen und diese Nachricht ersetzen',
+  'changespanel.review-with-copilot': 'Mit Copilot prüfen',
   'changespanel.stage': 'Stagen',
   'changespanel.stage-all': 'Alle stagen',
   'changespanel.staged': 'Gestaged',
@@ -155,6 +156,18 @@ const messages: Messages = {
   'conflictview.use-theirs': 'Ihre verwenden',
   'conflictview.use-theirs-for-the-whole-file':
     'Ihre für die ganze Datei verwenden',
+  'copilotmenu.branch-names': 'Branch-Namen',
+  'copilotmenu.branch-summaries': 'Branch-Zusammenfassungen',
+  'copilotmenu.commit-messages': 'Commit-Nachrichten',
+  'copilotmenu.conflict-help': 'Hilfe bei Merge-Konflikten',
+  'copilotmenu.copilot': 'Copilot',
+  'copilotmenu.explain-changes': 'Änderungen erklären',
+  'copilotmenu.explain-git-errors': 'Git-Fehler erklären',
+  'copilotmenu.pull-request-descriptions': 'Pull-Request-Beschreibungen',
+  'copilotmenu.release-notes': 'Versionshinweise',
+  'copilotmenu.review-staged-changes': 'Vorgemerkte Änderungen prüfen',
+  'copilotmenu.squash-messages': 'Squash-Nachrichten',
+  'copilotmenu.stash-messages': 'Stash-Nachrichten',
   'copilotsetupdialog.cancel': 'Abbrechen',
   'copilotsetupdialog.downloading': 'Wird heruntergeladen…',
   'copilotsetupdialog.set-up-github-copilot': 'GitHub Copilot einrichten',
@@ -184,7 +197,9 @@ const messages: Messages = {
     'Solange Leerzeichen-Änderungen ausgeblendet sind, lassen sich keine Zeilen auswählen.',
   'diffview.unstage-hunk': 'Hunk unstagen',
   'diffview.unstage-lines': 'Zeilen unstagen',
+  'errorbar.explain-with-copilot': 'Mit Copilot erklären',
   'explaindialog.asking-copilot': 'Copilot wird gefragt',
+  'explaindialog.copy': 'Kopieren',
   'explaindialog.explain-title': '{title} erklären',
   'fileheader.copy-path': 'Pfad kopieren',
   'fileheader.explain-with-copilot': 'Mit Copilot erklären',
@@ -216,6 +231,9 @@ const messages: Messages = {
   'historypanel.no-commits-match': 'Keine passenden Commits',
   'historypanel.no-commits-yet': 'Noch keine Commits',
   'historypanel.push-tag': 'Tag {name} pushen',
+  'historypanel.release-notes-since-here': 'Versionshinweise ab hier entwerfen',
+  'historypanel.release-notes-since-tag':
+    'Versionshinweise seit {name} entwerfen',
   'historypanel.reset-current-branch-to-here':
     'Aktuellen Branch hierher zurücksetzen…',
   'historypanel.revert-this-commit': 'Diesen Commit rückgängig machen…',
@@ -227,6 +245,8 @@ const messages: Messages = {
   'historypanel.show-all': 'Alle anzeigen',
   'historypanel.show-all-commits': 'Alle Commits anzeigen',
   'historypanel.show-lines': 'Branch-Linien anzeigen',
+  'historypanel.summarize-changes-between':
+    'Änderungen zwischen hier und {hash} zusammenfassen',
   'historypanel.tag-title': 'Tag {name}',
   'hostsdialog.create-one': 'Erstellen',
   'hostsdialog.other': 'Andere',
@@ -240,6 +260,9 @@ const messages: Messages = {
   'hostsdialog.username': 'Benutzername',
   'patchview.no-file-changes-in-this-commit':
     'Keine Dateiänderungen in diesem Commit.',
+  'promptdialog.name-or-description':
+    'Ein Name, oder beschreibe die Arbeit und drücke ✨',
+  'promptdialog.suggest-a-name-with-copilot': 'Namen mit Copilot vorschlagen',
   'publishdialog.description-optional': 'Beschreibung (optional)',
   'publishdialog.keep-this-repository-private':
     'Dieses Repository privat halten',
@@ -282,6 +305,8 @@ const messages: Messages = {
   'pullrequests.write-with-copilot': 'Mit Copilot schreiben',
   'pullrequests.write-with-copilot-title':
     'Titel und Beschreibung mit Copilot schreiben',
+  'rebasedialog.combined-message-placeholder':
+    'Nachricht für den zusammengefassten Commit (leer lassen für die von Git)',
   'rebasedialog.drop': 'Verwerfen',
   'rebasedialog.edit-history': 'Verlauf bearbeiten',
   'rebasedialog.fixup': 'Fixup',
@@ -305,6 +330,8 @@ const messages: Messages = {
   'rebasedialog.squash': 'Squash',
   'rebasedialog.squash-first':
     'Über dem ersten behaltenen Commit gibt es nichts, in das gesquasht werden kann.',
+  'rebasedialog.write-combined-message-with-copilot':
+    'Gemeinsame Nachricht mit Copilot schreiben',
   'reflogdialog.create-branch': 'Hier Branch erstellen…',
   'reflogdialog.deleted-stashes': 'Gelöschte Stashes',
   'reflogdialog.empty': 'Hier ist nichts.',
@@ -369,16 +396,25 @@ const messages: Messages = {
   'repocommands.stash-changes': 'Änderungen stashen…',
   'repocommands.switch-branch': 'Branch wechseln…',
   'repocommands.switch-to-branch': 'Zu Branch wechseln',
+  'repoview.changes-between': 'Änderungen zwischen {from} und {to}',
   'repoview.changes-empty': 'Wähle eine Datei, um ihre Änderungen zu sehen',
   'repoview.commit-not-found': 'Commit {hash} nicht gefunden',
   'repoview.diff-error': 'Diff konnte nicht geladen werden:',
   'repoview.dismiss': 'Schließen',
+  'repoview.draft-release-notes-since-the-last-tag':
+    'Versionshinweise seit dem letzten Tag entwerfen',
   'repoview.history-empty':
     'Wähle einen Commit, um zu sehen, was sich geändert hat',
+  'repoview.release-notes-since': 'Versionshinweise seit {name}',
+  'repoview.release-notes-since-the-last-tag':
+    'Versionshinweise seit dem letzten Tag',
+  'repoview.review-of-staged-changes': 'Prüfung der vorgemerkten Änderungen',
   'repoview.stashes-empty': 'Wähle einen Stash, um seinen Inhalt zu sehen',
   'repoview.tab-changes': 'Änderungen',
   'repoview.tab-history': 'Verlauf',
   'repoview.tab-stashes': 'Stashes',
+  'repoview.what-branch-brings-in': 'Was {branch} in {current} bringt',
+  'repoview.what-went-wrong': 'Was ist schiefgelaufen',
   'resizable.drag-to-resize-double-click-to-reset':
     'Ziehen zum Ändern der Größe, Doppelklick zum Zurücksetzen',
   'shortcutsdialog.keyboard-shortcuts': 'Tastenkürzel',
@@ -394,6 +430,8 @@ const messages: Messages = {
     'Lege deine nicht committeten Änderungen beiseite und erhalte ein sauberes Arbeitsverzeichnis. Du kannst sie im Tab „Stashes“ zurückholen.',
   'stashdialog.stash-changes': 'Änderungen stashen',
   'stashdialog.what-were-you-working-on': 'Woran hast du gearbeitet?',
+  'stashdialog.write-the-message-with-copilot':
+    'Nachricht mit Copilot schreiben',
   'stashpanel.apply-keep-the-stash': 'Anwenden (Stash behalten)',
   'stashpanel.delete': 'Löschen',
   'stashpanel.delete-stash': 'Stash löschen',
@@ -470,6 +508,7 @@ const messages: Messages = {
   'toolbar.sign-in': 'Anmelden',
   'toolbar.sign-in-to-github': 'Bei GitHub anmelden',
   'toolbar.sign-out-of-github': 'Von GitHub abmelden',
+  'toolbar.summarize-with-copilot': 'Mit Copilot zusammenfassen',
   'toolbar.switch-to-branch': 'Zu Branch wechseln',
   'toolbar.the-current-branch': 'den aktuellen Branch',
   'toolbar.theme': 'Design',

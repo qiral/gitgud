@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { mockIPC } from '@tauri-apps/api/mocks'
+import { setCopilotAction } from '../lib/copilotPrefs'
 import {
   CreatePullRequestDialog,
   draftFromCommits,
@@ -126,4 +127,14 @@ it('pushes unpushed commits first', async () => {
   )
   await waitFor(() => expect(created).toEqual([9]))
   expect(pushed).toEqual(['push'])
+})
+
+it('leaves Copilot out when its pull request descriptions are turned off', async () => {
+  setCopilotAction('pullRequest', false)
+  setup(0)
+  await waitFor(() =>
+    expect(screen.getByDisplayValue('Add login')).toBeTruthy(),
+  )
+  expect(screen.queryByText('Write with Copilot')).toBeNull()
+  setCopilotAction('pullRequest', true)
 })

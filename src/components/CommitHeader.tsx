@@ -63,11 +63,19 @@ export function CommitHeader({
   )
 }
 
-export function StashHeader({ stash }: { stash: Stash }) {
+export function StashHeader({
+  stash,
+  onExplain,
+}: {
+  stash: Stash
+  /** Asks Copilot to explain the stash; unset to hide the button. */
+  onExplain?: () => void
+}) {
+  const { t } = useTranslation()
   return (
     <div className="shrink-0 border-b border-line px-4 py-3">
       <h2 className="font-semibold break-words select-text">{stash.message}</h2>
-      <div className="mt-1 flex gap-2 text-xs text-muted">
+      <div className="mt-1 flex items-center gap-2 text-xs text-muted">
         <span className="font-mono">stash@{`{${stash.index}}`}</span>
         {stash.branch && (
           <>
@@ -77,6 +85,16 @@ export function StashHeader({ stash }: { stash: Stash }) {
         )}
         <span>·</span>
         <span title={fullDate(stash.time)}>{relativeTime(stash.time)}</span>
+        <span className="flex-1" />
+        {onExplain && (
+          <button
+            onClick={onExplain}
+            className="flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-hover hover:text-fg"
+          >
+            <Sparkles className="size-3.5" />
+            {t('commitheader.explain-with-copilot')}
+          </button>
+        )}
       </div>
     </div>
   )

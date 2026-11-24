@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ScrollText } from 'lucide-react'
 import {
   canBlame,
   copilot,
@@ -37,9 +38,11 @@ import UndoToast from './UndoToast'
 import RemotesDialog from './RemotesDialog'
 import PublishDialog from './PublishDialog'
 import ExplainDialog from './ExplainDialog'
+import ErrorBar from './ErrorBar'
 import { useResizable } from './Resizable'
 import { useCommitActions } from './CommitActions'
 import { useCopilot } from '../lib/copilot'
+import { useCopilotPrefs } from '../lib/copilotPrefs'
 import { useTranslation, type Translate } from '../i18n'
 import { useSync } from './SyncActions'
 import { useRepoCommands, type Tab } from './RepoCommands'
@@ -113,6 +116,11 @@ export default function RepoView({
   const [focusSearch, setFocusSearch] = useState(0)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // The git action behind the error shown, so Copilot can explain it.
+  const [failed, setFailed] = useState<{
+    action: string
+    error: string
+  } | null>(null)
 
   const refresh = useCallback(async () => {
     try {
@@ -321,7 +329,9 @@ export default function RepoView({
         await action()
         return true
       } catch (e) {
-        setError(errorMessage(e))
+        const message = errorMessage(e)
+        setError(message)
+        setFailed({ action: label, error: message })
         return false
       } finally {
         setBusy(null)
@@ -331,25 +341,51 @@ export default function RepoView({
     [refresh],
   )
 
-  const commitActions = useCommitActions(repo.path, status, remotes, act)
   const openSignIn = useCallback(() => setDialog('signIn'), [])
   const ai = useCopilot(setError, account !== null, openSignIn)
-  const [explaining, setExplaining] = useState<{
+  const copilotOn = useCopilotPrefs()
+  const suggestBranchName = copilotOn.branchName
+    ? (description: string) =>
+        ai.run(() => copilot.branchName(repo.path, description))
+    : undefined
+  const commitActions = useCommitActions(
+    repo.path,
+    status,
+    remotes,
+    act,
+    suggestBranchName,
+  )
+  const [answer, setAnswer] = useState<{
     title: string
     text: string | null
   } | null>(null)
 
-  /** Shows Copilot's explanation of a diff; closes again if it fails. */
-  const explain = useCallback(
-    async (title: string, load: () => Promise<string>) => {
-      setExplaining({ title, text: null })
-      const text = await ai.run(async () => copilot.explain(await load()))
-      setExplaining((shown) =>
-        shown?.title !== title ? shown : text === null ? null : { title, text },
+  const asked = useRef(0)
+
+  /** Shows a Copilot answer in a dialog; closes again if it fails, or with
+   *  `quiet` shows the failure there and leaves the error bar alone. */
+  const showAnswer = useCallback(
+    async (title: string, ask: () => Promise<string>, quiet = false) => {
+      const id = ++asked.current
+      setAnswer({ title, text: null })
+      let text: string | null
+      try {
+        text = await ai.run(ask, { quiet })
+      } catch (e) {
+        text = errorMessage(e)
+      }
+      if (asked.current !== id) return
+      setAnswer((shown) =>
+        shown === null ? null : text === null ? null : { title, text },
       )
     },
     [ai.run],
   )
+
+  const explain = (title: string, load: () => Promise<string>) =>
+    showAnswer(tx('explaindialog.explain-title', { title }), async () =>
+      copilot.explain(await load()),
+    )
 
   const undo = (id: number) => act('undo', () => git.undo(repo.path, id))
 
@@ -378,6 +414,7 @@ export default function RepoView({
   })
   const palette = useRepoCommands({
     repo,
+    suggestBranchName,
     status,
     branches,
     remoteBranches,
@@ -404,7 +441,25 @@ export default function RepoView({
     undoable,
     onUndo: undo,
     onReflog: () => setDialog('reflog'),
-    extra: pullRequests.commands,
+    extra: [
+      ...pullRequests.commands,
+      ...(copilotOn.releaseNotes
+        ? [
+            {
+              id: 'releaseNotes',
+              group: tx('repocommands.group-repository'),
+              label: tx('repoview.draft-release-notes-since-the-last-tag'),
+              keywords: 'copilot changelog summary tag',
+              icon: ScrollText,
+              run: () =>
+                showAnswer(
+                  tx('repoview.release-notes-since-the-last-tag'),
+                  () => copilot.releaseNotes(repo.path, null, null),
+                ),
+            },
+          ]
+        : []),
+    ],
   })
 
   return (
@@ -413,11 +468,11 @@ export default function RepoView({
       {pullRequests.dialog}
       {commitActions.dialogs}
       {ai.dialog}
-      {explaining && !ai.dialog && (
+      {answer && !ai.dialog && (
         <ExplainDialog
-          title={explaining.title}
-          explanation={explaining.text}
-          onClose={() => setExplaining(null)}
+          title={answer.title}
+          explanation={answer.text}
+          onClose={() => setAnswer(null)}
         />
       )}
       <Toolbar
@@ -439,6 +494,18 @@ export default function RepoView({
         onPalette={palette.openPalette}
         pullRequest={pullRequests.button}
         act={act}
+        onSummarizeBranch={
+          copilotOn.branchSummary
+            ? (branch) =>
+                showAnswer(
+                  tx('repoview.what-branch-brings-in', {
+                    branch,
+                    current: status?.branch ?? 'HEAD',
+                  }),
+                  () => copilot.branchSummary(repo.path, branch),
+                )
+            : undefined
+        }
       />
 
       {dialog === 'signIn' && (
@@ -480,10 +547,28 @@ export default function RepoView({
           from={rebaseFrom}
           onClose={() => setRebaseFrom(null)}
           act={act}
+          suggestSquashMessage={
+            copilotOn.squashMessage
+              ? (hashes) =>
+                  ai.run(() => copilot.squashMessage(repo.path, hashes))
+              : undefined
+          }
         />
       )}
       {dialog === 'stash' && (
-        <StashDialog repo={repo} onClose={() => setDialog(null)} act={act} />
+        <StashDialog
+          repo={repo}
+          onClose={() => setDialog(null)}
+          act={act}
+          onSuggest={
+            copilotOn.stashMessage
+              ? (includeUntracked) =>
+                  ai.run(() =>
+                    copilot.stashMessage(repo.path, includeUntracked),
+                  )
+              : undefined
+          }
+        />
       )}
       {dialog === 'publish' && (
         <PublishDialog
@@ -534,8 +619,18 @@ export default function RepoView({
             onStash={() => setDialog('stash')}
             onFileHistory={showFileHistory}
             onBlame={blameOnDisk}
-            onGenerateMessage={() =>
-              ai.run(() => copilot.commitMessage(repo.path))
+            onReview={
+              copilotOn.review
+                ? () =>
+                    showAnswer(tx('repoview.review-of-staged-changes'), () =>
+                      copilot.review(repo.path),
+                    )
+                : undefined
+            }
+            onGenerateMessage={
+              copilotOn.commitMessage
+                ? () => ai.run(() => copilot.commitMessage(repo.path))
+                : undefined
             }
             act={act}
           />
@@ -552,8 +647,36 @@ export default function RepoView({
               filtered={filtered}
               focusSearch={focusSearch}
               reveal={reveal}
-              onExplain={(c) =>
-                explain(c.shortHash, () => git.showCommit(repo.path, c.hash))
+              onReleaseNotes={
+                copilotOn.releaseNotes
+                  ? (from, to) =>
+                      showAnswer(
+                        to
+                          ? tx('repoview.changes-between', {
+                              from: from.shortHash,
+                              to: to.shortHash,
+                            })
+                          : tx('repoview.release-notes-since', {
+                              name:
+                                from.refs.find((r) => r.kind === 'tag')?.name ??
+                                from.shortHash,
+                            }),
+                        () =>
+                          copilot.releaseNotes(
+                            repo.path,
+                            from.hash,
+                            to?.hash ?? null,
+                          ),
+                      )
+                  : undefined
+              }
+              onExplain={
+                copilotOn.explain
+                  ? (c) =>
+                      explain(c.shortHash, () =>
+                        git.showCommit(repo.path, c.hash),
+                      )
+                  : undefined
               }
               onRebaseFrom={
                 status?.branch && !status.merging && !status.rebasing
@@ -580,8 +703,13 @@ export default function RepoView({
               target={blame}
               version={status}
               onShowCommit={showCommit}
-              onExplain={(hash) =>
-                explain(hash.slice(0, 7), () => git.showCommit(repo.path, hash))
+              onExplain={
+                copilotOn.explain
+                  ? (hash) =>
+                      explain(hash.slice(0, 7), () =>
+                        git.showCommit(repo.path, hash),
+                      )
+                  : undefined
               }
               onClose={() => setBlame(null)}
             />
@@ -592,10 +720,17 @@ export default function RepoView({
                 file={conflictedSelection}
                 version={status}
                 act={act}
-                onAsk={(index) =>
-                  ai.run(() =>
-                    copilot.resolve(repo.path, conflictedSelection.path, index),
-                  )
+                onAsk={
+                  copilotOn.conflicts
+                    ? (index) =>
+                        ai.run(() =>
+                          copilot.resolve(
+                            repo.path,
+                            conflictedSelection.path,
+                            index,
+                          ),
+                        )
+                    : undefined
                 }
               />
             </div>
@@ -608,15 +743,20 @@ export default function RepoView({
               }
               onFileHistory={showFileHistory}
               onBlame={(path) => setBlame({ path, rev: selection.commit.hash })}
-              onExplainFile={(path, fileDiff) =>
-                explain(path, async () => fileDiff)
+              onExplainFile={
+                copilotOn.explain
+                  ? (path, fileDiff) => explain(path, async () => fileDiff)
+                  : undefined
               }
               header={
                 <CommitHeader
                   commit={selection.commit}
                   message={parts.preamble}
-                  onExplain={() =>
-                    explain(selection.commit.shortHash, async () => diff)
+                  onExplain={
+                    copilotOn.explain
+                      ? () =>
+                          explain(selection.commit.shortHash, async () => diff)
+                      : undefined
                   }
                 />
               }
@@ -625,7 +765,25 @@ export default function RepoView({
             <PatchView
               repo={repo.path}
               patch={diff}
-              header={<StashHeader stash={selection.stash} />}
+              onExplainFile={
+                copilotOn.explain
+                  ? (path, fileDiff) => explain(path, async () => fileDiff)
+                  : undefined
+              }
+              header={
+                <StashHeader
+                  stash={selection.stash}
+                  onExplain={
+                    copilotOn.explain
+                      ? () =>
+                          explain(
+                            `stash@{${selection.stash.index}}`,
+                            async () => diff,
+                          )
+                      : undefined
+                  }
+                />
+              }
             />
           ) : selection ? (
             <>
@@ -639,7 +797,7 @@ export default function RepoView({
                 additions={fileStats.additions}
                 deletions={fileStats.deletions}
                 onExplain={
-                  diff
+                  diff && copilotOn.explain
                     ? () => explain(selection.file.path, async () => diff)
                     : undefined
                 }
@@ -674,14 +832,20 @@ export default function RepoView({
       </div>
 
       {error && (
-        <div className="flex items-start gap-3 border-t border-line bg-removed-bg px-4 py-2 text-removed">
-          <pre className="flex-1 font-mono text-xs whitespace-pre-wrap select-text">
-            {error}
-          </pre>
-          <button onClick={() => setError(null)} className="hover:underline">
-            {tx('repoview.dismiss')}
-          </button>
-        </div>
+        <ErrorBar
+          error={error}
+          onDismiss={() => setError(null)}
+          onExplain={
+            copilotOn.gitErrors && failed?.error === error
+              ? () =>
+                  showAnswer(
+                    tx('repoview.what-went-wrong'),
+                    () => copilot.explainError(repo.path, failed.action, error),
+                    true,
+                  )
+              : undefined
+          }
+        />
       )}
     </div>
   )

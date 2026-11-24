@@ -79,3 +79,26 @@ it('shows which file it is the history of, and clears it', () => {
   fireEvent.click(screen.getByTitle('Show all commits'))
   expect(onFilter).toHaveBeenCalledWith(null)
 })
+
+it('drafts release notes since a commit, or between two', () => {
+  const onReleaseNotes = vi.fn()
+  const tagged = { ...all[0], refs: [{ name: 'v1.0', kind: 'tag' as const }] }
+  render(
+    <HistoryPanel
+      repoPath="/r"
+      commits={[all[1], tagged]}
+      selection={{ kind: 'commit', commit: all[1] }}
+      onSelect={() => {}}
+      onReleaseNotes={onReleaseNotes}
+    />,
+  )
+  fireEvent.contextMenu(screen.getByText('first'))
+  fireEvent.click(screen.getByText('Draft release notes since v1.0'))
+  expect(onReleaseNotes).toHaveBeenLastCalledWith(tagged, null)
+
+  fireEvent.contextMenu(screen.getByText('first'))
+  fireEvent.click(
+    screen.getByText('Summarize changes between here and bbbbbbb'),
+  )
+  expect(onReleaseNotes).toHaveBeenLastCalledWith(tagged, all[1])
+})

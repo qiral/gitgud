@@ -241,6 +241,27 @@ export const copilot = {
   commitMessage: (repo: string) =>
     invoke<string>('copilot_commit_message', { repo }),
   explain: (diff: string) => invoke<string>('copilot_explain', { diff }),
+  /** What `branch` would bring into the current branch. */
+  branchSummary: (repo: string, branch: string) =>
+    invoke<string>('copilot_branch_summary', { repo, branch }),
+  /** What a failed git action's error means and what to do next. */
+  explainError: (repo: string, action: string, error: string) =>
+    invoke<string>('copilot_explain_error', { repo, action, error }),
+  /** A one-line label for stashing the uncommitted changes. */
+  stashMessage: (repo: string, includeUntracked: boolean) =>
+    invoke<string>('copilot_stash_message', { repo, includeUntracked }),
+  /** One message for commits squashed together, oldest first. */
+  squashMessage: (repo: string, hashes: string[]) =>
+    invoke<string>('copilot_squash_message', { repo, hashes }),
+  /** Release notes for the commits after `from` up to `to` (HEAD when
+   *  null). A null `from` starts at the last tag. */
+  releaseNotes: (repo: string, from: string | null, to: string | null) =>
+    invoke<string>('copilot_release_notes', { repo, from, to }),
+  /** A branch name for the work `description` describes. */
+  branchName: (repo: string, description: string) =>
+    invoke<string>('copilot_branch_name', { repo, description }),
+  /** Likely bugs, leftover debug code or secrets in the staged changes. */
+  review: (repo: string) => invoke<string>('copilot_review', { repo }),
   /** A pull request title, a blank line, then its description. */
   pullRequest: (repo: string, mergeBase: string, commits: string[]) =>
     invoke<string>('copilot_pull_request', { repo, mergeBase, commits }),

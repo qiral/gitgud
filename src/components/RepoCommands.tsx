@@ -47,6 +47,8 @@ export type Tab = 'changes' | 'history' | 'stashes'
 
 interface Options {
   repo: RepoInfo
+  /** Turns a description into a branch name with Copilot. */
+  suggestBranchName?: (description: string) => Promise<string | null>
   status: Status | null
   branches: Branch[]
   remoteBranches: string[]
@@ -467,6 +469,7 @@ export function useRepoCommands(o: Options) {
               : undefined
           }
           submitLabel={t('repocommands.create-branch')}
+          onSuggest={o.suggestBranchName}
           onSubmit={(name) =>
             o.act('branch', () => git.createBranch(o.repo.path, name))
           }
