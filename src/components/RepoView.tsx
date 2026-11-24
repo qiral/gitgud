@@ -40,6 +40,7 @@ import ExplainDialog from './ExplainDialog'
 import { useResizable } from './Resizable'
 import { useCommitActions } from './CommitActions'
 import { useCopilot } from '../lib/copilot'
+import { useCopilotPrefs } from '../lib/copilotPrefs'
 import { useTranslation, type Translate } from '../i18n'
 import { useSync } from './SyncActions'
 import { useRepoCommands, type Tab } from './RepoCommands'
@@ -334,6 +335,7 @@ export default function RepoView({
   const commitActions = useCommitActions(repo.path, status, remotes, act)
   const openSignIn = useCallback(() => setDialog('signIn'), [])
   const ai = useCopilot(setError, account !== null, openSignIn)
+  const copilotOn = useCopilotPrefs()
   const [explaining, setExplaining] = useState<{
     title: string
     text: string | null
@@ -534,8 +536,10 @@ export default function RepoView({
             onStash={() => setDialog('stash')}
             onFileHistory={showFileHistory}
             onBlame={blameOnDisk}
-            onGenerateMessage={() =>
-              ai.run(() => copilot.commitMessage(repo.path))
+            onGenerateMessage={
+              copilotOn.commitMessage
+                ? () => ai.run(() => copilot.commitMessage(repo.path))
+                : undefined
             }
             act={act}
           />
@@ -552,8 +556,13 @@ export default function RepoView({
               filtered={filtered}
               focusSearch={focusSearch}
               reveal={reveal}
-              onExplain={(c) =>
-                explain(c.shortHash, () => git.showCommit(repo.path, c.hash))
+              onExplain={
+                copilotOn.explain
+                  ? (c) =>
+                      explain(c.shortHash, () =>
+                        git.showCommit(repo.path, c.hash),
+                      )
+                  : undefined
               }
               onRebaseFrom={
                 status?.branch && !status.merging && !status.rebasing
@@ -580,8 +589,13 @@ export default function RepoView({
               target={blame}
               version={status}
               onShowCommit={showCommit}
-              onExplain={(hash) =>
-                explain(hash.slice(0, 7), () => git.showCommit(repo.path, hash))
+              onExplain={
+                copilotOn.explain
+                  ? (hash) =>
+                      explain(hash.slice(0, 7), () =>
+                        git.showCommit(repo.path, hash),
+                      )
+                  : undefined
               }
               onClose={() => setBlame(null)}
             />
@@ -592,10 +606,17 @@ export default function RepoView({
                 file={conflictedSelection}
                 version={status}
                 act={act}
-                onAsk={(index) =>
-                  ai.run(() =>
-                    copilot.resolve(repo.path, conflictedSelection.path, index),
-                  )
+                onAsk={
+                  copilotOn.conflicts
+                    ? (index) =>
+                        ai.run(() =>
+                          copilot.resolve(
+                            repo.path,
+                            conflictedSelection.path,
+                            index,
+                          ),
+                        )
+                    : undefined
                 }
               />
             </div>
@@ -608,15 +629,20 @@ export default function RepoView({
               }
               onFileHistory={showFileHistory}
               onBlame={(path) => setBlame({ path, rev: selection.commit.hash })}
-              onExplainFile={(path, fileDiff) =>
-                explain(path, async () => fileDiff)
+              onExplainFile={
+                copilotOn.explain
+                  ? (path, fileDiff) => explain(path, async () => fileDiff)
+                  : undefined
               }
               header={
                 <CommitHeader
                   commit={selection.commit}
                   message={parts.preamble}
-                  onExplain={() =>
-                    explain(selection.commit.shortHash, async () => diff)
+                  onExplain={
+                    copilotOn.explain
+                      ? () =>
+                          explain(selection.commit.shortHash, async () => diff)
+                      : undefined
                   }
                 />
               }
@@ -639,7 +665,7 @@ export default function RepoView({
                 additions={fileStats.additions}
                 deletions={fileStats.deletions}
                 onExplain={
-                  diff
+                  diff && copilotOn.explain
                     ? () => explain(selection.file.path, async () => diff)
                     : undefined
                 }

@@ -23,6 +23,7 @@ import {
   Plus,
   RefreshCw,
   Server,
+  Sparkles,
   SunMoon,
   Trash2,
 } from 'lucide-react'
@@ -42,6 +43,12 @@ import {
   type Status,
 } from '../lib/git'
 import { useTranslation } from '../i18n'
+import {
+  COPILOT_ACTIONS,
+  setCopilotAction,
+  useCopilotPrefs,
+  type CopilotAction,
+} from '../lib/copilotPrefs'
 
 interface Props {
   repo: RepoInfo
@@ -174,6 +181,7 @@ export default function Toolbar({
       </button>
       <ThemeMenu />
       <LanguageMenu />
+      <CopilotMenu />
       {sync.dialog}
       <AccountMenu
         account={account}
@@ -457,6 +465,61 @@ function LanguageMenu() {
             >
               <span className="flex-1">{l.name}</span>
               {locale === l.code && <Check className="size-4 text-accent" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const COPILOT_LABELS: Record<CopilotAction, string> = {
+  commitMessage: 'copilotmenu.commit-messages',
+  review: 'copilotmenu.review-staged-changes',
+  explain: 'copilotmenu.explain-changes',
+  conflicts: 'copilotmenu.conflict-help',
+  branchName: 'copilotmenu.branch-names',
+  releaseNotes: 'copilotmenu.release-notes',
+  squashMessage: 'copilotmenu.squash-messages',
+  pullRequest: 'copilotmenu.pull-request-descriptions',
+}
+
+/** Turns single Copilot actions on and off. */
+export function CopilotMenu() {
+  const { t: tx } = useTranslation()
+  const prefs = useCopilotPrefs()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useClickOutside(ref, open, () => setOpen(false))
+
+  return (
+    <div ref={ref} className="relative flex border-r border-line">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        title={tx('copilotmenu.copilot')}
+        aria-label={tx('copilotmenu.copilot')}
+        className="flex items-center px-3 text-muted hover:bg-hover hover:text-fg"
+      >
+        <Sparkles className="size-4" />
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute top-full right-1 z-10 mt-1 w-64 rounded-md border border-line bg-panel py-1 shadow-lg"
+        >
+          <div className="px-3 py-1 text-xs text-muted">
+            {tx('copilotmenu.copilot')}
+          </div>
+          {COPILOT_ACTIONS.map((action) => (
+            <button
+              key={action}
+              role="menuitemcheckbox"
+              aria-checked={prefs[action]}
+              onClick={() => setCopilotAction(action, !prefs[action])}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-hover"
+            >
+              <span className="flex-1">{tx(COPILOT_LABELS[action])}</span>
+              {prefs[action] && <Check className="size-4 text-accent" />}
             </button>
           ))}
         </div>

@@ -21,6 +21,7 @@ import {
 import Dialog from './Dialog'
 import type { Command } from './CommandPalette'
 import { useTranslation } from '../i18n'
+import { useCopilotPrefs } from '../lib/copilotPrefs'
 
 /** Looks up the pull request again at most this often when the window gets
  *  focus, e.g. after merging it on GitHub. */
@@ -268,6 +269,7 @@ export function CreatePullRequestDialog({
   const edited = useRef(false)
   const [draft, setDraft] = useState(false)
   const [busy, setBusy] = useState<'create' | 'copilot' | null>(null)
+  const copilotOn = useCopilotPrefs().pullRequest
   const [error, setError] = useState<string | null>(null)
   const sameRepo = target.baseRepo === target.headRepo
 
@@ -393,20 +395,22 @@ export function CreatePullRequestDialog({
         <div>
           <div className="mb-1 flex items-center justify-between text-muted">
             <label htmlFor="pr-title">{t('pullrequests.title')}</label>
-            <button
-              type="button"
-              onClick={writeWithCopilot}
-              disabled={!comparison || busy !== null}
-              title={t('pullrequests.write-with-copilot-title')}
-              className="flex items-center gap-1 rounded px-1.5 text-xs hover:bg-hover hover:text-fg disabled:opacity-40"
-            >
-              {busy === 'copilot' ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <Sparkles className="size-3.5" />
-              )}
-              {t('pullrequests.write-with-copilot')}
-            </button>
+            {copilotOn && (
+              <button
+                type="button"
+                onClick={writeWithCopilot}
+                disabled={!comparison || busy !== null}
+                title={t('pullrequests.write-with-copilot-title')}
+                className="flex items-center gap-1 rounded px-1.5 text-xs hover:bg-hover hover:text-fg disabled:opacity-40"
+              >
+                {busy === 'copilot' ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="size-3.5" />
+                )}
+                {t('pullrequests.write-with-copilot')}
+              </button>
+            )}
           </div>
           <input
             id="pr-title"
