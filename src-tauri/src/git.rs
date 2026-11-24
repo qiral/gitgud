@@ -2089,6 +2089,8 @@ mod tests {
         );
     }
 
+    // Windows doesn't allow `*` or `:` in file names.
+    #[cfg(unix)]
     #[test]
     fn file_names_are_never_patterns() {
         let dir = std::env::temp_dir().join(format!("gitgud-pathspec-{}", std::process::id()));
