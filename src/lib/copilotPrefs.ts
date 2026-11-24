@@ -7,6 +7,7 @@ export const COPILOT_ACTIONS = [
   'stashMessage',
   'review',
   'explain',
+  'gitErrors',
   'conflicts',
   'branchName',
   'releaseNotes',

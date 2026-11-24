@@ -151,6 +151,7 @@ const messages: Messages = {
   'copilotmenu.conflict-help': '병합 충돌 도움',
   'copilotmenu.copilot': 'Copilot',
   'copilotmenu.explain-changes': '변경 사항 설명',
+  'copilotmenu.explain-git-errors': 'git 오류 설명',
   'copilotmenu.pull-request-descriptions': '풀 리퀘스트 설명',
   'copilotmenu.release-notes': '릴리스 노트',
   'copilotmenu.review-staged-changes': '스테이징된 변경 사항 검토',
@@ -182,6 +183,7 @@ const messages: Messages = {
     '공백 변경을 숨기는 동안에는 줄을 선택할 수 없습니다.',
   'diffview.unstage-hunk': '헝크 스테이지 해제',
   'diffview.unstage-lines': '줄 스테이지 해제',
+  'errorbar.explain-with-copilot': 'Copilot으로 설명',
   'explaindialog.asking-copilot': 'Copilot에게 묻는 중',
   'explaindialog.copy': '복사',
   'explaindialog.explain-title': '{title} 설명',
@@ -383,6 +385,7 @@ const messages: Messages = {
   'repoview.tab-changes': '변경 사항',
   'repoview.tab-history': '기록',
   'repoview.tab-stashes': '스태시',
+  'repoview.what-went-wrong': '무엇이 잘못되었나요',
   'resizable.drag-to-resize-double-click-to-reset':
     '드래그해서 크기 조절, 두 번 클릭해서 초기화',
   'shortcutsdialog.keyboard-shortcuts': '키보드 단축키',

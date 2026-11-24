@@ -153,6 +153,7 @@ const messages: Messages = {
   'copilotmenu.conflict-help': 'マージ競合のヘルプ',
   'copilotmenu.copilot': 'Copilot',
   'copilotmenu.explain-changes': '変更を説明',
+  'copilotmenu.explain-git-errors': 'git のエラーを説明',
   'copilotmenu.pull-request-descriptions': 'プルリクエストの説明',
   'copilotmenu.release-notes': 'リリースノート',
   'copilotmenu.review-staged-changes': 'ステージした変更をレビュー',
@@ -184,6 +185,7 @@ const messages: Messages = {
     '空白の変更を非表示にしている間は行を選択できません。',
   'diffview.unstage-hunk': 'ハンクのステージを解除',
   'diffview.unstage-lines': '行のステージを解除',
+  'errorbar.explain-with-copilot': 'Copilot で説明',
   'explaindialog.asking-copilot': 'Copilot に問い合わせ中',
   'explaindialog.copy': 'コピー',
   'explaindialog.explain-title': '{title} を説明',
@@ -388,6 +390,7 @@ const messages: Messages = {
   'repoview.tab-changes': '変更',
   'repoview.tab-history': '履歴',
   'repoview.tab-stashes': 'スタッシュ',
+  'repoview.what-went-wrong': '何が問題だったか',
   'resizable.drag-to-resize-double-click-to-reset':
     'ドラッグでサイズ変更、ダブルクリックでリセット',
   'shortcutsdialog.keyboard-shortcuts': 'キーボードショートカット',

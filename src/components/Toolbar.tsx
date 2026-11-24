@@ -478,6 +478,7 @@ const COPILOT_LABELS: Record<CopilotAction, string> = {
   stashMessage: 'copilotmenu.stash-messages',
   review: 'copilotmenu.review-staged-changes',
   explain: 'copilotmenu.explain-changes',
+  gitErrors: 'copilotmenu.explain-git-errors',
   conflicts: 'copilotmenu.conflict-help',
   branchName: 'copilotmenu.branch-names',
   releaseNotes: 'copilotmenu.release-notes',

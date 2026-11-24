@@ -161,6 +161,7 @@ const messages: Messages = {
   'copilotmenu.conflict-help': 'Merge conflict help',
   'copilotmenu.copilot': 'Copilot',
   'copilotmenu.explain-changes': 'Explain changes',
+  'copilotmenu.explain-git-errors': 'Explain git errors',
   'copilotmenu.pull-request-descriptions': 'Pull request descriptions',
   'copilotmenu.release-notes': 'Release notes',
   'copilotmenu.review-staged-changes': 'Review staged changes',
@@ -195,6 +196,7 @@ const messages: Messages = {
     "Lines can't be selected while whitespace changes are hidden.",
   'diffview.unstage-hunk': 'Unstage hunk',
   'diffview.unstage-lines': 'Unstage lines',
+  'errorbar.explain-with-copilot': 'Explain with Copilot',
   'explaindialog.asking-copilot': 'Asking Copilot',
   'explaindialog.copy': 'Copy',
   'explaindialog.explain-title': 'Explain {title}',
@@ -408,6 +410,7 @@ const messages: Messages = {
   'repoview.tab-changes': 'Changes',
   'repoview.tab-history': 'History',
   'repoview.tab-stashes': 'Stashes',
+  'repoview.what-went-wrong': 'What went wrong',
   'resizable.drag-to-resize-double-click-to-reset':
     'Drag to resize, double-click to reset',
   'shortcutsdialog.keyboard-shortcuts': 'Keyboard shortcuts',

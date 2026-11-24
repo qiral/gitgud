@@ -160,6 +160,7 @@ const messages: Messages = {
   'copilotmenu.conflict-help': 'Aiuto con i conflitti di merge',
   'copilotmenu.copilot': 'Copilot',
   'copilotmenu.explain-changes': 'Spiega le modifiche',
+  'copilotmenu.explain-git-errors': 'Spiega gli errori di git',
   'copilotmenu.pull-request-descriptions': 'Descrizioni delle pull request',
   'copilotmenu.release-notes': 'Note di rilascio',
   'copilotmenu.review-staged-changes': 'Rivedi le modifiche in stage',
@@ -194,6 +195,7 @@ const messages: Messages = {
     'Non puoi selezionare righe mentre le modifiche agli spazi sono nascoste.',
   'diffview.unstage-hunk': 'Rimuovi blocco dallo stage',
   'diffview.unstage-lines': 'Rimuovi righe dallo stage',
+  'errorbar.explain-with-copilot': 'Spiega con Copilot',
   'explaindialog.asking-copilot': 'Chiedo a Copilot',
   'explaindialog.copy': 'Copia',
   'explaindialog.explain-title': 'Spiega {title}',
@@ -409,6 +411,7 @@ const messages: Messages = {
   'repoview.tab-changes': 'Modifiche',
   'repoview.tab-history': 'Cronologia',
   'repoview.tab-stashes': 'Stash',
+  'repoview.what-went-wrong': 'Cosa è andato storto',
   'resizable.drag-to-resize-double-click-to-reset':
     'Trascina per ridimensionare, doppio clic per ripristinare',
   'shortcutsdialog.keyboard-shortcuts': 'Scorciatoie da tastiera',

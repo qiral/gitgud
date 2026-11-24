@@ -159,6 +159,7 @@ const messages: Messages = {
   'copilotmenu.conflict-help': 'Merge konflikti köməyi',
   'copilotmenu.copilot': 'Copilot',
   'copilotmenu.explain-changes': 'Dəyişiklikləri izah et',
+  'copilotmenu.explain-git-errors': 'Git xətalarını izah et',
   'copilotmenu.pull-request-descriptions': 'Pull request təsvirləri',
   'copilotmenu.release-notes': 'Buraxılış qeydləri',
   'copilotmenu.review-staged-changes': 'Hazırlanmış dəyişiklikləri yoxla',
@@ -192,6 +193,7 @@ const messages: Messages = {
     'Boşluq dəyişiklikləri gizli olduqda sətir seçmək olmur.',
   'diffview.unstage-hunk': 'Hissəni hazırlıqdan çıxar',
   'diffview.unstage-lines': 'Sətirləri hazırlıqdan çıxar',
+  'errorbar.explain-with-copilot': 'Copilot ilə izah et',
   'explaindialog.asking-copilot': 'Copilot-dan soruşulur',
   'explaindialog.copy': 'Kopyala',
   'explaindialog.explain-title': 'İzah et: {title}',
@@ -402,6 +404,7 @@ const messages: Messages = {
   'repoview.tab-changes': 'Dəyişikliklər',
   'repoview.tab-history': 'Tarixçə',
   'repoview.tab-stashes': 'Stash-lər',
+  'repoview.what-went-wrong': 'Nə səhv getdi',
   'resizable.drag-to-resize-double-click-to-reset':
     'Ölçünü dəyişmək üçün sürükləyin, sıfırlamaq üçün iki dəfə klikləyin',
   'shortcutsdialog.keyboard-shortcuts': 'Klaviatura qısayolları',

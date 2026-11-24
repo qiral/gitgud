@@ -477,6 +477,23 @@ impl Copilot {
 }
 
 impl Copilot {
+    /// What a failed git action's error means and what to do next. Only the
+    /// action and the error are sent, without the repository's path.
+    pub async fn explain_error(
+        &self,
+        app_data: &Path,
+        repo: &str,
+        action: &str,
+        error: &str,
+    ) -> Result<String> {
+        let reply = self
+            .ask(app_data, error_prompt(action, error, repo))
+            .await?;
+        Ok(reply.trim().to_string())
+    }
+}
+
+impl Copilot {
     /// A one-line message for stashing the uncommitted changes.
     pub async fn stash_message(
         &self,
@@ -705,6 +722,22 @@ fn commit_prompt(stat: &str, diff: &str, subjects: &[String]) -> String {
         cap(diff, MAX_INPUT)
     ));
     prompt
+}
+
+fn error_prompt(action: &str, error: &str, repo: &str) -> String {
+    let error = if repo.is_empty() {
+        error.to_string()
+    } else {
+        error.replace(repo, "<repo>")
+    };
+    format!(
+        "A git action failed in GitGud, a desktop Git app. In 2 to 4 plain \
+         sentences, say what went wrong and what to do next. Where it fits, \
+         name GitGud's own buttons: Fetch, Pull, Push, Stash, Commit, Undo, or \
+         resolving conflicts in the Changes tab. No headings.\n\n\
+         Action: {action}\nError:\n{}",
+        cap(&error, 5_000)
+    )
 }
 
 fn stash_prompt(stat: &str, diff: &str, untracked: &[String]) -> String {
@@ -1273,6 +1306,23 @@ mod tests {
             assert!(prompt.contains(expected), "missing {expected}");
         }
         assert!(!stash_prompt("", "+x\n", &[]).contains("New files"));
+    }
+
+    #[test]
+    fn error_prompt_sends_the_error_but_not_where_the_repo_is() {
+        let prompt = error_prompt(
+            "push",
+            "error: failed to push some refs to /home/ada/code/app\nhint: Updates were rejected",
+            "/home/ada/code/app",
+        );
+        for expected in [
+            "push",
+            "failed to push some refs to <repo>",
+            "Updates were rejected",
+        ] {
+            assert!(prompt.contains(expected), "missing {expected}");
+        }
+        assert!(!prompt.contains("/home/ada"));
     }
 
     #[test]

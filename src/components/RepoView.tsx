@@ -37,6 +37,7 @@ import UndoToast from './UndoToast'
 import RemotesDialog from './RemotesDialog'
 import PublishDialog from './PublishDialog'
 import ExplainDialog from './ExplainDialog'
+import ErrorBar from './ErrorBar'
 import { useResizable } from './Resizable'
 import { useCommitActions } from './CommitActions'
 import { ScrollText } from 'lucide-react'
@@ -115,6 +116,11 @@ export default function RepoView({
   const [focusSearch, setFocusSearch] = useState(0)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // The git action behind the error shown, so Copilot can explain it.
+  const [failed, setFailed] = useState<{
+    action: string
+    error: string
+  } | null>(null)
 
   const refresh = useCallback(async () => {
     try {
@@ -323,7 +329,9 @@ export default function RepoView({
         await action()
         return true
       } catch (e) {
-        setError(errorMessage(e))
+        const message = errorMessage(e)
+        setError(message)
+        setFailed({ action: label, error: message })
         return false
       } finally {
         setBusy(null)
@@ -802,14 +810,18 @@ export default function RepoView({
       </div>
 
       {error && (
-        <div className="flex items-start gap-3 border-t border-line bg-removed-bg px-4 py-2 text-removed">
-          <pre className="flex-1 font-mono text-xs whitespace-pre-wrap select-text">
-            {error}
-          </pre>
-          <button onClick={() => setError(null)} className="hover:underline">
-            {tx('repoview.dismiss')}
-          </button>
-        </div>
+        <ErrorBar
+          error={error}
+          onDismiss={() => setError(null)}
+          onExplain={
+            copilotOn.gitErrors && failed?.error === error
+              ? () =>
+                  showAnswer(tx('repoview.what-went-wrong'), () =>
+                    copilot.explainError(repo.path, failed.action, error),
+                  )
+              : undefined
+          }
+        />
       )}
     </div>
   )

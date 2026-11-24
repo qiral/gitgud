@@ -163,6 +163,7 @@ const messages: Messages = {
   'copilotmenu.conflict-help': 'Aide aux conflits de merge',
   'copilotmenu.copilot': 'Copilot',
   'copilotmenu.explain-changes': 'Expliquer les modifications',
+  'copilotmenu.explain-git-errors': 'Expliquer les erreurs git',
   'copilotmenu.pull-request-descriptions': 'Descriptions de pull request',
   'copilotmenu.release-notes': 'Notes de version',
   'copilotmenu.review-staged-changes': 'Relire les modifications indexées',
@@ -197,6 +198,7 @@ const messages: Messages = {
     "Impossible de sélectionner des lignes tant que les modifications d'espaces sont masquées.",
   'diffview.unstage-hunk': 'Désindexer le bloc',
   'diffview.unstage-lines': 'Désindexer les lignes',
+  'errorbar.explain-with-copilot': 'Expliquer avec Copilot',
   'explaindialog.asking-copilot': 'Copilot réfléchit',
   'explaindialog.copy': 'Copier',
   'explaindialog.explain-title': 'Expliquer {title}',
@@ -412,6 +414,7 @@ const messages: Messages = {
   'repoview.tab-changes': 'Modifications',
   'repoview.tab-history': 'Historique',
   'repoview.tab-stashes': 'Stashs',
+  'repoview.what-went-wrong': "Ce qui n'a pas marché",
   'resizable.drag-to-resize-double-click-to-reset':
     'Faites glisser pour redimensionner, double-cliquez pour réinitialiser',
   'shortcutsdialog.keyboard-shortcuts': 'Raccourcis clavier',

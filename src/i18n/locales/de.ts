@@ -161,6 +161,7 @@ const messages: Messages = {
   'copilotmenu.conflict-help': 'Hilfe bei Merge-Konflikten',
   'copilotmenu.copilot': 'Copilot',
   'copilotmenu.explain-changes': 'Änderungen erklären',
+  'copilotmenu.explain-git-errors': 'Git-Fehler erklären',
   'copilotmenu.pull-request-descriptions': 'Pull-Request-Beschreibungen',
   'copilotmenu.release-notes': 'Versionshinweise',
   'copilotmenu.review-staged-changes': 'Vorgemerkte Änderungen prüfen',
@@ -195,6 +196,7 @@ const messages: Messages = {
     'Solange Leerzeichen-Änderungen ausgeblendet sind, lassen sich keine Zeilen auswählen.',
   'diffview.unstage-hunk': 'Hunk unstagen',
   'diffview.unstage-lines': 'Zeilen unstagen',
+  'errorbar.explain-with-copilot': 'Mit Copilot erklären',
   'explaindialog.asking-copilot': 'Copilot wird gefragt',
   'explaindialog.copy': 'Kopieren',
   'explaindialog.explain-title': '{title} erklären',
@@ -410,6 +412,7 @@ const messages: Messages = {
   'repoview.tab-changes': 'Änderungen',
   'repoview.tab-history': 'Verlauf',
   'repoview.tab-stashes': 'Stashes',
+  'repoview.what-went-wrong': 'Was ist schiefgelaufen',
   'resizable.drag-to-resize-double-click-to-reset':
     'Ziehen zum Ändern der Größe, Doppelklick zum Zurücksetzen',
   'shortcutsdialog.keyboard-shortcuts': 'Tastenkürzel',

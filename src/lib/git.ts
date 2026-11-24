@@ -241,6 +241,9 @@ export const copilot = {
   commitMessage: (repo: string) =>
     invoke<string>('copilot_commit_message', { repo }),
   explain: (diff: string) => invoke<string>('copilot_explain', { diff }),
+  /** What a failed git action's error means and what to do next. */
+  explainError: (repo: string, action: string, error: string) =>
+    invoke<string>('copilot_explain_error', { repo, action, error }),
   /** A one-line label for stashing the uncommitted changes. */
   stashMessage: (repo: string, includeUntracked: boolean) =>
     invoke<string>('copilot_stash_message', { repo, includeUntracked }),
