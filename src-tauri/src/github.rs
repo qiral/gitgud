@@ -17,7 +17,7 @@ use crate::git::{GitError, Result};
 const CLIENT_ID: &str = "Ov23li9VaKu4azd6eO0H";
 /// `repo` to push and create repositories, `workflow` to push changes to
 /// `.github/workflows`, and read access to the profile for display.
-const SCOPES: &str = "repo workflow read:user user:email";
+const SCOPES: &str = "repo workflow";
 const KEYRING_SERVICE: &str = "dev.gitgud.app";
 const KEYRING_USER: &str = "github";
 pub(crate) const USER_AGENT: &str = concat!("GitGud/", env!("CARGO_PKG_VERSION"));
@@ -291,17 +291,12 @@ pub enum Validation {
     Unreachable,
 }
 
-/// `SCOPES` the `X-OAuth-Scopes` header doesn't list. `user` includes
-/// `read:user` and `user:email`.
+/// `SCOPES` the `X-OAuth-Scopes` header doesn't list.
 fn missing_scopes(granted: &str) -> Vec<String> {
     let granted: Vec<&str> = granted.split(',').map(str::trim).collect();
-    let has = |scope: &str| {
-        granted.contains(&scope)
-            || (matches!(scope, "read:user" | "user:email") && granted.contains(&"user"))
-    };
     SCOPES
         .split(' ')
-        .filter(|scope| !has(scope))
+        .filter(|scope| !granted.contains(scope))
         .map(str::to_string)
         .collect()
 }
@@ -462,16 +457,13 @@ mod tests {
 
     #[test]
     fn spots_missing_scopes() {
-        assert!(missing_scopes("repo, workflow, read:user, user:email").is_empty());
+        assert!(missing_scopes("repo, workflow").is_empty());
         assert!(
-            missing_scopes("repo, workflow, user").is_empty(),
-            "user covers both"
+            missing_scopes("repo, workflow, read:user, user:email").is_empty(),
+            "older sign-ins asked for more"
         );
-        assert_eq!(missing_scopes("repo, read:user, user:email"), ["workflow"]);
-        assert_eq!(
-            missing_scopes(""),
-            ["repo", "workflow", "read:user", "user:email"]
-        );
+        assert_eq!(missing_scopes("repo, read:user"), ["workflow"]);
+        assert_eq!(missing_scopes(""), ["repo", "workflow"]);
     }
 
     #[test]
