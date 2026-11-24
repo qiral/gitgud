@@ -526,7 +526,19 @@ export default function RepoView({
         />
       )}
       {dialog === 'stash' && (
-        <StashDialog repo={repo} onClose={() => setDialog(null)} act={act} />
+        <StashDialog
+          repo={repo}
+          onClose={() => setDialog(null)}
+          act={act}
+          onSuggest={
+            copilotOn.stashMessage
+              ? (includeUntracked) =>
+                  ai.run(() =>
+                    copilot.stashMessage(repo.path, includeUntracked),
+                  )
+              : undefined
+          }
+        />
       )}
       {dialog === 'publish' && (
         <PublishDialog
@@ -723,7 +735,25 @@ export default function RepoView({
             <PatchView
               repo={repo.path}
               patch={diff}
-              header={<StashHeader stash={selection.stash} />}
+              onExplainFile={
+                copilotOn.explain
+                  ? (path, fileDiff) => explain(path, async () => fileDiff)
+                  : undefined
+              }
+              header={
+                <StashHeader
+                  stash={selection.stash}
+                  onExplain={
+                    copilotOn.explain
+                      ? () =>
+                          explain(
+                            `stash@{${selection.stash.index}}`,
+                            async () => diff,
+                          )
+                      : undefined
+                  }
+                />
+              }
             />
           ) : selection ? (
             <>

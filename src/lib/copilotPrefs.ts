@@ -4,6 +4,7 @@ import { readFlag, writeFlag } from './prefs'
 /** Every Copilot action, each of which can be turned off on its own. */
 export const COPILOT_ACTIONS = [
   'commitMessage',
+  'stashMessage',
   'review',
   'explain',
   'conflicts',

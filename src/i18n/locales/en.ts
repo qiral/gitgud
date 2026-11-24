@@ -165,6 +165,7 @@ const messages: Messages = {
   'copilotmenu.release-notes': 'Release notes',
   'copilotmenu.review-staged-changes': 'Review staged changes',
   'copilotmenu.squash-messages': 'Squash messages',
+  'copilotmenu.stash-messages': 'Stash messages',
   'copilotsetupdialog.cancel': 'Cancel',
   'copilotsetupdialog.downloading': 'Downloading…',
   'copilotsetupdialog.set-up-github-copilot': 'Set up GitHub Copilot',
@@ -422,6 +423,8 @@ const messages: Messages = {
     'Set your uncommitted changes aside and get a clean working tree. You\n          can bring them back from the Stashes tab.',
   'stashdialog.stash-changes': 'Stash changes',
   'stashdialog.what-were-you-working-on': 'What were you working on?',
+  'stashdialog.write-the-message-with-copilot':
+    'Write the message with Copilot',
   'stashpanel.apply-keep-the-stash': 'Apply (keep the stash)',
   'stashpanel.delete': 'Delete',
   'stashpanel.delete-stash': 'Delete stash',

@@ -764,6 +764,25 @@ pub fn branch_stat(repo: &Path, merge_base: &str) -> Result<String> {
     run(repo, &["diff", "--no-color", "--stat", merge_base, "HEAD"])
 }
 
+/// Everything not yet committed, against HEAD: file stats, the diff, and
+/// the names (not contents) of new files when `include_untracked`.
+pub fn uncommitted_changes(
+    repo: &Path,
+    include_untracked: bool,
+) -> Result<(String, String, Vec<String>)> {
+    let stat = run(repo, &["diff", "--no-color", "--stat", "HEAD"])?;
+    let diff = run(repo, &["diff", "--no-color", "--no-ext-diff", "HEAD"])?;
+    let untracked = if include_untracked {
+        run(repo, &["ls-files", "--others", "--exclude-standard"])?
+            .lines()
+            .map(str::to_string)
+            .collect()
+    } else {
+        Vec::new()
+    };
+    Ok((stat, diff, untracked))
+}
+
 /// The newest tag reachable from HEAD, if any.
 pub fn last_tag(repo: &Path) -> Result<Option<String>> {
     let out = output(repo, &["describe", "--tags", "--abbrev=0", "HEAD"])?;
@@ -1964,6 +1983,35 @@ mod tests {
         assert!(diff.contains("+staged line"));
         assert!(!diff.contains("unstaged"));
         assert!(staged_stat(repo).unwrap().contains("c.txt"));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn uncommitted_changes_for_a_stash() {
+        let dir = std::env::temp_dir().join(format!("gitgud-wip-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = dir.as_path();
+        run(repo, &["init", "-q", "-b", "main"]).unwrap();
+        for (k, v) in [
+            ("user.name", "T"),
+            ("user.email", "t@x"),
+            ("commit.gpgsign", "false"),
+        ] {
+            run(repo, &["config", k, v]).unwrap();
+        }
+        std::fs::write(dir.join("a.txt"), "one\n").unwrap();
+        stage(repo, &["a.txt".into()]).unwrap();
+        commit(repo, "first").unwrap();
+        std::fs::write(dir.join("a.txt"), "two\n").unwrap();
+        std::fs::write(dir.join("new.txt"), "secret stuff\n").unwrap();
+
+        let (stat, diff, untracked) = uncommitted_changes(repo, true).unwrap();
+        assert!(stat.contains("a.txt"));
+        assert!(diff.contains("+two"));
+        assert_eq!(untracked, ["new.txt"]);
+        assert!(!diff.contains("secret stuff"), "only names of new files");
+        assert!(uncommitted_changes(repo, false).unwrap().2.is_empty());
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

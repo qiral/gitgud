@@ -241,6 +241,9 @@ export const copilot = {
   commitMessage: (repo: string) =>
     invoke<string>('copilot_commit_message', { repo }),
   explain: (diff: string) => invoke<string>('copilot_explain', { diff }),
+  /** A one-line label for stashing the uncommitted changes. */
+  stashMessage: (repo: string, includeUntracked: boolean) =>
+    invoke<string>('copilot_stash_message', { repo, includeUntracked }),
   /** One message for commits squashed together, oldest first. */
   squashMessage: (repo: string, hashes: string[]) =>
     invoke<string>('copilot_squash_message', { repo, hashes }),

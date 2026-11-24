@@ -477,6 +477,26 @@ impl Copilot {
 }
 
 impl Copilot {
+    /// A one-line message for stashing the uncommitted changes.
+    pub async fn stash_message(
+        &self,
+        app_data: &Path,
+        repo: PathBuf,
+        include_untracked: bool,
+    ) -> Result<String> {
+        let (stat, diff, untracked) =
+            blocking(move || git::uncommitted_changes(&repo, include_untracked)).await?;
+        if diff.trim().is_empty() && untracked.is_empty() {
+            return Err(GitError::Failed("There are no changes to stash".into()));
+        }
+        let reply = self
+            .ask(app_data, stash_prompt(&stat, &diff, &untracked))
+            .await?;
+        Ok(reply.lines().next().unwrap_or("").trim().to_string())
+    }
+}
+
+impl Copilot {
     /// One message for commits squashed together, oldest first.
     pub async fn squash_message(
         &self,
@@ -684,6 +704,22 @@ fn commit_prompt(stat: &str, diff: &str, subjects: &[String]) -> String {
         "\nStaged files:\n{stat}\nStaged changes:\n{}",
         cap(diff, MAX_INPUT)
     ));
+    prompt
+}
+
+fn stash_prompt(stat: &str, diff: &str, untracked: &[String]) -> String {
+    let mut prompt = format!(
+        "Write a one-line note, under 72 characters, saying what this unfinished \
+         work is, to label a git stash. Reply with the note only.\n\n\
+         Changed files:\n{stat}\nChanges:\n{}",
+        cap(diff, MAX_INPUT)
+    );
+    if !untracked.is_empty() {
+        prompt.push_str("\nNew files:\n");
+        for name in untracked.iter().take(100) {
+            prompt.push_str(&format!("  {name}\n"));
+        }
+    }
     prompt
 }
 
@@ -1228,6 +1264,15 @@ mod tests {
             4,
             "each commit keeps a share"
         );
+    }
+
+    #[test]
+    fn stash_prompt_names_new_files_without_their_contents() {
+        let prompt = stash_prompt(" a.txt | 2 +-\n", "+two\n", &["new.txt".into()]);
+        for expected in ["a.txt | 2 +-", "+two", "new.txt", "72"] {
+            assert!(prompt.contains(expected), "missing {expected}");
+        }
+        assert!(!stash_prompt("", "+x\n", &[]).contains("New files"));
     }
 
     #[test]

@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { CommitHeader } from './CommitHeader'
+import { CommitHeader, StashHeader } from './CommitHeader'
 
 const commit = {
   hash: 'abc1234def',
@@ -18,6 +18,18 @@ it('offers Copilot to explain the commit', () => {
   const onExplain = vi.fn()
   render(
     <CommitHeader commit={commit} message="fix login" onExplain={onExplain} />,
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Explain with Copilot' }))
+  expect(onExplain).toHaveBeenCalled()
+})
+
+it('offers Copilot to explain a stash', () => {
+  const onExplain = vi.fn()
+  render(
+    <StashHeader
+      stash={{ index: 0, message: 'WIP on main', branch: 'main', time: 0 }}
+      onExplain={onExplain}
+    />,
   )
   fireEvent.click(screen.getByRole('button', { name: 'Explain with Copilot' }))
   expect(onExplain).toHaveBeenCalled()

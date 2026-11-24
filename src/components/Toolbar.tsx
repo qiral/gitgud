@@ -475,6 +475,7 @@ function LanguageMenu() {
 
 const COPILOT_LABELS: Record<CopilotAction, string> = {
   commitMessage: 'copilotmenu.commit-messages',
+  stashMessage: 'copilotmenu.stash-messages',
   review: 'copilotmenu.review-staged-changes',
   explain: 'copilotmenu.explain-changes',
   conflicts: 'copilotmenu.conflict-help',
