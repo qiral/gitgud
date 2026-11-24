@@ -273,7 +273,9 @@ fn error_message(e: &SdkError) -> String {
         }
         _ if e.is_transport_failure() => CRASHED.into(),
         _ if has(&["No GitHub OAuth token"]) => SIGN_IN.into(),
-        _ if has(&["401 Unauthorized", "Bad credentials"]) => SIGNED_OUT.into(),
+        _ if has(&["401 Unauthorized", "Bad credentials", "Authorization error"]) => {
+            SIGNED_OUT.into()
+        }
         _ if has(&["403 Forbidden", "404 Not Found"]) => NO_ACCESS.into(),
         _ if has(&[
             "429 Too Many Requests",
@@ -446,7 +448,20 @@ impl Copilot {
                 if e.is_transport_failure() {
                     self.slot.lock().await.forget(generation);
                 }
-                Err(sdk_error(e))
+                let message = error_message(&e);
+                if message != SIGNED_OUT {
+                    return Err(GitError::Failed(message));
+                }
+                // Copilot turned the token down: was it revoked, or is it
+                // Copilot that won't take this account?
+                match blocking(github::validate).await? {
+                    github::Validation::Expired => {
+                        self.slot.lock().await.forget(generation);
+                        Err(GitError::Failed(github::SIGNED_OUT.into()))
+                    }
+                    github::Validation::Valid { .. } => Err(GitError::Failed(NO_ACCESS.into())),
+                    _ => Err(GitError::Failed(message)),
+                }
             }
         }
     }
@@ -930,6 +945,13 @@ mod tests {
         assert_eq!(
             error_message(&rpc(&format!("{failed} 403 Forbidden"))),
             NO_ACCESS
+        );
+        assert_eq!(
+            error_message(&Error::with_message(
+                ErrorKind::Session(SessionErrorKind::AgentError),
+                "Execution failed: Authorization error. Your credentials may be expired or invalid. (Request ID: C36F)"
+            )),
+            SIGNED_OUT
         );
         assert_eq!(
             error_message(&rpc(&format!("{failed} 404 Not Found"))),

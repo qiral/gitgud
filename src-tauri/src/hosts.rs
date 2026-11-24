@@ -8,6 +8,7 @@
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 
+use crate::cache::Cached;
 use crate::git::{GitError, Result};
 use crate::github;
 
@@ -51,24 +52,34 @@ fn token_entry(url: &str) -> Result<keyring::Entry> {
     keyring::Entry::new(KEYRING_SERVICE, &format!("host:{url}")).map_err(keyring_error)
 }
 
+/// Read from the keychain once per run, like the GitHub sign-in.
+static HOSTS: Cached<Vec<Host>> = Cached::new();
+/// `(url, username, token)` for each host, for `git_env`.
+static CREDENTIALS: Cached<Vec<(String, String, String)>> = Cached::new();
+
 pub fn list() -> Result<Vec<Host>> {
-    match index_entry()?.get_password() {
+    HOSTS.get_or_load(|| match index_entry()?.get_password() {
         Ok(json) => Ok(serde_json::from_str(&json).unwrap_or_default()),
         Err(keyring::Error::NoEntry) => Ok(Vec::new()),
         Err(e) => Err(keyring_error(e)),
-    }
+    })
 }
 
 fn save_list(hosts: &[Host]) -> Result<()> {
     let entry = index_entry()?;
-    if hosts.is_empty() {
-        return match entry.delete_credential() {
+    let saved = if hosts.is_empty() {
+        match entry.delete_credential() {
             Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
             Err(e) => Err(keyring_error(e)),
-        };
-    }
-    let json = serde_json::to_string(hosts).expect("serializable");
-    entry.set_password(&json).map_err(keyring_error)
+        }
+    } else {
+        let json = serde_json::to_string(hosts).expect("serializable");
+        entry.set_password(&json).map_err(keyring_error)
+    };
+    HOSTS.set(hosts.to_vec());
+    // Last, so credentials are never rebuilt from the old list.
+    CREDENTIALS.clear();
+    saved
 }
 
 /// Checks the token with the host (when its API is known), then stores it.
@@ -214,13 +225,22 @@ pub fn git_env() -> Vec<(String, String)> {
     if let Some(github) = github::credentials() {
         creds.push(github);
     }
-    for host in list().unwrap_or_default() {
-        if let Ok(token) =
-            token_entry(&host.url).and_then(|e| e.get_password().map_err(keyring_error))
-        {
-            creds.push((host.url, host.login, token));
-        }
-    }
+    creds.extend(
+        CREDENTIALS
+            .get_or_load(|| {
+                let mut creds = Vec::new();
+                for host in list()? {
+                    match token_entry(&host.url)?.get_password() {
+                        Ok(token) => creds.push((host.url, host.login, token)),
+                        Err(keyring::Error::NoEntry) => {}
+                        // Not cached, so a denied keychain prompt is asked again.
+                        Err(e) => return Err(keyring_error(e)),
+                    }
+                }
+                Ok(creds)
+            })
+            .unwrap_or_default(),
+    );
     env_for(&creds)
 }
 

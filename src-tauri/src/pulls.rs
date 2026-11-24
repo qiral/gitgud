@@ -59,8 +59,15 @@ fn encode_path(text: &str) -> String {
 // API plumbing
 
 /// Reads a JSON response, or GitHub's own explanation when it failed.
-fn read<T: DeserializeOwned>(res: ureq::http::Response<ureq::Body>, what: &str) -> Result<T> {
+fn read<T: DeserializeOwned>(
+    res: ureq::http::Response<ureq::Body>,
+    what: &str,
+    token: &str,
+) -> Result<T> {
     let status = res.status();
+    if status == 401 {
+        return Err(crate::github::signed_out(token));
+    }
     let mut body = res.into_body();
     if status.is_success() {
         return body.read_json().map_err(http_error);
@@ -90,7 +97,7 @@ fn get<T: DeserializeOwned>(
         .build()
         .call()
         .map_err(http_error)?;
-    read(res, what)
+    read(res, what, token)
 }
 
 // ---------------------------------------------------------------------------
@@ -346,12 +353,13 @@ pub fn create(
     draft: bool,
 ) -> Result<PullRequest> {
     let head_owner = target.head_repo.split('/').next().unwrap_or_default();
+    let token = token()?;
     let res = ureq::post(format!(
         "https://api.github.com/repos/{}/pulls",
         target.base_repo
     ))
     .header("Accept", "application/vnd.github+json")
-    .header("Authorization", format!("Bearer {}", token()?))
+    .header("Authorization", format!("Bearer {token}"))
     .header("User-Agent", USER_AGENT)
     .config()
     .http_status_as_error(false)
@@ -364,7 +372,7 @@ pub fn create(
         "draft": draft,
     }))
     .map_err(http_error)?;
-    read::<ApiPull>(res, "create the pull request").map(Into::into)
+    read::<ApiPull>(res, "create the pull request", &token).map(Into::into)
 }
 
 #[cfg(test)]

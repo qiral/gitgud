@@ -4,8 +4,13 @@
 //! Windows Credential Manager) and is only handed to git through environment
 //! variables, scoped to `https://github.com/` URLs (see `hosts::git_env`).
 
-use serde::{Deserialize, Serialize};
+use std::sync::OnceLock;
+use std::time::Duration;
 
+use serde::{Deserialize, Serialize};
+use tauri::Emitter;
+
+use crate::cache::Cached;
 use crate::git::{GitError, Result};
 
 /// Public client ID of the GitGud OAuth App. Device flow needs no secret.
@@ -17,8 +22,38 @@ const KEYRING_SERVICE: &str = "dev.gitgud.app";
 const KEYRING_USER: &str = "github";
 pub(crate) const USER_AGENT: &str = concat!("GitGud/", env!("CARGO_PKG_VERSION"));
 
+/// Error text when GitHub no longer accepts the stored token; the frontend
+/// shows the user as signed out on it.
+pub const SIGNED_OUT: &str = "Your GitHub sign-in expired or was revoked. Sign in again.";
+
 pub(crate) fn http_error(e: ureq::Error) -> GitError {
     GitError::Failed(format!("GitHub request failed: {e}"))
+}
+
+/// Like [`http_error`], for a request sent with the stored `token`: a 401
+/// means GitHub no longer accepts it.
+pub(crate) fn token_error(e: ureq::Error, token: &str) -> GitError {
+    match e {
+        ureq::Error::StatusCode(401) => signed_out(token),
+        e => http_error(e),
+    }
+}
+
+/// For a request GitHub turned down with 401: forgets `token` if it's
+/// still the stored one, and says so.
+pub(crate) fn signed_out(token: &str) -> GitError {
+    if forget_if(token) {
+        GitError::Failed(SIGNED_OUT.into())
+    } else {
+        GitError::Failed("GitHub turned the request down. Try again.".into())
+    }
+}
+
+static APP: OnceLock<tauri::AppHandle> = OnceLock::new();
+
+/// Lets GitGud tell the frontend when it forgets a rejected sign-in.
+pub fn set_app(app: tauri::AppHandle) {
+    let _ = APP.set(app);
 }
 
 fn keyring_error(e: keyring::Error) -> GitError {
@@ -28,7 +63,7 @@ fn keyring_error(e: keyring::Error) -> GitError {
 // ---------------------------------------------------------------------------
 // Stored account
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Account {
     pub login: String,
@@ -39,33 +74,66 @@ pub struct Account {
 }
 
 /// What is kept in the keychain. The token never leaves the backend.
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 struct Stored {
     token: String,
     account: Account,
 }
+
+/// The keychain is read once per run: each read can ask for the user's
+/// password on macOS.
+static STORED: Cached<Option<Stored>> = Cached::new();
 
 fn entry() -> Result<keyring::Entry> {
     keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER).map_err(keyring_error)
 }
 
 fn load() -> Result<Option<Stored>> {
-    match entry()?.get_password() {
+    STORED.get_or_load(|| match entry()?.get_password() {
         Ok(json) => Ok(serde_json::from_str(&json).ok()),
         Err(keyring::Error::NoEntry) => Ok(None),
         Err(e) => Err(keyring_error(e)),
-    }
+    })
+}
+
+fn save(stored: Stored) -> Result<()> {
+    let json = serde_json::to_string(&stored).expect("serializable");
+    entry()?.set_password(&json).map_err(keyring_error)?;
+    STORED.set(Some(stored));
+    Ok(())
 }
 
 pub fn account() -> Result<Option<Account>> {
-    Ok(load()?.map(|s| s.account))
+    Ok(load()?.map(|s| s.account.clone()))
 }
 
 pub fn sign_out() -> Result<()> {
+    STORED.set(None);
+    delete()
+}
+
+fn delete() -> Result<()> {
     match entry()?.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
         Err(e) => Err(keyring_error(e)),
     }
+}
+
+/// Forgets the sign-in if its token is still `rejected`, so a late answer
+/// about an old token can't remove a newer sign-in. Returns whether it did,
+/// and tells the frontend.
+fn forget_if(rejected: &str) -> bool {
+    let forgot = STORED.replace_if(
+        |stored| stored.as_ref().is_some_and(|s| s.token == rejected),
+        None,
+    );
+    if forgot {
+        let _ = delete();
+        if let Some(app) = APP.get() {
+            let _ = app.emit("github-signed-out", ());
+        }
+    }
+    forgot
 }
 
 /// `(url, username, token)` for git, scoped to `https://github.com/`.
@@ -74,8 +142,8 @@ pub fn credentials() -> Option<(String, String, String)> {
     let stored = load().ok()??;
     Some((
         "https://github.com/".into(),
-        stored.account.login,
-        stored.token,
+        stored.account.login.clone(),
+        stored.token.clone(),
     ))
 }
 
@@ -143,12 +211,10 @@ pub fn poll_sign_in(device_code: &str, interval: u64) -> Result<PollResult> {
 
     if let Some(token) = res.access_token {
         let account = fetch_account(&token)?;
-        let stored = Stored {
+        save(Stored {
             token,
             account: account.clone(),
-        };
-        let json = serde_json::to_string(&stored).expect("serializable");
-        entry()?.set_password(&json).map_err(keyring_error)?;
+        })?;
         return Ok(PollResult::Done { account });
     }
 
@@ -195,9 +261,95 @@ fn fetch_account(token: &str) -> Result<Account> {
         .map_err(http_error)
 }
 
+/// What GitHub says about the stored sign-in.
+#[derive(Debug, Serialize, PartialEq)]
+#[serde(tag = "state", rename_all = "camelCase")]
+pub enum Validation {
+    SignedOut,
+    #[serde(rename_all = "camelCase")]
+    Valid {
+        account: Account,
+        /// Scopes GitGud asks for that the token doesn't have, e.g. after
+        /// GitGud started asking for a new one.
+        missing_scopes: Vec<String>,
+    },
+    /// GitHub rejected the token; it has been forgotten.
+    Expired,
+    /// GitHub couldn't be asked, e.g. offline. The sign-in is kept.
+    Unreachable,
+}
+
+/// `SCOPES` the `X-OAuth-Scopes` header doesn't list. `user` includes
+/// `read:user` and `user:email`.
+fn missing_scopes(granted: &str) -> Vec<String> {
+    let granted: Vec<&str> = granted.split(',').map(str::trim).collect();
+    let has = |scope: &str| {
+        granted.contains(&scope)
+            || (matches!(scope, "read:user" | "user:email") && granted.contains(&"user"))
+    };
+    SCOPES
+        .split(' ')
+        .filter(|scope| !has(scope))
+        .map(str::to_string)
+        .collect()
+}
+
+/// Asks GitHub whether the stored token still works, without signing out
+/// when GitHub can't be reached.
+pub fn validate() -> Result<Validation> {
+    let Some(stored) = load()? else {
+        return Ok(Validation::SignedOut);
+    };
+    let res = match api_get(&stored.token, "/user")
+        .config()
+        .http_status_as_error(false)
+        .timeout_global(Some(Duration::from_secs(10)))
+        .build()
+        .call()
+    {
+        Ok(res) => res,
+        Err(_) => return Ok(Validation::Unreachable),
+    };
+    match res.status().as_u16() {
+        401 => {
+            forget_if(&stored.token);
+            Ok(Validation::Expired)
+        }
+        200 => {
+            // Without the header (e.g. a proxy dropped it) there's nothing to check.
+            let missing = res
+                .headers()
+                .get("x-oauth-scopes")
+                .and_then(|v| v.to_str().ok())
+                .map(missing_scopes)
+                .unwrap_or_default();
+            let account: Account = res.into_body().read_json().map_err(http_error)?;
+            if account != stored.account {
+                let updated = Stored {
+                    token: stored.token.clone(),
+                    account: account.clone(),
+                };
+                let still_current = STORED.replace_if(
+                    |s| s.as_ref().is_some_and(|s| s.token == stored.token),
+                    Some(updated.clone()),
+                );
+                if still_current {
+                    let json = serde_json::to_string(&updated).expect("serializable");
+                    entry()?.set_password(&json).map_err(keyring_error)?;
+                }
+            }
+            Ok(Validation::Valid {
+                account,
+                missing_scopes: missing,
+            })
+        }
+        _ => Ok(Validation::Unreachable),
+    }
+}
+
 pub(crate) fn token() -> Result<String> {
     load()?
-        .map(|s| s.token)
+        .map(|s| s.token.clone())
         .ok_or_else(|| GitError::Failed("Sign in to GitHub first".into()))
 }
 
@@ -210,9 +362,10 @@ pub struct CreatedRepo {
 }
 
 pub fn create_repo(name: &str, description: &str, private: bool) -> Result<CreatedRepo> {
+    let token = token()?;
     let res = ureq::post("https://api.github.com/user/repos")
         .header("Accept", "application/vnd.github+json")
-        .header("Authorization", format!("Bearer {}", token()?))
+        .header("Authorization", format!("Bearer {token}"))
         .header("User-Agent", USER_AGENT)
         .config()
         .http_status_as_error(false)
@@ -225,6 +378,9 @@ pub fn create_repo(name: &str, description: &str, private: bool) -> Result<Creat
         .map_err(http_error)?;
 
     let status = res.status();
+    if status == 401 {
+        return Err(signed_out(&token));
+    }
     let mut body = res.into_body();
     if status.is_success() {
         return body.read_json().map_err(http_error);
@@ -274,7 +430,7 @@ pub fn list_repos() -> Result<Vec<RemoteRepo>> {
             &format!("/user/repos?sort=updated&per_page={PER_PAGE}&page={page}"),
         )
         .call()
-        .map_err(http_error)?
+        .map_err(|e| token_error(e, &token))?
         .body_mut()
         .read_json()
         .map_err(http_error)?;
@@ -290,6 +446,20 @@ pub fn list_repos() -> Result<Vec<RemoteRepo>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn spots_missing_scopes() {
+        assert!(missing_scopes("repo, workflow, read:user, user:email").is_empty());
+        assert!(
+            missing_scopes("repo, workflow, user").is_empty(),
+            "user covers both"
+        );
+        assert_eq!(missing_scopes("repo, read:user, user:email"), ["workflow"]);
+        assert_eq!(
+            missing_scopes(""),
+            ["repo", "workflow", "read:user", "user:email"]
+        );
+    }
 
     #[test]
     fn reads_account_from_github_and_from_the_keychain() {
