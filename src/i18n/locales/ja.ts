@@ -149,6 +149,7 @@ const messages: Messages = {
   'conflictview.use-theirs': '相手側を使う',
   'conflictview.use-theirs-for-the-whole-file': 'ファイル全体で相手側を使う',
   'copilotmenu.branch-names': 'ブランチ名',
+  'copilotmenu.branch-summaries': 'ブランチの要約',
   'copilotmenu.commit-messages': 'コミットメッセージ',
   'copilotmenu.conflict-help': 'マージ競合のヘルプ',
   'copilotmenu.copilot': 'Copilot',
@@ -390,6 +391,7 @@ const messages: Messages = {
   'repoview.tab-changes': '変更',
   'repoview.tab-history': '履歴',
   'repoview.tab-stashes': 'スタッシュ',
+  'repoview.what-branch-brings-in': '{branch} が {current} にもたらす変更',
   'repoview.what-went-wrong': '何が問題だったか',
   'resizable.drag-to-resize-double-click-to-reset':
     'ドラッグでサイズ変更、ダブルクリックでリセット',
@@ -481,6 +483,7 @@ const messages: Messages = {
   'toolbar.sign-in': 'サインイン',
   'toolbar.sign-in-to-github': 'GitHub にサインイン',
   'toolbar.sign-out-of-github': 'GitHub からサインアウト',
+  'toolbar.summarize-with-copilot': 'Copilot で要約',
   'toolbar.switch-to-branch': 'ブランチに切り替え',
   'toolbar.the-current-branch': '現在のブランチ',
   'toolbar.theme': 'テーマ',

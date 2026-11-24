@@ -155,6 +155,7 @@ const messages: Messages = {
   'conflictview.use-theirs-for-the-whole-file':
     'Bütün fayl üçün onlarınkını istifadə et',
   'copilotmenu.branch-names': 'Branch adları',
+  'copilotmenu.branch-summaries': 'Branch xülasələri',
   'copilotmenu.commit-messages': 'Commit mesajları',
   'copilotmenu.conflict-help': 'Merge konflikti köməyi',
   'copilotmenu.copilot': 'Copilot',
@@ -404,6 +405,7 @@ const messages: Messages = {
   'repoview.tab-changes': 'Dəyişikliklər',
   'repoview.tab-history': 'Tarixçə',
   'repoview.tab-stashes': 'Stash-lər',
+  'repoview.what-branch-brings-in': '{branch} {current} branch-ına nə gətirir',
   'repoview.what-went-wrong': 'Nə səhv getdi',
   'resizable.drag-to-resize-double-click-to-reset':
     'Ölçünü dəyişmək üçün sürükləyin, sıfırlamaq üçün iki dəfə klikləyin',
@@ -497,6 +499,7 @@ const messages: Messages = {
   'toolbar.sign-in': 'Daxil ol',
   'toolbar.sign-in-to-github': 'GitHub-a daxil ol',
   'toolbar.sign-out-of-github': 'GitHub-dan çıx',
+  'toolbar.summarize-with-copilot': 'Copilot ilə xülasə et',
   'toolbar.switch-to-branch': 'Budağa keç',
   'toolbar.the-current-branch': 'cari budaq',
   'toolbar.theme': 'Mövzu',

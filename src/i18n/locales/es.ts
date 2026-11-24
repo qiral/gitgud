@@ -159,6 +159,7 @@ const messages: Messages = {
   'conflictview.use-theirs-for-the-whole-file':
     'Usar la suya en todo el archivo',
   'copilotmenu.branch-names': 'Nombres de rama',
+  'copilotmenu.branch-summaries': 'Resúmenes de ramas',
   'copilotmenu.commit-messages': 'Mensajes de commit',
   'copilotmenu.conflict-help': 'Ayuda con conflictos de merge',
   'copilotmenu.copilot': 'Copilot',
@@ -412,6 +413,7 @@ const messages: Messages = {
   'repoview.tab-changes': 'Cambios',
   'repoview.tab-history': 'Historial',
   'repoview.tab-stashes': 'Stashes',
+  'repoview.what-branch-brings-in': 'Lo que {branch} aporta a {current}',
   'repoview.what-went-wrong': 'Qué salió mal',
   'resizable.drag-to-resize-double-click-to-reset':
     'Arrastra para cambiar el tamaño, doble clic para restablecer',
@@ -505,6 +507,7 @@ const messages: Messages = {
   'toolbar.sign-in': 'Iniciar sesión',
   'toolbar.sign-in-to-github': 'Iniciar sesión en GitHub',
   'toolbar.sign-out-of-github': 'Cerrar sesión en GitHub',
+  'toolbar.summarize-with-copilot': 'Resumir con Copilot',
   'toolbar.switch-to-branch': 'Cambiar a la rama',
   'toolbar.the-current-branch': 'la rama actual',
   'toolbar.theme': 'Tema',

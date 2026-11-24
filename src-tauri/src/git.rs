@@ -823,6 +823,20 @@ pub fn is_ancestor(repo: &Path, ancestor: &str, commit: &str) -> Result<bool> {
     )
 }
 
+/// The newest commit both `a` and `b` have in their history.
+pub fn merge_base(repo: &Path, a: &str, b: &str) -> Result<String> {
+    check_sha(a)?;
+    check_sha(b)?;
+    Ok(run(repo, &["merge-base", a, b])?.trim().to_string())
+}
+
+/// Everything that changed from `from` to `to`. Takes commit ids only.
+pub fn diff_between(repo: &Path, from: &str, to: &str) -> Result<String> {
+    check_sha(from)?;
+    check_sha(to)?;
+    run(repo, &["diff", "--no-color", "--no-ext-diff", from, to])
+}
+
 /// Messages of the commits after `from` up to `to`, oldest first, and the
 /// files they changed. Takes commit ids only.
 pub fn range(repo: &Path, from: &str, to: &str) -> Result<(Vec<String>, String)> {
@@ -2012,6 +2026,51 @@ mod tests {
         assert_eq!(untracked, ["new.txt"]);
         assert!(!diff.contains("secret stuff"), "only names of new files");
         assert!(uncommitted_changes(repo, false).unwrap().2.is_empty());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn what_a_branch_brings_in() {
+        let dir = std::env::temp_dir().join(format!("gitgud-brings-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = dir.as_path();
+        run(repo, &["init", "-q", "-b", "main"]).unwrap();
+        for (k, v) in [
+            ("user.name", "T"),
+            ("user.email", "t@x"),
+            ("commit.gpgsign", "false"),
+        ] {
+            run(repo, &["config", k, v]).unwrap();
+        }
+        let head = |repo| {
+            run(repo, &["rev-parse", "HEAD"])
+                .unwrap()
+                .trim()
+                .to_string()
+        };
+        std::fs::write(dir.join("base.txt"), "x\n").unwrap();
+        stage(repo, &["base.txt".into()]).unwrap();
+        commit(repo, "base").unwrap();
+        let base = head(repo);
+        run(repo, &["switch", "-q", "-c", "feature"]).unwrap();
+        std::fs::write(dir.join("feature.txt"), "new\n").unwrap();
+        stage(repo, &["feature.txt".into()]).unwrap();
+        commit(repo, "add feature").unwrap();
+        let tip = head(repo);
+        run(repo, &["switch", "-q", "main"]).unwrap();
+        std::fs::write(dir.join("main.txt"), "m\n").unwrap();
+        stage(repo, &["main.txt".into()]).unwrap();
+        commit(repo, "main moves on").unwrap();
+
+        assert_eq!(merge_base(repo, &head(repo), &tip).unwrap(), base);
+        let diff = diff_between(repo, &base, &tip).unwrap();
+        assert!(diff.contains("+new"));
+        assert!(!diff.contains("main.txt"));
+        assert!(
+            diff_between(repo, "feature", &tip).is_err(),
+            "only commit ids"
+        );
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

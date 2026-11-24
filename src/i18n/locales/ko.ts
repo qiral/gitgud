@@ -147,6 +147,7 @@ const messages: Messages = {
   'conflictview.use-theirs': '상대 쪽 사용',
   'conflictview.use-theirs-for-the-whole-file': '파일 전체에 상대 쪽 사용',
   'copilotmenu.branch-names': '브랜치 이름',
+  'copilotmenu.branch-summaries': '브랜치 요약',
   'copilotmenu.commit-messages': '커밋 메시지',
   'copilotmenu.conflict-help': '병합 충돌 도움',
   'copilotmenu.copilot': 'Copilot',
@@ -385,6 +386,8 @@ const messages: Messages = {
   'repoview.tab-changes': '변경 사항',
   'repoview.tab-history': '기록',
   'repoview.tab-stashes': '스태시',
+  'repoview.what-branch-brings-in':
+    '{branch}이(가) {current}에 가져오는 변경 사항',
   'repoview.what-went-wrong': '무엇이 잘못되었나요',
   'resizable.drag-to-resize-double-click-to-reset':
     '드래그해서 크기 조절, 두 번 클릭해서 초기화',
@@ -476,6 +479,7 @@ const messages: Messages = {
   'toolbar.sign-in': '로그인',
   'toolbar.sign-in-to-github': 'GitHub에 로그인',
   'toolbar.sign-out-of-github': 'GitHub에서 로그아웃',
+  'toolbar.summarize-with-copilot': 'Copilot으로 요약',
   'toolbar.switch-to-branch': '브랜치로 전환',
   'toolbar.the-current-branch': '현재 브랜치',
   'toolbar.theme': '테마',

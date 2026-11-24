@@ -477,6 +477,36 @@ impl Copilot {
 }
 
 impl Copilot {
+    /// What `branch` would bring into the current branch: its commits and
+    /// changes since the two split.
+    pub async fn branch_summary(
+        &self,
+        app_data: &Path,
+        repo: PathBuf,
+        branch: String,
+    ) -> Result<String> {
+        let prompt = blocking(move || {
+            let head = git::resolve_commit(&repo, "HEAD")?;
+            let tip = git::resolve_commit(&repo, &branch)?;
+            let base = git::merge_base(&repo, &head, &tip)?;
+            let (messages, stat) = git::range(&repo, &base, &tip)?;
+            if messages.is_empty() {
+                return Err(GitError::Failed(format!(
+                    "{branch} has nothing your branch doesn't already have"
+                )));
+            }
+            let diff = git::diff_between(&repo, &base, &tip)?;
+            let current = git::status(&repo)?.branch.unwrap_or_else(|| "HEAD".into());
+            Ok(branch_summary_prompt(
+                &branch, &current, &messages, &stat, &diff,
+            ))
+        })
+        .await?;
+        Ok(self.ask(app_data, prompt).await?.trim().to_string())
+    }
+}
+
+impl Copilot {
     /// What a failed git action's error means and what to do next. Only the
     /// action and the error are sent, without the repository's path.
     pub async fn explain_error(
@@ -722,6 +752,27 @@ fn commit_prompt(stat: &str, diff: &str, subjects: &[String]) -> String {
         cap(diff, MAX_INPUT)
     ));
     prompt
+}
+
+fn branch_summary_prompt(
+    branch: &str,
+    current: &str,
+    messages: &[String],
+    stat: &str,
+    diff: &str,
+) -> String {
+    let mut commits = String::new();
+    for message in messages {
+        commits.push_str(&format!("---\n{}\n", message.trim()));
+    }
+    format!(
+        "Summarize what merging the branch {branch} into {current} would bring \
+         in: a short overview, then 3 to 5 bullets on what changes and anything \
+         that could break or conflict. Plain text, no headings.\n\n\
+         Commits on {branch}, oldest first:\n{}\nChanged files:\n{stat}\nChanges:\n{}",
+        cap(&commits, MAX_INPUT / 5),
+        cap(diff, MAX_INPUT)
+    )
 }
 
 fn error_prompt(action: &str, error: &str, repo: &str) -> String {
@@ -1323,6 +1374,28 @@ mod tests {
             assert!(prompt.contains(expected), "missing {expected}");
         }
         assert!(!prompt.contains("/home/ada"));
+    }
+
+    #[test]
+    fn branch_summary_prompt_says_which_way_the_changes_go() {
+        let prompt = branch_summary_prompt(
+            "feature/login",
+            "main",
+            &["add login form".into()],
+            " login.rs | 40 +++\n",
+            "+fn login() {}\n",
+        );
+        for expected in [
+            "feature/login",
+            "main",
+            "add login form",
+            "login.rs | 40 +++",
+            "+fn login() {}",
+        ] {
+            assert!(prompt.contains(expected), "missing {expected}");
+        }
+        let huge = branch_summary_prompt("f", "main", &[], "", &"+x\n".repeat(100_000));
+        assert!(huge.contains("[… truncated]"));
     }
 
     #[test]

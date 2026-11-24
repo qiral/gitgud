@@ -241,6 +241,9 @@ export const copilot = {
   commitMessage: (repo: string) =>
     invoke<string>('copilot_commit_message', { repo }),
   explain: (diff: string) => invoke<string>('copilot_explain', { diff }),
+  /** What `branch` would bring into the current branch. */
+  branchSummary: (repo: string, branch: string) =>
+    invoke<string>('copilot_branch_summary', { repo, branch }),
   /** What a failed git action's error means and what to do next. */
   explainError: (repo: string, action: string, error: string) =>
     invoke<string>('copilot_explain_error', { repo, action, error }),

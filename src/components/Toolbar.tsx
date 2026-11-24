@@ -70,6 +70,9 @@ interface Props {
   /** The pull request button, when the branch can have one. */
   pullRequest?: React.ReactNode
   act: (label: string, action: () => Promise<unknown>) => Promise<boolean>
+  /** Asks Copilot what a branch would bring into the current one; unset to
+   *  hide. */
+  onSummarizeBranch?: (name: string) => void
 }
 
 export default function Toolbar({
@@ -91,6 +94,7 @@ export default function Toolbar({
   onPalette,
   pullRequest,
   act,
+  onSummarizeBranch,
 }: Props) {
   const { t: tx, tp: txp } = useTranslation()
   const { ahead, behind, hasUpstream, needsRemote, diverged } = sync
@@ -111,6 +115,7 @@ export default function Toolbar({
         branches={branches}
         remoteBranches={remoteBranches}
         act={act}
+        onSummarizeBranch={onSummarizeBranch}
       />
 
       <div className="flex-1" />
@@ -482,6 +487,7 @@ const COPILOT_LABELS: Record<CopilotAction, string> = {
   conflicts: 'copilotmenu.conflict-help',
   branchName: 'copilotmenu.branch-names',
   releaseNotes: 'copilotmenu.release-notes',
+  branchSummary: 'copilotmenu.branch-summaries',
   squashMessage: 'copilotmenu.squash-messages',
   pullRequest: 'copilotmenu.pull-request-descriptions',
 }
@@ -654,13 +660,22 @@ function suggestUpstream(b: Branch, remoteBranches: string[]) {
   )
 }
 
-function BranchMenu({
+export function BranchMenu({
   repo,
   status,
   branches,
   remoteBranches,
   act,
-}: Pick<Props, 'repo' | 'status' | 'branches' | 'remoteBranches' | 'act'>) {
+  onSummarizeBranch,
+}: Pick<
+  Props,
+  | 'repo'
+  | 'status'
+  | 'branches'
+  | 'remoteBranches'
+  | 'act'
+  | 'onSummarizeBranch'
+>) {
   const { t: tx } = useTranslation()
   const [open, setOpen] = useState(false)
   const [newName, setNewName] = useState('')
@@ -734,6 +749,15 @@ function BranchMenu({
         label: tx('toolbar.merge-into-branch', { branch: status.branch }),
         icon: GitMerge,
         onClick: () => mergeIn(b.name),
+      })
+    if (!b.current && onSummarizeBranch)
+      items.push({
+        label: tx('toolbar.summarize-with-copilot'),
+        icon: Sparkles,
+        onClick: () => {
+          setOpen(false)
+          onSummarizeBranch(b.name)
+        },
       })
     if (items.length > 0) items.push('separator')
     items.push(

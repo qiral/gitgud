@@ -484,6 +484,18 @@ export default function RepoView({
         onPalette={palette.openPalette}
         pullRequest={pullRequests.button}
         act={act}
+        onSummarizeBranch={
+          copilotOn.branchSummary
+            ? (branch) =>
+                showAnswer(
+                  tx('repoview.what-branch-brings-in', {
+                    branch,
+                    current: status?.branch ?? 'HEAD',
+                  }),
+                  () => copilot.branchSummary(repo.path, branch),
+                )
+            : undefined
+        }
       />
 
       {dialog === 'signIn' && (

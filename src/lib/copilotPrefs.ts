@@ -11,6 +11,7 @@ export const COPILOT_ACTIONS = [
   'conflicts',
   'branchName',
   'releaseNotes',
+  'branchSummary',
   'squashMessage',
   'pullRequest',
 ] as const
