@@ -178,7 +178,8 @@ struct ApiUser {
 /// Asks the host who the token belongs to and returns that username.
 fn verify(url: &str, kind: HostKind, token: &str) -> Result<String> {
     let request = match kind {
-        HostKind::Gitlab => ureq::get(format!("{url}api/v4/user")).header("PRIVATE-TOKEN", token),
+        HostKind::Gitlab => ureq::get(format!("{url}api/v4/user"))
+            .header("Authorization", format!("Bearer {token}")),
         HostKind::Gitea => {
             ureq::get(format!("{url}api/v1/user")).header("Authorization", format!("token {token}"))
         }
@@ -189,6 +190,9 @@ fn verify(url: &str, kind: HostKind, token: &str) -> Result<String> {
         .header("User-Agent", USER_AGENT)
         .config()
         .http_status_as_error(false)
+        // The token is only for the address the user typed, never wherever
+        // that server sends us next.
+        .max_redirects(0)
         .build()
         .call()
         .map_err(|e| GitError::Failed(format!("Could not reach {url}: {e}")))?;
@@ -268,6 +272,39 @@ fn env_for(creds: &[(String, String, String)]) -> Vec<(String, String)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Answers one request with `response` and reports what it was sent.
+    fn serve_once(response: String) -> (String, std::sync::mpsc::Receiver<String>) {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = format!("http://{}/", listener.local_addr().unwrap());
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            if let Ok((mut stream, _)) = listener.accept() {
+                let mut buf = [0u8; 4096];
+                let n = stream.read(&mut buf).unwrap_or(0);
+                let _ = tx.send(String::from_utf8_lossy(&buf[..n]).into_owned());
+                let _ = stream.write_all(response.as_bytes());
+            }
+        });
+        (addr, rx)
+    }
+
+    #[test]
+    fn a_redirect_never_carries_a_token_to_another_host() {
+        let ok = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 17\r\nConnection: close\r\n\r\n{\"username\":\"x\"}";
+        for kind in [HostKind::Gitlab, HostKind::Gitea] {
+            let (other, seen_by_other) = serve_once(ok.to_string());
+            let (first, _) = serve_once(format!(
+                "HTTP/1.1 302 Found\r\nLocation: {other}api/v4/user\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+            ));
+            assert!(verify(&first, kind, "secret-token").is_err(), "{kind:?}");
+            let leaked = seen_by_other
+                .recv_timeout(std::time::Duration::from_millis(300))
+                .is_ok_and(|request| request.contains("secret-token"));
+            assert!(!leaked, "{kind:?} sent the token to the other host");
+        }
+    }
 
     #[test]
     fn normalizes_what_people_type() {
