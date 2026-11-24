@@ -1386,6 +1386,19 @@ pub fn push_force(repo: &Path, env: &[(String, String)]) -> Result<()> {
 }
 
 /// URL of the `origin` remote, if there is one.
+/// Every remote's fetch and push URL.
+pub fn remote_urls(repo: &Path) -> Result<Vec<String>> {
+    let out = run(repo, &["remote", "-v"])?;
+    let mut urls: Vec<String> = out
+        .lines()
+        .filter_map(|line| line.split_whitespace().nth(1))
+        .map(str::to_string)
+        .collect();
+    urls.sort();
+    urls.dedup();
+    Ok(urls)
+}
+
 pub fn origin_url(repo: &Path) -> Result<Option<String>> {
     let out = output(repo, &["remote", "get-url", "origin"])?;
     Ok(out

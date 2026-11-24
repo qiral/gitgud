@@ -262,7 +262,7 @@ fn push_tag(repo: String, name: String, remote: Option<String>) -> Result<()> {
         Path::new(&repo),
         &name,
         remote.as_deref(),
-        &hosts::git_env(),
+        &hosts::git_env_for_repo(Path::new(&repo)),
     ))
 }
 
@@ -320,7 +320,10 @@ fn rebase_abort(repo: String) -> Result<()> {
 
 #[tauri::command(async)]
 fn push_force(repo: String) -> Result<()> {
-    check_github_auth(git::push_force(Path::new(&repo), &hosts::git_env()))
+    check_github_auth(git::push_force(
+        Path::new(&repo),
+        &hosts::git_env_for_repo(Path::new(&repo)),
+    ))
 }
 
 #[tauri::command(async)]
@@ -386,7 +389,7 @@ fn fetch(repo: String, remote: Option<String>, prune: bool) -> Result<()> {
         Path::new(&repo),
         remote.as_deref(),
         prune,
-        &hosts::git_env(),
+        &hosts::git_env_for_repo(Path::new(&repo)),
     ))
 }
 
@@ -394,7 +397,7 @@ fn fetch(repo: String, remote: Option<String>, prune: bool) -> Result<()> {
 fn pull(repo: String, mode: Option<PullMode>, remember: bool) -> Result<PullOutcome> {
     check_github_auth(git::pull(
         Path::new(&repo),
-        &hosts::git_env(),
+        &hosts::git_env_for_repo(Path::new(&repo)),
         mode,
         remember,
     ))
@@ -405,7 +408,7 @@ fn push(repo: String, remote: Option<String>) -> Result<()> {
     check_github_auth(git::push(
         Path::new(&repo),
         remote.as_deref(),
-        &hosts::git_env(),
+        &hosts::git_env_for_repo(Path::new(&repo)),
     ))
 }
 
@@ -532,7 +535,11 @@ fn publish_to_github(
     }
     let created = github::create_repo(&name, &description, private)?;
     git::add_origin(path, &created.clone_url)?;
-    check_github_auth(git::push(path, Some("origin"), &hosts::git_env()))?;
+    check_github_auth(git::push(
+        path,
+        Some("origin"),
+        &hosts::git_env_for_repo(path),
+    ))?;
     Ok(created)
 }
 
@@ -589,7 +596,7 @@ fn clone_repo(
         &url,
         Path::new(&parent),
         &name,
-        &hosts::git_env(),
+        &hosts::git_env_for(&[url.trim().to_string()]),
         &cancel,
         |p| {
             let _ = app.emit("clone-progress", p);
