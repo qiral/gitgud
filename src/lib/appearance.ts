@@ -40,6 +40,8 @@ export interface Appearance {
   codeSize: number
   /** A font installed on this machine; empty uses the default. */
   codeFont: string
+  /** Syntax highlighting in diffs and blame. */
+  syntax: boolean
 }
 
 const isTheme = (id: unknown, dark?: boolean): id is string =>
@@ -69,6 +71,7 @@ export function readAppearance(): Appearance {
     codeSize:
       size >= MIN_CODE_SIZE && size <= MAX_CODE_SIZE ? size : DEFAULT_CODE_SIZE,
     codeFont: typeof raw.codeFont === 'string' ? raw.codeFont : '',
+    syntax: raw.syntax !== false,
   }
 }
 

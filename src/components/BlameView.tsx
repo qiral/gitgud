@@ -17,6 +17,7 @@ import { basename, dirname } from '../lib/paths'
 import { readFlag, writeFlag } from '../lib/prefs'
 import { relativeTime } from '../lib/time'
 import { codeRow, useAppearance } from '../lib/appearance'
+import { paint, SYNTAX, tokenizeLines, useTokens } from '../lib/syntax'
 import { useVirtualRows } from '../lib/virtual'
 import { useContextMenu, type MenuItem } from './ContextMenu'
 import { Toggle } from './FileHeader'
@@ -72,6 +73,12 @@ function longestLine(blame: Blame) {
 }
 
 /** A file with the commit that last changed each of its lines. */
+const blameTokens = (code: Blame['lines'], language: string) =>
+  tokenizeLines(
+    code.map((l) => l.text),
+    language,
+  )
+
 export default function BlameView({
   repo,
   target,
@@ -112,7 +119,13 @@ export default function BlameView({
   const blame = loaded?.step === step ? loaded.blame : null
   const groups = useMemo(() => (blame ? groupLines(blame) : []), [blame])
   const width = useMemo(() => (blame ? longestLine(blame) : 0), [blame])
-  const rowHeight = codeRow(useAppearance().codeSize)
+  const { codeSize, syntax } = useAppearance()
+  const rowHeight = codeRow(codeSize)
+  const tokens = useTokens(
+    syntax && blame ? step.path : undefined,
+    blame?.lines,
+    blameTokens,
+  )
   const rows = useVirtualRows<HTMLDivElement>(
     blame?.lines.length ?? 0,
     rowHeight,
@@ -300,7 +313,13 @@ export default function BlameView({
                     {i + 1}
                   </span>
                   <span className="whitespace-pre select-text">
-                    {line.text}
+                    {tokens?.[i]
+                      ? paint(line.text, tokens[i]).map((s, k) => (
+                          <span key={k} className={s.kind && SYNTAX[s.kind]}>
+                            {s.text}
+                          </span>
+                        ))
+                      : line.text}
                   </span>
                 </div>
               )

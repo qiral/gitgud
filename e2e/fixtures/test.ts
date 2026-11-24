@@ -101,6 +101,29 @@ function installTauriMock({
         '+const b = 2',
         '',
       ].join('\n'),
+    compare: (args) => ({
+      baseHash: commit.parents[0],
+      headHash: commit.hash,
+      related: true,
+      ahead: [commit],
+      aheadCount: 1,
+      behind: [],
+      behindCount: 0,
+      diff: args.direct
+        ? ''
+        : [
+            'diff --git a/src/login.ts b/src/login.ts',
+            '--- a/src/login.ts',
+            '+++ b/src/login.ts',
+            '@@ -1,3 +1,4 @@',
+            ' // Signs in.',
+            "-const user = load('me')",
+            "+const user = load('you', 2)",
+            '+export function login() {}',
+            ' return user',
+            '',
+          ].join('\n'),
+    }),
     blame: (args) =>
       args.rev === commit.hash
         ? {

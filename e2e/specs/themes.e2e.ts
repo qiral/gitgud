@@ -53,7 +53,7 @@ test('picks a theme in the appearance dialog and keeps it', async ({
   await page.goto('/')
   await page.getByRole('button', { name: 'Appearance' }).click()
   const dialog = page.getByRole('dialog', { name: 'Appearance' })
-  await dialog.getByRole('checkbox').uncheck()
+  await dialog.getByRole('checkbox', { name: 'Match system' }).uncheck()
   await dialog.getByPlaceholder('Search themes').fill('synth')
   await dialog.getByRole('button', { name: 'Synthwave' }).click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'synthwave')

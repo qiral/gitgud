@@ -123,6 +123,22 @@ export type UndoKind =
   | 'dropStash'
   | 'discard'
 
+/** What differs between two branches or commits; see
+ *  src-tauri/src/compare.rs. */
+export interface Differences {
+  baseHash: string
+  headHash: string
+  /** Whether the two share any history. */
+  related: boolean
+  /** Commits only the head has, newest first; long lists are cut. */
+  ahead: Commit[]
+  aheadCount: number
+  /** Commits only the base has. */
+  behind: Commit[]
+  behindCount: number
+  diff: string
+}
+
 /** What can be undone right now; see src-tauri/src/undo.rs. */
 export interface Undoable {
   /** Grows with every action. */
@@ -433,6 +449,22 @@ export const git = {
     invoke<GraphRow[]>('graph_layout', { commits }),
   showCommit: (repo: string, hash: string, ignoreWhitespace = false) =>
     invoke<string>('show_commit', { repo, hash, ignoreWhitespace }),
+  /** What `head` changed since it split from `base`, or with `direct`
+   *  everything that differs between the two. */
+  compare: (
+    repo: string,
+    base: string,
+    head: string,
+    direct: boolean,
+    ignoreWhitespace: boolean,
+  ) =>
+    invoke<Differences>('compare', {
+      repo,
+      base,
+      head,
+      direct,
+      ignoreWhitespace,
+    }),
   merge: (repo: string, branch: string) =>
     invoke<{ conflicts: boolean }>('merge', { repo, branch }),
   mergeAbort: (repo: string) => invoke<void>('merge_abort', { repo }),

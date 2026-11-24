@@ -41,6 +41,12 @@
   --color-removed: var(--app-removed);
   --color-removed-bg: var(--app-removed-bg);
   --color-modified: var(--app-modified);
+  --color-syn-keyword: var(--app-syn-keyword);
+  --color-syn-string: var(--app-syn-string);
+  --color-syn-number: var(--app-syn-number);
+  --color-syn-function: var(--app-syn-function);
+  --color-syn-type: var(--app-syn-type);
+  --color-syn-variable: var(--app-syn-variable);
   --color-on-accent: var(--app-on-accent);
 }
 

@@ -29,6 +29,12 @@ import PatchView from './PatchView'
 import FileHeader from './FileHeader'
 import { CommitHeader, StashHeader } from './CommitHeader'
 import BlameView, { type BlameTarget } from './BlameView'
+import CompareView, {
+  branchSide,
+  commitSide,
+  type CompareSide,
+  type CompareTarget,
+} from './CompareView'
 import ConflictView from './ConflictView'
 import RebaseDialog from './RebaseDialog'
 import SignInDialog from './SignInDialog'
@@ -109,6 +115,8 @@ export default function RepoView({
   const [selection, setSelection] = useState<Selection | null>(null)
   /** Covers the right-hand pane until something else is picked. */
   const [blame, setBlame] = useState<BlameTarget | null>(null)
+  /** Also covers the pane, below blame. */
+  const [compare, setCompare] = useState<CompareTarget | null>(null)
   const [reveal, setReveal] = useState<{ hash: string } | null>(null)
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter | null>(null)
   const [filtered, setFiltered] = useState<Commit[] | null>(null)
@@ -194,6 +202,7 @@ export default function RepoView({
   const showFileHistory = useCallback(
     (path: string) => {
       setTab('history')
+      setCompare(null)
       changeFilter({ kind: 'file', path })
     },
     [changeFilter],
@@ -203,7 +212,21 @@ export default function RepoView({
     (path: string) => setBlame({ path, rev: null }),
     [],
   )
-  useEffect(() => setBlame(null), [selection])
+  useEffect(() => {
+    setBlame(null)
+    setCompare(null)
+  }, [selection])
+
+  /** What `head` has that the current branch doesn't. */
+  const compareWithCurrent = (head: CompareSide) => {
+    setBlame(null)
+    setCompare({
+      base: status?.branch
+        ? branchSide(status.branch)
+        : { rev: 'HEAD', label: tx('toolbar.detached-head') },
+      head,
+    })
+  }
 
   /** Selects a commit in History, however old it is. */
   async function showCommit(hash: string) {
@@ -218,6 +241,7 @@ export default function RepoView({
       // Not scrolled far enough for the list to have it: list only that one.
       changeFilter(loaded ? null : { kind: 'search', query: hash })
       setReveal({ hash })
+      setCompare(null)
       setSelection({ kind: 'commit', commit })
     } catch (e) {
       setError(errorMessage(e))
@@ -403,6 +427,7 @@ export default function RepoView({
     setTab(t)
     setSelection(null)
     setBlame(null)
+    setCompare(null)
     setReveal(null)
     setFocusSearch(0)
   }
@@ -436,6 +461,7 @@ export default function RepoView({
     onOpenRecent,
     onClone,
     onAppearance,
+    onCompare: compareWithCurrent,
     onStash: () => setDialog('stash'),
     onSignIn: openSignIn,
     onSignOut: signOut,
@@ -496,6 +522,7 @@ export default function RepoView({
         sync={sync}
         onPalette={palette.openPalette}
         onAppearance={onAppearance}
+        onCompare={(name) => compareWithCurrent(branchSide(name))}
         pullRequest={pullRequests.button}
         act={act}
         onSummarizeBranch={
@@ -651,6 +678,13 @@ export default function RepoView({
               filtered={filtered}
               focusSearch={focusSearch}
               reveal={reveal}
+              onCompare={(from, to) => {
+                setBlame(null)
+                setCompare({ base: commitSide(from), head: commitSide(to) })
+              }}
+              comparing={
+                compare ? [compare.base.rev, compare.head.rev] : undefined
+              }
               onReleaseNotes={
                 copilotOn.releaseNotes
                   ? (from, to) =>
@@ -716,6 +750,19 @@ export default function RepoView({
                   : undefined
               }
               onClose={() => setBlame(null)}
+            />
+          ) : compare ? (
+            <CompareView
+              repo={repo.path}
+              target={compare}
+              branches={branches}
+              remoteBranches={remoteBranches}
+              version={status}
+              onChange={setCompare}
+              onShowCommit={showCommit}
+              onFileHistory={showFileHistory}
+              onBlame={(path, rev) => setBlame({ path, rev })}
+              onClose={() => setCompare(null)}
             />
           ) : selection?.kind === 'file' && conflictedSelection ? (
             <div className="min-h-0 flex-1 overflow-auto">
@@ -813,6 +860,7 @@ export default function RepoView({
               <div className="min-h-0 flex-1 overflow-auto">
                 <DiffView
                   diff={diff}
+                  path={selection.file.path}
                   actions={
                     !selection.file.conflicted
                       ? {

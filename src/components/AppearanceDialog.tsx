@@ -22,6 +22,7 @@ import {
   type Appearance,
 } from '../lib/appearance'
 import { THEMES, type ThemeInfo } from '../lib/themes'
+import { SYNTAX, type SyntaxKind } from '../lib/syntax'
 import { fuzzyFilter } from '../lib/fuzzy'
 import { useTranslation } from '../i18n'
 
@@ -46,6 +47,7 @@ export default function AppearanceDialog({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const active = resolveTheme(a)
+  const syn = (kind: SyntaxKind) => (a.syntax ? SYNTAX[kind] : '')
   const system = a.theme === 'system'
   const list = useRef<HTMLDivElement>(null)
 
@@ -258,16 +260,33 @@ export default function AppearanceDialog({ onClose }: { onClose: () => void }) {
               spellCheck={false}
               className="w-full rounded-md border border-line bg-bg px-2 py-1.5 outline-none focus:border-accent"
             />
+            <label className="mt-2 flex items-center gap-2">
+              <span className="flex-1 text-muted">
+                {t('appearance.syntax')}
+              </span>
+              <input
+                type="checkbox"
+                checked={a.syntax}
+                onChange={(e) => setAppearance({ syntax: e.target.checked })}
+                className="accent-accent"
+              />
+            </label>
             <div
               className="code-text mt-2 overflow-hidden rounded-md border border-line bg-bg whitespace-pre"
               aria-hidden
             >
-              <div className="px-2">const git = {'{'}</div>
+              <div className="px-2">
+                <span className={syn('keyword')}>const</span> git = {'{'}
+              </div>
               <div className="bg-removed-bg px-2">
-                <span className="text-removed">-</span> good: false
+                <span className="text-removed">-</span>{' '}
+                <span className={syn('variable')}>good</span>:{' '}
+                <span className={syn('number')}>false</span>
               </div>
               <div className="bg-added-bg px-2">
-                <span className="text-added">+</span> good: true
+                <span className="text-added">+</span>{' '}
+                <span className={syn('variable')}>good</span>:{' '}
+                <span className={syn('number')}>true</span>
               </div>
               <div className="px-2">{'}'}</div>
             </div>
@@ -283,6 +302,7 @@ export default function AppearanceDialog({ onClose }: { onClose: () => void }) {
                 diffColors: 'default',
                 codeSize: 12,
                 codeFont: '',
+                syntax: true,
               })
             }
             className="flex items-center gap-2 text-xs text-muted hover:text-fg"
