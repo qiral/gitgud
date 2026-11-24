@@ -45,3 +45,27 @@ it('stays open when the action fails', async () => {
   await waitFor(() => expect(onSubmit).toHaveBeenCalled())
   expect(onClose).not.toHaveBeenCalled()
 })
+
+it('turns a description into a suggested name', async () => {
+  const onSuggest = vi.fn(async () => 'fix/mobile-login')
+  render(
+    <PromptDialog
+      title="New branch"
+      label="Name"
+      submitLabel="Create branch"
+      onSuggest={onSuggest}
+      onSubmit={async () => true}
+      onClose={() => {}}
+    />,
+  )
+  const suggest = screen.getByRole('button', {
+    name: 'Suggest a name with Copilot',
+  }) as HTMLButtonElement
+  expect(suggest.disabled).toBe(true)
+
+  const field = screen.getByRole('textbox') as HTMLInputElement
+  fireEvent.change(field, { target: { value: 'fix login on phones' } })
+  fireEvent.click(suggest)
+  await waitFor(() => expect(field.value).toBe('fix/mobile-login'))
+  expect(onSuggest).toHaveBeenCalledWith('fix login on phones')
+})

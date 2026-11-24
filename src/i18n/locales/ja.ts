@@ -239,6 +239,9 @@ const messages: Messages = {
   'hostsdialog.username': 'ユーザー名',
   'patchview.no-file-changes-in-this-commit':
     'このコミットにファイルの変更はありません。',
+  'promptdialog.name-or-description':
+    '名前を入力するか、作業内容を書いて ✨ を押してください',
+  'promptdialog.suggest-a-name-with-copilot': 'Copilot で名前を提案',
   'publishdialog.description-optional': '説明 (任意)',
   'publishdialog.keep-this-repository-private': 'このリポジトリを非公開にする',
   'publishdialog.name': '名前',

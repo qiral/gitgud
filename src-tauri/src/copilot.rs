@@ -477,6 +477,30 @@ impl Copilot {
 }
 
 impl Copilot {
+    /// A branch name for the work `description` describes, in the style of
+    /// the repository's existing branches.
+    pub async fn branch_name(
+        &self,
+        app_data: &Path,
+        repo: PathBuf,
+        description: String,
+    ) -> Result<String> {
+        let names = blocking(move || {
+            Ok(git::branches(&repo)?
+                .into_iter()
+                .map(|b| b.name)
+                .take(30)
+                .collect::<Vec<_>>())
+        })
+        .await?;
+        let reply = self
+            .ask(app_data, branch_name_prompt(&description, &names))
+            .await?;
+        Ok(clean_branch_name(&reply))
+    }
+}
+
+impl Copilot {
     /// Likely problems in the staged changes, before they're committed.
     pub async fn review(&self, app_data: &Path, repo: PathBuf) -> Result<String> {
         let (stat, diff) =
@@ -598,6 +622,44 @@ fn commit_prompt(stat: &str, diff: &str, subjects: &[String]) -> String {
         cap(diff, MAX_INPUT)
     ));
     prompt
+}
+
+fn branch_name_prompt(description: &str, existing: &[String]) -> String {
+    let mut prompt = format!(
+        "Suggest one git branch name for this work: {}\n\n\
+         - Lowercase words joined by hyphens, under 40 characters.\n\
+         - Use a prefix like feature/ or fix/ only if the existing branches do.\n\
+         - Reply with the branch name only.\n",
+        cap(description, 1_000)
+    );
+    if !existing.is_empty() {
+        prompt.push_str("\nExisting branches:\n");
+        for name in existing {
+            prompt.push_str(&format!("  {name}\n"));
+        }
+    }
+    prompt
+}
+
+/// Copilot's reply as a usable branch name: no quotes, labels or spaces.
+fn clean_branch_name(reply: &str) -> String {
+    let line = reply
+        .lines()
+        .map(str::trim)
+        .find(|l| !l.is_empty())
+        .unwrap_or("");
+    let line = line.rsplit_once(": ").map_or(line, |(_, name)| name);
+    let mut name = String::new();
+    for c in line.to_lowercase().chars() {
+        match c {
+            '`' | '"' | '\'' => {}
+            c if c.is_alphanumeric() || matches!(c, '/' | '_' | '.') => name.push(c),
+            _ if !name.ends_with('-') => name.push('-'),
+            _ => {}
+        }
+    }
+    name.trim_matches(|c| c == '-' || c == '/' || c == '.')
+        .to_string()
 }
 
 /// What a review with nothing to report says, so the reply stays short.
@@ -1006,6 +1068,34 @@ mod tests {
         }
         let huge = review_prompt("", &"+x\n".repeat(100_000));
         assert!(huge.contains("[… truncated]"));
+    }
+
+    #[test]
+    fn branch_name_prompt_shows_the_repos_naming_style() {
+        let prompt = branch_name_prompt(
+            "fix login on phones",
+            &["feature/blame".into(), "fix/typo".into()],
+        );
+        for expected in ["fix login on phones", "feature/blame", "fix/typo"] {
+            assert!(prompt.contains(expected), "missing {expected}");
+        }
+    }
+
+    #[test]
+    fn a_suggested_branch_name_is_cleaned_up() {
+        assert_eq!(clean_branch_name("fix/mobile-login"), "fix/mobile-login");
+        assert_eq!(
+            clean_branch_name("`fix/mobile-login`\n"),
+            "fix/mobile-login"
+        );
+        assert_eq!(
+            clean_branch_name("Branch: \"Fix Mobile Login\""),
+            "fix-mobile-login"
+        );
+        assert_eq!(
+            clean_branch_name("feature/Add  dark mode!"),
+            "feature/add-dark-mode"
+        );
     }
 
     #[test]

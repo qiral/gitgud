@@ -332,10 +332,20 @@ export default function RepoView({
     [refresh],
   )
 
-  const commitActions = useCommitActions(repo.path, status, remotes, act)
   const openSignIn = useCallback(() => setDialog('signIn'), [])
   const ai = useCopilot(setError, account !== null, openSignIn)
   const copilotOn = useCopilotPrefs()
+  const suggestBranchName = copilotOn.branchName
+    ? (description: string) =>
+        ai.run(() => copilot.branchName(repo.path, description))
+    : undefined
+  const commitActions = useCommitActions(
+    repo.path,
+    status,
+    remotes,
+    act,
+    suggestBranchName,
+  )
   const [answer, setAnswer] = useState<{
     title: string
     text: string | null
@@ -385,6 +395,7 @@ export default function RepoView({
   })
   const palette = useRepoCommands({
     repo,
+    suggestBranchName,
     status,
     branches,
     remoteBranches,

@@ -45,6 +45,8 @@ export function useCommitActions(
   status: Status | null,
   remotes: Remote[],
   act: Act,
+  /** Turns a description into a branch name with Copilot. */
+  suggestBranchName?: (description: string) => Promise<string | null>,
 ): { actions: CommitActions; dialogs: React.ReactNode } {
   const { t } = useTranslation()
   const [open, setOpen] = useState<Open | null>(null)
@@ -106,6 +108,7 @@ export function useCommitActions(
         })}
         placeholder="feature/my-idea"
         submitLabel={t('commitactions.create-branch')}
+        onSuggest={suggestBranchName}
         onSubmit={(name) =>
           act('branch', () => git.createBranchAt(repo, name, open.commit.hash))
         }

@@ -241,6 +241,9 @@ export const copilot = {
   commitMessage: (repo: string) =>
     invoke<string>('copilot_commit_message', { repo }),
   explain: (diff: string) => invoke<string>('copilot_explain', { diff }),
+  /** A branch name for the work `description` describes. */
+  branchName: (repo: string, description: string) =>
+    invoke<string>('copilot_branch_name', { repo, description }),
   /** Likely bugs, leftover debug code or secrets in the staged changes. */
   review: (repo: string) => invoke<string>('copilot_review', { repo }),
   /** A pull request title, a blank line, then its description. */

@@ -226,6 +226,8 @@ const messages: Messages = {
   'hostsdialog.type': '类型',
   'hostsdialog.username': '用户名',
   'patchview.no-file-changes-in-this-commit': '此提交没有文件更改。',
+  'promptdialog.name-or-description': '输入名称，或描述工作内容后按 ✨',
+  'promptdialog.suggest-a-name-with-copilot': '使用 Copilot 建议名称',
   'publishdialog.description-optional': '描述（可选）',
   'publishdialog.keep-this-repository-private': '将此仓库设为私有',
   'publishdialog.name': '名称',

@@ -244,6 +244,9 @@ const messages: Messages = {
   'hostsdialog.username': 'Kullanıcı adı',
   'patchview.no-file-changes-in-this-commit':
     "Bu commit'te dosya değişikliği yok.",
+  'promptdialog.name-or-description':
+    'Bir ad yazın ya da işi anlatıp ✨ tuşuna basın',
+  'promptdialog.suggest-a-name-with-copilot': 'Copilot ile ad öner',
   'publishdialog.description-optional': 'Açıklama (isteğe bağlı)',
   'publishdialog.keep-this-repository-private': 'Bu depoyu gizli tut',
   'publishdialog.name': 'Ad',

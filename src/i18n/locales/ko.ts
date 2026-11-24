@@ -235,6 +235,9 @@ const messages: Messages = {
   'hostsdialog.username': '사용자 이름',
   'patchview.no-file-changes-in-this-commit':
     '이 커밋에는 파일 변경이 없습니다.',
+  'promptdialog.name-or-description':
+    '이름을 입력하거나 작업을 설명하고 ✨를 누르세요',
+  'promptdialog.suggest-a-name-with-copilot': 'Copilot으로 이름 제안',
   'publishdialog.description-optional': '설명 (선택)',
   'publishdialog.keep-this-repository-private': '이 저장소를 비공개로 유지',
   'publishdialog.name': '이름',

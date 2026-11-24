@@ -251,6 +251,9 @@ const messages: Messages = {
   'hostsdialog.type': 'Type',
   'hostsdialog.username': 'Username',
   'patchview.no-file-changes-in-this-commit': 'No file changes in this commit.',
+  'promptdialog.name-or-description':
+    'A name, or describe the work and press ✨',
+  'promptdialog.suggest-a-name-with-copilot': 'Suggest a name with Copilot',
   'publishdialog.description-optional': 'Description (optional)',
   'publishdialog.keep-this-repository-private': 'Keep this repository private',
   'publishdialog.name': 'Name',

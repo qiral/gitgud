@@ -250,6 +250,9 @@ const messages: Messages = {
   'hostsdialog.username': 'Nome utente',
   'patchview.no-file-changes-in-this-commit':
     'Nessuna modifica ai file in questo commit.',
+  'promptdialog.name-or-description':
+    'Un nome, oppure descrivi il lavoro e premi ✨',
+  'promptdialog.suggest-a-name-with-copilot': 'Suggerisci un nome con Copilot',
   'publishdialog.description-optional': 'Descrizione (facoltativa)',
   'publishdialog.keep-this-repository-private':
     'Mantieni privato questo repository',
