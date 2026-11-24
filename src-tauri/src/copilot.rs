@@ -496,7 +496,7 @@ impl Copilot {
                 )));
             }
             let diff = git::diff_between(&repo, &base, &tip)?;
-            let current = git::status(&repo)?.branch.unwrap_or_else(|| "HEAD".into());
+            let current = git::current_branch(&repo)?.unwrap_or_else(|| "HEAD".into());
             Ok(branch_summary_prompt(
                 &branch, &current, &messages, &stat, &diff,
             ))
@@ -508,7 +508,8 @@ impl Copilot {
 
 impl Copilot {
     /// What a failed git action's error means and what to do next. Only the
-    /// action and the error are sent, without the repository's path.
+    /// action and the error are sent, with the repository and home folders
+    /// left out.
     pub async fn explain_error(
         &self,
         app_data: &Path,
@@ -516,8 +517,9 @@ impl Copilot {
         action: &str,
         error: &str,
     ) -> Result<String> {
+        let home = std::env::home_dir().map(|h| h.to_string_lossy().into_owned());
         let reply = self
-            .ask(app_data, error_prompt(action, error, repo))
+            .ask(app_data, error_prompt(action, error, repo, home.as_deref()))
             .await?;
         Ok(reply.trim().to_string())
     }
@@ -574,28 +576,8 @@ impl Copilot {
         from: Option<String>,
         to: Option<String>,
     ) -> Result<String> {
-        let (messages, stat) = blocking(move || {
-            let to = git::resolve_commit(&repo, to.as_deref().unwrap_or("HEAD"))?;
-            let from = match from {
-                Some(rev) => git::resolve_commit(&repo, &rev)?,
-                None => {
-                    let tag = git::last_tag(&repo)?.ok_or_else(|| {
-                        GitError::Failed(
-                            "This repository has no tags yet. Pick a commit in History instead."
-                                .into(),
-                        )
-                    })?;
-                    git::resolve_commit(&repo, &tag)?
-                }
-            };
-            let (from, to) = if git::is_ancestor(&repo, &to, &from)? {
-                (to, from)
-            } else {
-                (from, to)
-            };
-            git::range(&repo, &from, &to)
-        })
-        .await?;
+        let (messages, stat) =
+            blocking(move || release_range(&repo, from.as_deref(), to.as_deref())).await?;
         if messages.is_empty() {
             return Err(GitError::Failed("No commits in that range".into()));
         }
@@ -626,7 +608,13 @@ impl Copilot {
         let reply = self
             .ask(app_data, branch_name_prompt(&description, &names))
             .await?;
-        Ok(clean_branch_name(&reply))
+        let name = clean_branch_name(&reply);
+        if name.is_empty() {
+            return Err(GitError::Failed(
+                "Copilot didn't suggest a usable name. Try describing the work differently.".into(),
+            ));
+        }
+        Ok(name)
     }
 }
 
@@ -710,6 +698,39 @@ impl Copilot {
     }
 }
 
+/// Messages and file stats for release notes: the commits after `from` up to
+/// `to` (HEAD when unset), in whichever order the two were given. Without
+/// `from` it's the last tag, or the one before when `to` is tagged itself.
+fn release_range(
+    repo: &Path,
+    from: Option<&str>,
+    to: Option<&str>,
+) -> Result<(Vec<String>, String)> {
+    let to = git::resolve_commit(repo, to.unwrap_or("HEAD"))?;
+    let from = match from {
+        Some(rev) => git::resolve_commit(repo, rev)?,
+        None => {
+            let no_tag = || {
+                GitError::Failed("There's no earlier tag. Pick a commit in History instead.".into())
+            };
+            let tag = git::last_tag(repo, &to)?.ok_or_else(no_tag)?;
+            let tagged = git::resolve_commit(repo, &tag)?;
+            if tagged == to {
+                let before = git::last_tag(repo, &format!("{to}^"))?.ok_or_else(no_tag)?;
+                git::resolve_commit(repo, &before)?
+            } else {
+                tagged
+            }
+        }
+    };
+    let (from, to) = if git::is_ancestor(repo, &to, &from)? {
+        (to, from)
+    } else {
+        (from, to)
+    };
+    git::range(repo, &from, &to)
+}
+
 async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T> + Send + 'static) -> Result<T> {
     tauri::async_runtime::spawn_blocking(f)
         .await
@@ -775,12 +796,29 @@ fn branch_summary_prompt(
     )
 }
 
-fn error_prompt(action: &str, error: &str, repo: &str) -> String {
-    let error = if repo.is_empty() {
-        error.to_string()
-    } else {
-        error.replace(repo, "<repo>")
-    };
+/// `text` with `path` replaced, however its slashes and case are written.
+fn redact(text: &str, path: &str, with: &str) -> String {
+    let mut out = text.to_string();
+    if path.is_empty() {
+        return out;
+    }
+    for variant in [path.replace('\\', "/"), path.replace('/', "\\")] {
+        let needle = variant.to_ascii_lowercase();
+        let mut rest = out.as_str();
+        let mut replaced = String::new();
+        while let Some(at) = rest.to_ascii_lowercase().find(&needle) {
+            replaced.push_str(&rest[..at]);
+            replaced.push_str(with);
+            rest = &rest[at + needle.len()..];
+        }
+        replaced.push_str(rest);
+        out = replaced;
+    }
+    out
+}
+
+fn error_prompt(action: &str, error: &str, repo: &str, home: Option<&str>) -> String {
+    let error = redact(&redact(error, repo, "<repo>"), home.unwrap_or(""), "~");
     format!(
         "A git action failed in GitGud, a desktop Git app. In 2 to 4 plain \
          sentences, say what went wrong and what to do next. Where it fits, \
@@ -858,10 +896,18 @@ fn branch_name_prompt(description: &str, existing: &[String]) -> String {
 
 /// Copilot's reply as a usable branch name: no quotes, labels or spaces.
 fn clean_branch_name(reply: &str) -> String {
-    let line = reply
+    let lines: Vec<&str> = reply
         .lines()
         .map(str::trim)
-        .find(|l| !l.is_empty())
+        .filter(|l| !l.is_empty())
+        .collect();
+    // Replies sometimes lead with "Here's a name:"; the name has no spaces.
+    let line = lines
+        .iter()
+        .rev()
+        .find(|l| !l.contains(' '))
+        .or(lines.first())
+        .copied()
         .unwrap_or("");
     let line = line.rsplit_once(": ").map_or(line, |(_, name)| name);
     let mut name = String::new();
@@ -1311,6 +1357,11 @@ mod tests {
             clean_branch_name("feature/Add  dark mode!"),
             "feature/add-dark-mode"
         );
+        assert_eq!(
+            clean_branch_name("Here's a suggestion:\nfix/login-crash"),
+            "fix/login-crash"
+        );
+        assert_eq!(clean_branch_name("  \n"), "");
     }
 
     #[test]
@@ -1365,6 +1416,7 @@ mod tests {
             "push",
             "error: failed to push some refs to /home/ada/code/app\nhint: Updates were rejected",
             "/home/ada/code/app",
+            Some("/home/ada"),
         );
         for expected in [
             "push",
@@ -1374,6 +1426,17 @@ mod tests {
             assert!(prompt.contains(expected), "missing {expected}");
         }
         assert!(!prompt.contains("/home/ada"));
+
+        let windows = error_prompt(
+            "commit",
+            "fatal: Unable to create 'c:/Users/Ada/code/app/.git/index.lock': File exists.\n\
+             warning: C:\\Users\\Ada\\.gitconfig is unreadable",
+            "C:\\Users\\Ada\\code\\app",
+            Some("C:\\Users\\Ada"),
+        );
+        assert!(windows.contains("'<repo>/.git/index.lock'"), "{windows}");
+        assert!(windows.contains("~\\.gitconfig"), "{windows}");
+        assert!(!windows.to_lowercase().contains("users"), "{windows}");
     }
 
     #[test]
@@ -1396,6 +1459,33 @@ mod tests {
         }
         let huge = branch_summary_prompt("f", "main", &[], "", &"+x\n".repeat(100_000));
         assert!(huge.contains("[… truncated]"));
+    }
+
+    #[test]
+    fn release_notes_right_after_tagging_start_at_the_tag_before() {
+        let dir = temp_dir("tagged-head");
+        let repo = dir.as_path();
+        let git = |args: &[&str]| crate::git::run(repo, args).unwrap();
+        git(&["init", "-q", "-b", "main"]);
+        for (k, v) in [
+            ("user.name", "T"),
+            ("user.email", "t@x"),
+            ("commit.gpgsign", "false"),
+            ("tag.gpgsign", "false"),
+        ] {
+            git(&["config", k, v]);
+        }
+        for (i, msg) in ["first", "second", "third"].iter().enumerate() {
+            std::fs::write(dir.join(format!("{i}.txt")), "x\n").unwrap();
+            git(&["add", "."]);
+            git(&["commit", "-q", "-m", msg]);
+            if i == 0 {
+                git(&["tag", "v1"]);
+            }
+        }
+        git(&["tag", "v2"]);
+        let (messages, _) = release_range(repo, None, None).unwrap();
+        assert_eq!(messages, ["second", "third"]);
     }
 
     #[test]

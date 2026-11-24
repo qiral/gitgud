@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { confirm } from '@tauri-apps/plugin-dialog'
 import {
   Archive,
-  ScanSearch,
   EyeOff,
   GitMerge,
   Loader2,
   Minus,
   Plus,
+  ScanSearch,
   Sparkles,
   Undo2,
 } from 'lucide-react'

@@ -165,24 +165,28 @@ fn shell_path(path: &Path) -> Result<String> {
 }
 
 /// Builds the todo list. Returns its text and the new messages to write, as
-/// (file name, message) pairs. A kept commit's new message goes on once the
-/// squashes and fixups that follow it are in, so it replaces git's combined
-/// message for the whole group.
+/// (file name, message) pairs. A reword's message goes on right away, so
+/// commits squashed into it still add theirs; a pick's message replaces git's
+/// combined message once the squashes and fixups that follow it are in.
 fn todo(items: &[TodoItem], dir: &Path) -> Result<(String, Vec<(String, String)>)> {
     let mut lines = Vec::new();
     let mut messages = Vec::new();
-    let mut pending: Option<(usize, &str)> = None;
-    let mut flush = |lines: &mut Vec<String>, pending: Option<(usize, &str)>| -> Result<()> {
-        if let Some((i, message)) = pending {
-            let name = format!("message-{i}.txt");
-            let path = shell_path(&dir.join(&name))?;
-            lines.push(format!(
-                "exec git commit --amend --allow-empty --cleanup=strip -F {path}"
-            ));
-            messages.push((name, format!("{message}\n")));
-        }
+    let mut amend = |lines: &mut Vec<String>, i: usize, message: &str| -> Result<()> {
+        let name = format!("message-{i}.txt");
+        let path = shell_path(&dir.join(&name))?;
+        lines.push(format!(
+            "exec git commit --amend --allow-empty --cleanup=strip -F {path}"
+        ));
+        messages.push((name, format!("{message}\n")));
         Ok(())
     };
+    let folds_next = |i: usize| {
+        items[i + 1..]
+            .iter()
+            .find(|item| item.action != Action::Drop)
+            .is_some_and(|item| matches!(item.action, Action::Squash | Action::Fixup))
+    };
+    let mut pending: Option<(usize, &str)> = None;
     for (i, item) in items.iter().enumerate() {
         let verb = match item.action {
             Action::Pick | Action::Reword => "pick",
@@ -192,15 +196,23 @@ fn todo(items: &[TodoItem], dir: &Path) -> Result<(String, Vec<(String, String)>
         };
         let message = item.message.as_deref().unwrap_or("").trim();
         if matches!(item.action, Action::Pick | Action::Reword) {
-            flush(&mut lines, pending.take())?;
-            if item.action == Action::Reword && message.is_empty() {
-                return Err(GitError::Failed("A reworded commit needs a message".into()));
+            if let Some((at, combined)) = pending.take() {
+                amend(&mut lines, at, combined)?;
             }
-            pending = (!message.is_empty()).then_some((i, message));
         }
         lines.push(format!("{verb} {}", item.hash));
+        match item.action {
+            Action::Reword if message.is_empty() => {
+                return Err(GitError::Failed("A reworded commit needs a message".into()));
+            }
+            Action::Reword => amend(&mut lines, i, message)?,
+            Action::Pick if !message.is_empty() && folds_next(i) => pending = Some((i, message)),
+            _ => {}
+        }
     }
-    flush(&mut lines, pending)?;
+    if let Some((at, combined)) = pending {
+        amend(&mut lines, at, combined)?;
+    }
     Ok((lines.join("\n") + "\n", messages))
 }
 
@@ -478,6 +490,55 @@ mod tests {
             "add b and c together",
             "no leftover squash text"
         );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn a_reword_keeps_what_is_squashed_into_it() {
+        let dir = repo_with_commits(
+            "rewordsquash",
+            &[
+                ("a.txt", "a\n", "add a"),
+                ("b.txt", "b\n", "add b"),
+                ("c.txt", "c\n", "add c"),
+            ],
+        );
+        let repo = dir.as_path();
+        let from = &git::log(repo, 10).unwrap()[1].hash; // "add b"
+        let p = plan(repo, from).unwrap();
+        let items = vec![
+            TodoItem {
+                hash: p.commits[0].hash.clone(),
+                action: Action::Reword,
+                message: Some("add b, reworded".into()),
+            },
+            item(&p.commits[1], Action::Squash),
+        ];
+        start(repo, from, &items).unwrap();
+        let body = run(repo, &["log", "-1", "--format=%B"]).unwrap();
+        assert!(
+            body.contains("add b, reworded") && body.contains("add c"),
+            "{body}"
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn a_pick_message_needs_something_squashed_into_it() {
+        let dir = repo_with_commits(
+            "pickmsg",
+            &[("a.txt", "a\n", "add a"), ("b.txt", "b\n", "add b")],
+        );
+        let repo = dir.as_path();
+        let from = &git::log(repo, 10).unwrap()[0].hash;
+        let p = plan(repo, from).unwrap();
+        let items = vec![TodoItem {
+            hash: p.commits[0].hash.clone(),
+            action: Action::Pick,
+            message: Some("sneaky reword".into()),
+        }];
+        start(repo, from, &items).unwrap();
+        assert_eq!(subjects(repo)[0], "add b");
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

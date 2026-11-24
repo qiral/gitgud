@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ScrollText } from 'lucide-react'
 import {
   canBlame,
   copilot,
@@ -40,7 +41,6 @@ import ExplainDialog from './ExplainDialog'
 import ErrorBar from './ErrorBar'
 import { useResizable } from './Resizable'
 import { useCommitActions } from './CommitActions'
-import { ScrollText } from 'lucide-react'
 import { useCopilot } from '../lib/copilot'
 import { useCopilotPrefs } from '../lib/copilotPrefs'
 import { useTranslation, type Translate } from '../i18n'
@@ -360,13 +360,23 @@ export default function RepoView({
     text: string | null
   } | null>(null)
 
-  /** Shows a Copilot answer in a dialog; closes again if it fails. */
+  const asked = useRef(0)
+
+  /** Shows a Copilot answer in a dialog; closes again if it fails, or with
+   *  `quiet` shows the failure there and leaves the error bar alone. */
   const showAnswer = useCallback(
-    async (title: string, ask: () => Promise<string>) => {
+    async (title: string, ask: () => Promise<string>, quiet = false) => {
+      const id = ++asked.current
       setAnswer({ title, text: null })
-      const text = await ai.run(ask)
+      let text: string | null
+      try {
+        text = await ai.run(ask, { quiet })
+      } catch (e) {
+        text = errorMessage(e)
+      }
+      if (asked.current !== id) return
       setAnswer((shown) =>
-        shown?.title !== title ? shown : text === null ? null : { title, text },
+        shown === null ? null : text === null ? null : { title, text },
       )
     },
     [ai.run],
@@ -828,8 +838,10 @@ export default function RepoView({
           onExplain={
             copilotOn.gitErrors && failed?.error === error
               ? () =>
-                  showAnswer(tx('repoview.what-went-wrong'), () =>
-                    copilot.explainError(repo.path, failed.action, error),
+                  showAnswer(
+                    tx('repoview.what-went-wrong'),
+                    () => copilot.explainError(repo.path, failed.action, error),
+                    true,
                   )
               : undefined
           }

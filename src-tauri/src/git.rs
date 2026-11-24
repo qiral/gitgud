@@ -783,14 +783,23 @@ pub fn uncommitted_changes(
     Ok((stat, diff, untracked))
 }
 
-/// The newest tag reachable from HEAD, if any.
-pub fn last_tag(repo: &Path) -> Result<Option<String>> {
-    let out = output(repo, &["describe", "--tags", "--abbrev=0", "HEAD"])?;
+/// The newest tag reachable from `rev`, if any.
+pub fn last_tag(repo: &Path, rev: &str) -> Result<Option<String>> {
+    let out = output(repo, &["describe", "--tags", "--abbrev=0", rev])?;
     Ok(out
         .status
         .success()
         .then(|| String::from_utf8_lossy(&out.stdout).trim().to_string())
         .filter(|tag| !tag.is_empty()))
+}
+
+/// The branch HEAD is on; none when detached.
+pub fn current_branch(repo: &Path) -> Result<Option<String>> {
+    let out = output(repo, &["symbolic-ref", "-q", "--short", "HEAD"])?;
+    Ok(out
+        .status
+        .success()
+        .then(|| String::from_utf8_lossy(&out.stdout).trim().to_string()))
 }
 
 /// The commit id a branch, tag or hash points to.
@@ -2089,7 +2098,7 @@ mod tests {
         ] {
             run(repo, &["config", k, v]).unwrap();
         }
-        assert_eq!(last_tag(repo).unwrap(), None);
+        assert_eq!(last_tag(repo, "HEAD").unwrap(), None);
 
         let mut hashes = Vec::new();
         for (file, msg) in [
@@ -2110,7 +2119,10 @@ mod tests {
                 run(repo, &["tag", "v1"]).unwrap();
             }
         }
-        assert_eq!(last_tag(repo).unwrap().as_deref(), Some("v1"));
+        assert_eq!(last_tag(repo, "HEAD").unwrap().as_deref(), Some("v1"));
+        run(repo, &["tag", "v2"]).unwrap();
+        assert_eq!(last_tag(repo, "HEAD").unwrap().as_deref(), Some("v2"));
+        assert_eq!(last_tag(repo, "HEAD^").unwrap().as_deref(), Some("v1"));
         assert_eq!(resolve_commit(repo, "v1").unwrap(), hashes[0]);
         assert!(is_ancestor(repo, &hashes[0], &hashes[2]).unwrap());
         assert!(!is_ancestor(repo, &hashes[2], &hashes[0]).unwrap());

@@ -93,7 +93,8 @@ export default function RebaseDialog({
   const [loadError, setLoadError] = useState<string | null>(null)
   const [dragging, setDragging] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
-  const [suggesting, setSuggesting] = useState<number | null>(null)
+  // The commit Copilot is writing a combined message for.
+  const [suggesting, setSuggesting] = useState<string | null>(null)
 
   useEffect(() => {
     git
@@ -119,13 +120,20 @@ export default function RebaseDialog({
     )
   }
 
-  async function suggest(i: number, field: 'message' | 'combined') {
-    if (!rows || !suggestSquashMessage) return
-    setSuggesting(i)
+  async function suggest(i: number) {
+    if (!rows || !suggestSquashMessage || suggesting) return
+    const hash = rows[i].commit.hash
+    setSuggesting(hash)
     try {
-      const hashes = [rows[i].commit.hash, ...foldedInto(rows, i)]
-      const message = await suggestSquashMessage(hashes)
-      if (message !== null) update(i, { [field]: message })
+      const message = await suggestSquashMessage([hash, ...foldedInto(rows, i)])
+      if (message !== null)
+        setRows(
+          (r) =>
+            r &&
+            r.map((row) =>
+              row.commit.hash === hash ? { ...row, combined: message } : row,
+            ),
+        )
     } finally {
       setSuggesting(null)
     }
@@ -292,14 +300,11 @@ export default function RebaseDialog({
                           : { combined: value },
                       )
                     }
-                    suggesting={suggesting === i}
+                    suggesting={suggesting === row.commit.hash}
+                    disabled={suggesting !== null}
                     onSuggest={
-                      suggestSquashMessage && foldedInto(rows, i).length > 0
-                        ? () =>
-                            suggest(
-                              i,
-                              row.action === 'reword' ? 'message' : 'combined',
-                            )
+                      suggestSquashMessage && row.action === 'pick'
+                        ? () => suggest(i)
                         : undefined
                     }
                   />
@@ -311,7 +316,7 @@ export default function RebaseDialog({
           {problem && <p className="text-xs text-removed">{problem}</p>}
           <button
             onClick={start}
-            disabled={busy || !!problem || !changed}
+            disabled={busy || !!problem || !changed || suggesting !== null}
             className="flex w-full items-center justify-center gap-2 rounded bg-accent py-2 font-medium text-on-accent hover:opacity-90 disabled:opacity-40"
           >
             {busy && <Loader2 className="size-4 animate-spin" />}
@@ -328,12 +333,15 @@ function MessageField({
   placeholder,
   onChange,
   suggesting,
+  disabled,
   onSuggest,
 }: {
   value: string
   placeholder?: string
   onChange: (value: string) => void
   suggesting: boolean
+  /** Another message is being written. */
+  disabled: boolean
   onSuggest?: () => void
 }) {
   const { t } = useTranslation()
@@ -349,7 +357,7 @@ function MessageField({
       {onSuggest && (
         <button
           onClick={onSuggest}
-          disabled={suggesting}
+          disabled={disabled}
           title={t('rebasedialog.write-combined-message-with-copilot')}
           aria-label={t('rebasedialog.write-combined-message-with-copilot')}
           className="absolute top-1.5 right-1.5 rounded p-1 text-muted hover:bg-hover hover:text-fg disabled:opacity-40"

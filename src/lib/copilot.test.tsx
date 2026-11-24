@@ -76,3 +76,26 @@ it('asks to sign in first instead of calling Copilot', async () => {
   expect(onSignIn).toHaveBeenCalled()
   expect(task).not.toHaveBeenCalled()
 })
+
+it('leaves the error bar alone in quiet mode and hands back the failure', async () => {
+  const setError = vi.fn()
+  let result: unknown = null
+  function Quiet() {
+    const ai = useCopilot(setError, true, () => {})
+    return (
+      <button
+        onClick={() =>
+          ai
+            .run(() => Promise.reject('Copilot failed: boom'), { quiet: true })
+            .catch((e) => (result = e))
+        }
+      >
+        Ask
+      </button>
+    )
+  }
+  render(<Quiet />)
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await waitFor(() => expect(result).toBe('Copilot failed: boom'))
+  expect(setError).not.toHaveBeenCalled()
+})

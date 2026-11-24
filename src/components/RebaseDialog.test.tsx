@@ -125,3 +125,36 @@ it("keeps git's combined message when the field is left empty", async () => {
     ]),
   )
 })
+
+it('waits for Copilot before rewriting, and leaves rewords alone', async () => {
+  mockIPC((cmd) => {
+    if (cmd === 'rebase_plan') return plan
+  })
+  let finish: (m: string) => void = () => {}
+  render(
+    <RebaseDialog
+      repo={{ path: '/r', name: 'r' }}
+      from={from}
+      onClose={() => {}}
+      act={act}
+      suggestSquashMessage={() => new Promise((r) => (finish = r))}
+    />,
+  )
+  const selects = await screen.findAllByRole('combobox')
+  fireEvent.change(selects[1], { target: { value: 'squash' } })
+  const write = screen.getByRole('button', {
+    name: 'Write the combined message with Copilot',
+  })
+  fireEvent.click(write)
+  const rewrite = screen.getByText(/Rewrite 2 commits/).closest('button')!
+  expect(rewrite.disabled).toBe(true)
+  finish('combined')
+  await waitFor(() => expect(rewrite.disabled).toBe(false))
+
+  fireEvent.change(selects[0], { target: { value: 'reword' } })
+  expect(
+    screen.queryByRole('button', {
+      name: 'Write the combined message with Copilot',
+    }),
+  ).toBeNull()
+})

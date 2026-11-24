@@ -4,7 +4,8 @@ import { COPILOT_MISSING, errorMessage } from './git'
 
 /** Runs Copilot requests, which need the GitHub sign-in. When the CLI is
  *  missing it offers to download it and tries again; other errors go to
- *  `setError` and resolve to null. */
+ *  `setError` and resolve to null. With `quiet` the error bar is left alone
+ *  and errors reject instead, e.g. while explaining the error shown there. */
 export function useCopilot(
   setError: (e: string | null) => void,
   signedIn: boolean,
@@ -13,8 +14,11 @@ export function useCopilot(
   const [setup, setSetup] = useState<((ok: boolean) => void) | null>(null)
 
   const run = useCallback(
-    async <T,>(task: () => Promise<T>): Promise<T | null> => {
-      setError(null)
+    async <T,>(
+      task: () => Promise<T>,
+      { quiet = false } = {},
+    ): Promise<T | null> => {
+      if (!quiet) setError(null)
       if (!signedIn) {
         onSignIn()
         return null
@@ -31,6 +35,7 @@ export function useCopilot(
           return installed ? await task() : null
         }
       } catch (e) {
+        if (quiet) throw e
         setError(errorMessage(e))
         return null
       }
