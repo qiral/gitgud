@@ -97,6 +97,9 @@ fn expected_hash(platform: &str) -> Option<&'static str> {
 /// counts: npm's `copilot.cmd` shim needs Node.
 fn find_on_path(path_var: &OsStr) -> Option<PathBuf> {
     std::env::split_paths(path_var)
+        // A relative entry like `.` would find a `copilot` in whatever folder
+        // GitGud was started from.
+        .filter(|dir| dir.is_absolute())
         .map(|dir| dir.join(BINARY))
         .find(|bin| bin.is_file())
 }
@@ -346,18 +349,26 @@ fn client_options(bin: PathBuf, app_data: &Path, path_var: &OsStr) -> Result<Cli
 
 /// Starts the CLI on `PATH`, or GitGud's own copy when there is none or it
 /// won't start: starting is local, so a failure means that copy is unusable.
+/// GitGud's own copy, checked against the pinned hashes, when there is one;
+/// otherwise a `copilot` the user installed. It gets the user's token.
+fn choose(app_data: &Path, path_var: &OsStr) -> Option<PathBuf> {
+    installed(app_data).or_else(|| find_on_path(path_var))
+}
+
+/// Starts the chosen CLI. A copy from `PATH` that won't start is as good as
+/// none: starting is local, so GitGud offers its own instead.
 async fn start(app_data: &Path, path_var: &OsStr) -> Result<Client> {
-    if let Some(bin) = find_on_path(path_var) {
-        if let Ok(client) = Client::start(client_options(bin, app_data, path_var)?).await {
-            return Ok(client);
-        }
-    }
-    match installed(app_data) {
-        Some(bin) => Client::start(client_options(bin, app_data, path_var)?)
-            .await
-            .map_err(sdk_error),
-        None => Err(GitError::Failed(COPILOT_MISSING.into())),
-    }
+    let bin = choose(app_data, path_var).ok_or_else(|| GitError::Failed(COPILOT_MISSING.into()))?;
+    let verified = installed(app_data).as_ref() == Some(&bin);
+    Client::start(client_options(bin, app_data, path_var)?)
+        .await
+        .map_err(|e| {
+            if verified {
+                sdk_error(e)
+            } else {
+                GitError::Failed(COPILOT_MISSING.into())
+            }
+        })
 }
 
 /// One single-shot session: no tools, no permissions, no repository.
@@ -1023,5 +1034,29 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join(BINARY), "").unwrap();
         assert_eq!(installed(&app_data), Some(dir.join(BINARY)));
+    }
+
+    #[test]
+    fn only_absolute_path_entries_count() {
+        // Relative to the test's working directory, so the file is really there.
+        let relative = Path::new("target").join("gitgud-relative-path");
+        std::fs::create_dir_all(&relative).unwrap();
+        std::fs::write(relative.join(BINARY), "").unwrap();
+        assert!(relative.join(BINARY).is_file());
+        assert_eq!(find_on_path(relative.as_os_str()), None);
+    }
+
+    #[test]
+    fn the_verified_copy_comes_before_one_on_path() {
+        let app_data = temp_dir("order-app");
+        let bin = temp_dir("order-bin");
+        std::fs::write(bin.join(BINARY), "").unwrap();
+        let path = std::env::join_paths([&bin]).unwrap();
+        assert_eq!(choose(&app_data, &path), Some(bin.join(BINARY)));
+
+        let dir = app_data.join("copilot").join(VERSION);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join(BINARY), "").unwrap();
+        assert_eq!(choose(&app_data, &path), Some(dir.join(BINARY)));
     }
 }
