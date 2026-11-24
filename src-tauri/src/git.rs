@@ -45,6 +45,11 @@ fn command(repo: &Path, args: &[&str]) -> Command {
         .env("GIT_OPTIONAL_LOCKS", "0")
         // Stable, parseable output regardless of the user's locale.
         .env("LC_ALL", "C");
+    // File names are names: `*` or `:!x` must not match other files. Stash
+    // takes no file names here and uses pathspec magic itself for -u.
+    if args.first() != Some(&"stash") {
+        cmd.env("GIT_LITERAL_PATHSPECS", "1");
+    }
 
     #[cfg(windows)]
     {
@@ -1031,9 +1036,7 @@ pub fn file_log(repo: &Path, path: &str, limit: u32) -> Result<Vec<Commit>> {
     if path.is_empty() {
         return Err(GitError::Failed("No file given".into()));
     }
-    // `:(literal)` so characters like `*` in the name aren't patterns.
-    let spec = format!(":(literal){path}");
-    log_with(repo, limit, &["--follow", "HEAD", "--", &spec])
+    log_with(repo, limit, &["--follow", "HEAD", "--", path])
 }
 
 /// Full patch for a single commit, with a short header.
@@ -1907,6 +1910,53 @@ mod tests {
         assert!(diff.contains("+staged line"));
         assert!(!diff.contains("unstaged"));
         assert!(staged_stat(repo).unwrap().contains("c.txt"));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn file_names_are_never_patterns() {
+        let dir = std::env::temp_dir().join(format!("gitgud-pathspec-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = dir.as_path();
+        run(repo, &["init", "-q", "-b", "main"]).unwrap();
+        for (k, v) in [
+            ("user.name", "T"),
+            ("user.email", "t@x"),
+            ("commit.gpgsign", "false"),
+        ] {
+            run(repo, &["config", k, v]).unwrap();
+        }
+        let names = ["a.txt", "b.txt", ":!zz", "*"];
+        for name in names {
+            std::fs::write(dir.join(name), "old\n").unwrap();
+        }
+        stage(repo, &names.map(String::from)).unwrap();
+        commit(repo, "files").unwrap();
+        for name in names {
+            std::fs::write(dir.join(name), "new\n").unwrap();
+        }
+
+        discard(repo, &[":!zz".into()]).unwrap();
+        discard(repo, &["*".into()]).unwrap();
+        for (name, expected) in [
+            (":!zz", "old\n"),
+            ("*", "old\n"),
+            ("a.txt", "new\n"),
+            ("b.txt", "new\n"),
+        ] {
+            assert_eq!(
+                std::fs::read_to_string(dir.join(name)).unwrap(),
+                expected,
+                "{name}"
+            );
+        }
+
+        stage(repo, &["*".into()]).unwrap();
+        std::fs::write(dir.join("*"), "newer\n").unwrap();
+        stage(repo, &["*".into()]).unwrap();
+        let staged = run(repo, &["diff", "--cached", "--name-only"]).unwrap();
+        assert_eq!(staged.trim(), "*", "only the file named *");
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
