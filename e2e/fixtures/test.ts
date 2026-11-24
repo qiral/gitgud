@@ -235,7 +235,7 @@ function installTauriMock({
       }
       return pull
     },
-    'plugin:opener|open_url': () => null,
+    open_url: () => null,
   }
 
   const commands: Record<string, (args: Record<string, unknown>) => unknown> = {

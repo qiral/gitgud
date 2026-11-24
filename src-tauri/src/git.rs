@@ -6,6 +6,7 @@
 
 use serde::Serialize;
 
+use crate::appimage;
 use crate::conflict;
 use crate::graph::{self, GraphRow};
 use crate::patch;
@@ -60,6 +61,9 @@ fn git_program() -> Result<&'static Path> {
 
 fn command(repo: &Path, args: &[&str]) -> Result<Command> {
     let mut cmd = Command::new(git_program()?);
+    // Before anything else sets variables: git, its hooks and its credential
+    // helpers are the system's own.
+    appimage::clean_env(&mut cmd);
     // A repo's own config (e.g. one unzipped rather than cloned) must not run
     // programs just because GitGud looked at it: no fsmonitor hook, and no
     // textconv filters for anything that shows a diff.
