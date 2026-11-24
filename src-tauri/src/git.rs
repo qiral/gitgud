@@ -37,8 +37,20 @@ pub type Result<T> = std::result::Result<T, GitError>;
 
 fn command(repo: &Path, args: &[&str]) -> Command {
     let mut cmd = Command::new("git");
+    // A repo's own config (e.g. one unzipped rather than cloned) must not run
+    // programs just because GitGud looked at it: no fsmonitor hook, and no
+    // textconv filters for anything that shows a diff.
+    cmd.args(["-c", "core.fsmonitor=false"]);
+    let textconv_at = match args {
+        ["diff" | "show" | "log" | "blame", ..] => Some(1),
+        ["stash", "show", ..] => Some(2),
+        _ => None,
+    };
+    match textconv_at {
+        Some(at) => cmd.args(&args[..at]).arg("--no-textconv").args(&args[at..]),
+        None => cmd.args(args),
+    };
     cmd.current_dir(repo)
-        .args(args)
         // Fail instead of hanging on an invisible credential prompt.
         .env("GIT_TERMINAL_PROMPT", "0")
         // Don't take locks for read-only commands like `status`.
@@ -1910,6 +1922,51 @@ mod tests {
         assert!(diff.contains("+staged line"));
         assert!(!diff.contains("unstaged"));
         assert!(staged_stat(repo).unwrap().contains("c.txt"));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_repos_own_config_cant_run_commands_on_status_or_diff() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = std::env::temp_dir().join(format!("gitgud-untrusted-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = dir.as_path();
+        run(repo, &["init", "-q", "-b", "main"]).unwrap();
+        for (k, v) in [
+            ("user.name", "T"),
+            ("user.email", "t@x"),
+            ("commit.gpgsign", "false"),
+        ] {
+            run(repo, &["config", k, v]).unwrap();
+        }
+        std::fs::write(dir.join("a.txt"), "old\n").unwrap();
+        stage(repo, &["a.txt".into()]).unwrap();
+        commit(repo, "init").unwrap();
+
+        let marker = dir.join("ran");
+        let script = dir.join(".git").join("evil.sh");
+        std::fs::write(
+            &script,
+            format!(
+                "#!/bin/sh\ntouch '{}'\ncat \"$1\" 2>/dev/null\n",
+                marker.display()
+            ),
+        )
+        .unwrap();
+        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let script = script.to_string_lossy().to_string();
+        run(repo, &["config", "core.fsmonitor", &script]).unwrap();
+        run(repo, &["config", "diff.evil.textconv", &script]).unwrap();
+        std::fs::write(dir.join(".gitattributes"), "*.txt diff=evil\n").unwrap();
+        std::fs::write(dir.join("a.txt"), "new\n").unwrap();
+
+        status(repo).unwrap();
+        diff(repo, "a.txt", false, false, false).unwrap();
+        let head = run(repo, &["rev-parse", "HEAD"]).unwrap();
+        show_commit(repo, head.trim(), false).unwrap();
+        assert!(!marker.exists(), "the repo's config ran a command");
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
