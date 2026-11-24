@@ -205,6 +205,13 @@ export interface CloneProgress {
   percent: number
 }
 
+/** What GitHub says about the stored sign-in. */
+export type Validation =
+  | { state: 'signedOut' }
+  | { state: 'valid'; account: Account; missingScopes: string[] }
+  | { state: 'expired' }
+  | { state: 'unreachable' }
+
 /** Error text when the Copilot CLI isn't installed; see src-tauri/src/copilot.rs. */
 export const COPILOT_MISSING = 'Copilot CLI not installed'
 
@@ -275,6 +282,8 @@ export const github = {
   /** Null unless `origin` is a fork whose parent isn't a remote yet. */
   parent: (repo: string) => invoke<Parent | null>('github_parent', { repo }),
   account: () => invoke<Account | null>('github_account'),
+  /** Asks GitHub whether the stored sign-in still works; forgets it if not. */
+  validate: () => invoke<Validation>('github_validate'),
   startSignIn: () => invoke<DeviceCode>('github_start_sign_in'),
   pollSignIn: (deviceCode: string, interval: number) =>
     invoke<PollResult>('github_poll_sign_in', { deviceCode, interval }),

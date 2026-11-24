@@ -14,6 +14,12 @@ const messages: Messages = {
   'app.recent-repositories': 'Son repozitorilər',
   'app.remove-from-list': 'Siyahıdan çıxar',
   'app.update-to': '{version} versiyasına yenilə',
+  'auth.expired':
+    'GitHub girişinizin müddəti bitib və ya ləğv edilib. GitHub və Copilot-dan istifadəyə davam etmək üçün yenidən daxil olun.',
+  'auth.missing-scopes':
+    'GitHub girişinizdə icazələr çatışmır ({scopes}). Onları vermək üçün çıxış edib yenidən daxil olun.',
+  'authnotice.dismiss': 'Bağla',
+  'authnotice.sign-in': 'Daxil ol',
   'blameview.back': 'Geri',
   'blameview.blame-parent': 'Əvvəlki commit üçün blame',
   'blameview.close': 'Blame-i bağla',
@@ -428,6 +434,7 @@ const messages: Messages = {
     'Force push uzaq budağı sizinki ilə əvəz edir. Bunu artıq push etdiyiniz tarixçəni redaktə etdikdən sonra edin. Bu budağa başqası push edibsə, bunun əvəzinə pull edin, əks halda onun commit-ləri itəcək.',
   'toolbar.language': 'Dil',
   'toolbar.light': 'Açıq',
+  'toolbar.manage-access-on-github': 'GitHub-da girişi idarə et',
   'toolbar.manage-remotes': 'Uzaq repozitoriləri idarə et…',
   'toolbar.match-system': 'Sistemə uyğun',
   'toolbar.merge': 'Birləşdir',

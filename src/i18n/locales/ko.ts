@@ -13,6 +13,12 @@ const messages: Messages = {
   'app.recent-repositories': '최근 저장소',
   'app.remove-from-list': '목록에서 제거',
   'app.update-to': '{version}(으)로 업데이트',
+  'auth.expired':
+    'GitHub 로그인이 만료되었거나 취소되었습니다. GitHub와 Copilot을 계속 사용하려면 다시 로그인하세요.',
+  'auth.missing-scopes':
+    'GitHub 로그인에 필요한 권한이 없습니다({scopes}). 로그아웃한 뒤 다시 로그인해 권한을 부여하세요.',
+  'authnotice.dismiss': '닫기',
+  'authnotice.sign-in': '로그인',
   'blameview.back': '뒤로',
   'blameview.blame-parent': '부모 커밋 Blame',
   'blameview.close': 'Blame 닫기',
@@ -410,6 +416,7 @@ const messages: Messages = {
     '강제 푸시는 원격 브랜치를 내 브랜치로 바꿉니다. 이미 푸시한 기록을 편집한 뒤에 사용하세요. 다른 사람이 이 브랜치에 푸시했다면 대신 풀하세요. 그렇지 않으면 그 사람의 커밋이 사라집니다.',
   'toolbar.language': '언어',
   'toolbar.light': '밝은 테마',
+  'toolbar.manage-access-on-github': 'GitHub에서 액세스 관리',
   'toolbar.manage-remotes': '원격 관리…',
   'toolbar.match-system': '시스템 설정 따르기',
   'toolbar.merge': '병합',

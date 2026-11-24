@@ -14,6 +14,12 @@ const messages: Messages = {
   'app.recent-repositories': 'Repositorios recientes',
   'app.remove-from-list': 'Quitar de la lista',
   'app.update-to': 'Actualizar a {version}',
+  'auth.expired':
+    'Tu sesión de GitHub caducó o fue revocada. Vuelve a iniciar sesión para seguir usando GitHub y Copilot.',
+  'auth.missing-scopes':
+    'A tu sesión de GitHub le faltan permisos ({scopes}). Cierra sesión y vuelve a iniciarla para concederlos.',
+  'authnotice.dismiss': 'Cerrar',
+  'authnotice.sign-in': 'Iniciar sesión',
   'blameview.back': 'Atrás',
   'blameview.blame-parent': 'Blame del commit padre',
   'blameview.close': 'Cerrar blame',
@@ -436,6 +442,7 @@ const messages: Messages = {
     'Un push forzado reemplaza la rama remota por la tuya. Hazlo después de editar un historial que ya subiste. Si otra persona subió a esta rama, haz pull en su lugar o se perderán sus commits.',
   'toolbar.language': 'Idioma',
   'toolbar.light': 'Claro',
+  'toolbar.manage-access-on-github': 'Gestionar el acceso en GitHub',
   'toolbar.manage-remotes': 'Gestionar remotos…',
   'toolbar.match-system': 'Igual que el sistema',
   'toolbar.merge': 'Fusionar',

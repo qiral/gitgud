@@ -14,6 +14,12 @@ const messages: Messages = {
   'app.recent-repositories': 'Repository recenti',
   'app.remove-from-list': "Rimuovi dall'elenco",
   'app.update-to': 'Aggiorna a {version}',
+  'auth.expired':
+    'Il tuo accesso a GitHub è scaduto o è stato revocato. Accedi di nuovo per continuare a usare GitHub e Copilot.',
+  'auth.missing-scopes':
+    'Al tuo accesso GitHub mancano delle autorizzazioni ({scopes}). Esci e accedi di nuovo per concederle.',
+  'authnotice.dismiss': 'Chiudi',
+  'authnotice.sign-in': 'Accedi',
   'blameview.back': 'Indietro',
   'blameview.blame-parent': 'Blame del commit genitore',
   'blameview.close': 'Chiudi blame',
@@ -436,6 +442,7 @@ const messages: Messages = {
     'Il push forzato sostituisce il branch remoto con il tuo. Fallo dopo aver modificato una cronologia già inviata. Se qualcun altro ha inviato su questo branch, fai invece un pull, altrimenti i suoi commit andranno persi.',
   'toolbar.language': 'Lingua',
   'toolbar.light': 'Chiaro',
+  'toolbar.manage-access-on-github': "Gestisci l'accesso su GitHub",
   'toolbar.manage-remotes': 'Gestisci remoti…',
   'toolbar.match-system': 'Come il sistema',
   'toolbar.merge': 'Unisci',

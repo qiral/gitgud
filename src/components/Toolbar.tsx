@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { confirm } from '@tauri-apps/plugin-dialog'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import {
   ArrowDown,
   ArrowUp,
@@ -8,6 +9,7 @@ import {
   Command,
   ChevronDown,
   Download,
+  ExternalLink,
   FolderGit2,
   FolderOpen,
   GitMerge,
@@ -530,6 +532,15 @@ function AccountMenu({
             {tx('toolbar.other-git-hosts')}
           </button>
           {account && (
+            <button
+              onClick={() => choose(() => openUrl(GITHUB_ACCESS_URL))}
+              className={item}
+            >
+              <ExternalLink className="size-4" />
+              {tx('toolbar.manage-access-on-github')}
+            </button>
+          )}
+          {account && (
             <button onClick={() => choose(onSignOut)} className={item}>
               <LogOut className="size-4" />
               {tx('toolbar.sign-out-of-github')}
@@ -843,3 +854,8 @@ function BranchMenu({
     </div>
   )
 }
+
+/** Where GitGud's access can be revoked on GitHub; GitGud itself can't
+ *  revoke tokens without a client secret. */
+const GITHUB_ACCESS_URL =
+  'https://github.com/settings/connections/applications/Ov23li9VaKu4azd6eO0H'

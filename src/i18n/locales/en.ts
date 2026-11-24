@@ -16,6 +16,12 @@ const messages: Messages = {
   'app.recent-repositories': 'Recent repositories',
   'app.remove-from-list': 'Remove from list',
   'app.update-to': 'Update to {version}',
+  'auth.expired':
+    'Your GitHub sign-in expired or was revoked. Sign in again to keep using GitHub and Copilot.',
+  'auth.missing-scopes':
+    'Your GitHub sign-in is missing permissions ({scopes}). Sign out and sign in again to grant them.',
+  'authnotice.dismiss': 'Dismiss',
+  'authnotice.sign-in': 'Sign in',
   'blameview.back': 'Back',
   'blameview.blame': 'Blame',
   'blameview.blame-parent': 'Blame the parent commit',
@@ -436,6 +442,7 @@ const messages: Messages = {
     'Force pushing replaces the remote branch with yours. Do this after editing history you already pushed. If someone else pushed to this branch, Pull instead, or their commits will be lost.',
   'toolbar.language': 'Language',
   'toolbar.light': 'Light',
+  'toolbar.manage-access-on-github': 'Manage access on GitHub',
   'toolbar.manage-remotes': 'Manage remotes…',
   'toolbar.match-system': 'Match system',
   'toolbar.merge': 'Merge',

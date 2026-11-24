@@ -14,6 +14,12 @@ const messages: Messages = {
   'app.recent-repositories': '最近的仓库',
   'app.remove-from-list': '从列表中移除',
   'app.update-to': '更新到 {version}',
+  'auth.expired':
+    '你的 GitHub 登录已过期或已被撤销。请重新登录以继续使用 GitHub 和 Copilot。',
+  'auth.missing-scopes':
+    '你的 GitHub 登录缺少权限（{scopes}）。请退出后重新登录以授予这些权限。',
+  'authnotice.dismiss': '关闭',
+  'authnotice.sign-in': '登录',
   'blameview.back': '返回',
   'blameview.blame-parent': '对父提交执行 Blame',
   'blameview.close': '关闭 Blame',
@@ -395,6 +401,7 @@ const messages: Messages = {
     '强制推送会用你的分支替换远程分支。请在编辑已推送的历史之后使用。如果其他人也推送过这个分支，请改为拉取，否则他们的提交会丢失。',
   'toolbar.language': '语言',
   'toolbar.light': '浅色',
+  'toolbar.manage-access-on-github': '在 GitHub 上管理访问权限',
   'toolbar.manage-remotes': '管理远程仓库…',
   'toolbar.match-system': '跟随系统',
   'toolbar.merge': '合并',
