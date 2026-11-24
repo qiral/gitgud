@@ -68,7 +68,7 @@ pub fn pattern(path: &str, kind: IgnoreKind) -> Result<String> {
 /// file if needed. Does nothing if the exact line is already there.
 pub fn add(repo: &Path, path: &str, kind: IgnoreKind) -> Result<()> {
     let line = pattern(path, kind)?;
-    let file = repo.join(".gitignore");
+    let file = crate::git::writable_file_in_repo(repo, ".gitignore")?;
     let existing = match std::fs::read_to_string(&file) {
         Ok(text) => text,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
@@ -96,6 +96,24 @@ pub fn add(repo: &Path, path: &str, kind: IgnoreKind) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn a_linked_gitignore_is_left_alone() {
+        let dir = std::env::temp_dir().join(format!("gitgud-ignore-link-{}", std::process::id()));
+        let outside =
+            std::env::temp_dir().join(format!("gitgud-ignore-victim-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(&outside, "keep\n").unwrap();
+        std::os::unix::fs::symlink(&outside, dir.join(".gitignore")).unwrap();
+        std::fs::write(dir.join("junk.log"), "").unwrap();
+
+        assert!(add(&dir, "junk.log", IgnoreKind::File).is_err());
+        assert_eq!(std::fs::read_to_string(&outside).unwrap(), "keep\n");
+        std::fs::remove_dir_all(&dir).unwrap();
+        std::fs::remove_file(&outside).unwrap();
+    }
     use crate::git::{run, status};
 
     #[test]

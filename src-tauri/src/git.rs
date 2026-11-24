@@ -558,6 +558,30 @@ pub(crate) fn file_in_repo(repo: &Path, path: &str) -> Result<PathBuf> {
     Ok(repo.join(relative))
 }
 
+/// Like [`file_in_repo`], for writing: refuses a path that leads out of the
+/// repository through a symlink, which a cloned repository can contain.
+pub(crate) fn writable_file_in_repo(repo: &Path, path: &str) -> Result<PathBuf> {
+    let full = file_in_repo(repo, path)?;
+    let outside = || GitError::Failed(format!("{path} links outside the repository"));
+    if full
+        .symlink_metadata()
+        .is_ok_and(|m| m.file_type().is_symlink())
+    {
+        return Err(outside());
+    }
+    // The nearest folder that exists must still be inside the repository.
+    let existing = full
+        .ancestors()
+        .skip(1)
+        .find(|dir| dir.exists())
+        .unwrap_or(repo);
+    let root = repo.canonicalize()?;
+    if !existing.canonicalize()?.starts_with(&root) {
+        return Err(outside());
+    }
+    Ok(full)
+}
+
 pub(crate) fn read_text(repo: &Path, path: &str) -> Result<String> {
     let bytes = std::fs::read(file_in_repo(repo, path)?)?;
     String::from_utf8(bytes).map_err(|_| GitError::Failed(format!("{path} is not a text file")))
@@ -577,7 +601,7 @@ pub fn resolve_block(
     let content = read_text(repo, path)?;
     let resolved = conflict::resolve(&content, index, choice)
         .ok_or_else(|| GitError::Failed("That conflict no longer exists".into()))?;
-    std::fs::write(file_in_repo(repo, path)?, resolved)?;
+    std::fs::write(writable_file_in_repo(repo, path)?, resolved)?;
     Ok(())
 }
 
@@ -586,7 +610,7 @@ pub fn resolve_block_text(repo: &Path, path: &str, index: usize, text: &str) -> 
     let content = read_text(repo, path)?;
     let resolved = conflict::replace(&content, index, text)
         .ok_or_else(|| GitError::Failed("That conflict no longer exists".into()))?;
-    std::fs::write(file_in_repo(repo, path)?, resolved)?;
+    std::fs::write(writable_file_in_repo(repo, path)?, resolved)?;
     Ok(())
 }
 
@@ -1968,6 +1992,35 @@ mod tests {
         show_commit(repo, head.trim(), false).unwrap();
         assert!(!marker.exists(), "the repo's config ran a command");
         std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn writes_never_follow_a_link_out_of_the_repo() {
+        let dir = std::env::temp_dir().join(format!("gitgud-links-{}", std::process::id()));
+        let outside =
+            std::env::temp_dir().join(format!("gitgud-links-outside-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let _ = std::fs::remove_dir_all(&outside);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::create_dir_all(&outside).unwrap();
+        std::fs::write(outside.join("victim"), "keep\n").unwrap();
+        std::os::unix::fs::symlink(outside.join("victim"), dir.join("link")).unwrap();
+        std::os::unix::fs::symlink(&outside, dir.join("folder")).unwrap();
+        std::fs::create_dir_all(dir.join("real")).unwrap();
+
+        assert!(writable_file_in_repo(&dir, "link").is_err());
+        assert!(writable_file_in_repo(&dir, "folder/victim").is_err());
+        assert!(writable_file_in_repo(&dir, "folder/new/file").is_err());
+        assert!(writable_file_in_repo(&dir, "real/file").is_ok());
+        assert!(writable_file_in_repo(&dir, "not/yet/there").is_ok());
+        assert!(resolve_block_text(&dir, "link", 0, "x").is_err());
+        assert_eq!(
+            std::fs::read_to_string(outside.join("victim")).unwrap(),
+            "keep\n"
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
+        std::fs::remove_dir_all(&outside).unwrap();
     }
 
     #[test]
