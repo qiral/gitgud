@@ -35,8 +35,31 @@ impl Serialize for GitError {
 
 pub type Result<T> = std::result::Result<T, GitError>;
 
-fn command(repo: &Path, args: &[&str]) -> Command {
-    let mut cmd = Command::new("git");
+#[cfg(windows)]
+const GIT: &str = "git.exe";
+#[cfg(not(windows))]
+const GIT: &str = "git";
+
+/// The first `binary` in an absolute `path_var` entry. A relative entry like
+/// `.` is looked up from the folder the program runs in: for git that's the
+/// repository, which could ship its own `git`.
+pub(crate) fn find_on_path(path_var: &std::ffi::OsStr, binary: &str) -> Option<PathBuf> {
+    std::env::split_paths(path_var)
+        .filter(|dir| dir.is_absolute())
+        .map(|dir| dir.join(binary))
+        .find(|bin| bin.is_file())
+}
+
+fn git_program() -> Result<&'static Path> {
+    static PROGRAM: std::sync::OnceLock<Option<PathBuf>> = std::sync::OnceLock::new();
+    PROGRAM
+        .get_or_init(|| find_on_path(&std::env::var_os("PATH").unwrap_or_default(), GIT))
+        .as_deref()
+        .ok_or_else(|| GitError::Failed("Git isn't installed, or isn't on PATH".into()))
+}
+
+fn command(repo: &Path, args: &[&str]) -> Result<Command> {
+    let mut cmd = Command::new(git_program()?);
     // A repo's own config (e.g. one unzipped rather than cloned) must not run
     // programs just because GitGud looked at it: no fsmonitor hook, and no
     // textconv filters for anything that shows a diff.
@@ -70,11 +93,11 @@ fn command(repo: &Path, args: &[&str]) -> Command {
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
 
-    cmd
+    Ok(cmd)
 }
 
 pub(crate) fn output(repo: &Path, args: &[&str]) -> Result<Output> {
-    Ok(command(repo, args).output()?)
+    Ok(command(repo, args)?.output()?)
 }
 
 /// Runs git and returns stdout, or stderr as the error when git exits non-zero.
@@ -84,14 +107,14 @@ pub(crate) fn run(repo: &Path, args: &[&str]) -> Result<String> {
 
 /// Like [`run`], with extra environment variables (used for credentials).
 pub(crate) fn run_with_env(repo: &Path, args: &[&str], env: &[(String, String)]) -> Result<String> {
-    let out = command(repo, args).envs(env.iter().cloned()).output()?;
+    let out = command(repo, args)?.envs(env.iter().cloned()).output()?;
     finish(out, args)
 }
 
 /// Like [`run`], writing `input` to git's stdin.
 pub(crate) fn run_with_input(repo: &Path, args: &[&str], input: &str) -> Result<String> {
     use std::io::Write;
-    let mut child = command(repo, args)
+    let mut child = command(repo, args)?
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -1545,7 +1568,7 @@ fn clone_unchecked(
         )));
     }
 
-    let mut cmd = command(parent, &["clone", "--progress", "--", url, name]);
+    let mut cmd = command(parent, &["clone", "--progress", "--", url, name])?;
     cmd.envs(env.iter().cloned())
         .stdout(Stdio::null())
         .stderr(Stdio::piped());
@@ -2051,6 +2074,19 @@ mod tests {
         assert!(diff(&dir, "../x", false, true, false).is_err());
         std::fs::remove_dir_all(&dir).unwrap();
         std::fs::remove_file(&elsewhere).unwrap();
+    }
+
+    #[test]
+    fn git_is_never_found_through_a_relative_path_entry() {
+        let relative = Path::new("target").join("gitgud-relative-git");
+        std::fs::create_dir_all(&relative).unwrap();
+        std::fs::write(relative.join(GIT), "").unwrap();
+        assert_eq!(find_on_path(relative.as_os_str(), GIT), None);
+        let absolute = std::env::current_dir().unwrap().join(&relative);
+        assert_eq!(
+            find_on_path(absolute.as_os_str(), GIT),
+            Some(absolute.join(GIT))
+        );
     }
 
     #[test]

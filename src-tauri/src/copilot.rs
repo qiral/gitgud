@@ -96,12 +96,7 @@ fn expected_hash(platform: &str) -> Option<&'static str> {
 /// The first `copilot` in `path_var`. On Windows only a real `copilot.exe`
 /// counts: npm's `copilot.cmd` shim needs Node.
 fn find_on_path(path_var: &OsStr) -> Option<PathBuf> {
-    std::env::split_paths(path_var)
-        // A relative entry like `.` would find a `copilot` in whatever folder
-        // GitGud was started from.
-        .filter(|dir| dir.is_absolute())
-        .map(|dir| dir.join(BINARY))
-        .find(|bin| bin.is_file())
+    git::find_on_path(path_var, BINARY)
 }
 
 /// The copy [`install`] put in `app_data`, if any.
