@@ -42,6 +42,8 @@ Pick a commit to browse its changed files one by one, right-click anything to co
 - History with a commit graph across all branches, remote branches and tags; pick a commit or stash to browse its changed files one by one
 - Search History by message, author or hash, and see the history of a single file (right-click it anywhere and pick "Show file history"), following renames
 - Blame a file on disk or at any commit (right-click it and pick "Blame"): see who last changed each line, jump to that commit in History, or keep walking back through parents; optionally ignore whitespace and follow moved lines
+- Compare two branches before you merge (`Ctrl+Shift+D`, or the branch menu) or two commits (`Ctrl`+click in History): the full diff, file by file, and the commits only one side has
+- Diffs and blame are syntax highlighted in your theme's colors, for 45+ languages
 - A repository with nothing to commit opens on History, one with changes on Changes
 - Undo right after a commit, amend, merge, cherry-pick, revert, history edit, reset (even a hard one), branch or stash deletion or discarded files and lines; nothing done since then gets overwritten
 - Browse the reflog of HEAD or a branch, and recover deleted stashes (`Ctrl+K`, "Reflog")
@@ -73,6 +75,7 @@ Use `Cmd` instead of `Ctrl` on macOS.
 | `Ctrl+B` | Switch branch |
 | `Ctrl+Shift+N` | New branch |
 | `Ctrl+Shift+M` | Merge a branch into the current one |
+| `Ctrl+Shift+D` | Compare a branch with the current one |
 | `Ctrl+Shift+S` | Stash changes |
 | `Ctrl+1` / `Ctrl+2` / `Ctrl+3` | Changes / History / Stashes |
 | `Ctrl+F` | Search history |
@@ -101,7 +104,7 @@ Use `Cmd` instead of `Ctrl` on macOS.
 
 **Pick a theme**, or let GitGud follow your system between a light and a dark one.
 
-![The theme menu over Catppuccin Latte](docs/screenshots/themes.png)
+![The appearance window in Catppuccin Mocha](docs/screenshots/themes.png)
 
 ## Tech stack
 

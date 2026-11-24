@@ -23,6 +23,7 @@ it('replaces missing and invalid settings with defaults', () => {
     diffColors: 'default',
     codeSize: 12,
     codeFont: '',
+    syntax: true,
   })
   localStorage.setItem('gitgud.appearance', '{not json')
   expect(readAppearance().codeSize).toBe(12)

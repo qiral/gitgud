@@ -12,6 +12,7 @@ import {
   ExternalLink,
   FolderGit2,
   FolderOpen,
+  GitCompareArrows,
   GitMerge,
   GitBranch,
   Globe,
@@ -68,6 +69,8 @@ interface Props {
   sync: Sync
   onPalette: () => void
   onAppearance: () => void
+  /** Compares the current branch with another. */
+  onCompare?: (branch: string) => void
   /** The pull request button, when the branch can have one. */
   pullRequest?: React.ReactNode
   act: (label: string, action: () => Promise<unknown>) => Promise<boolean>
@@ -94,6 +97,7 @@ export default function Toolbar({
   sync,
   onPalette,
   onAppearance,
+  onCompare,
   pullRequest,
   act,
   onSummarizeBranch,
@@ -118,6 +122,7 @@ export default function Toolbar({
         remoteBranches={remoteBranches}
         act={act}
         onSummarizeBranch={onSummarizeBranch}
+        onCompare={onCompare}
       />
 
       <div className="flex-1" />
@@ -618,6 +623,7 @@ export function BranchMenu({
   remoteBranches,
   act,
   onSummarizeBranch,
+  onCompare,
 }: Pick<
   Props,
   | 'repo'
@@ -626,6 +632,7 @@ export function BranchMenu({
   | 'remoteBranches'
   | 'act'
   | 'onSummarizeBranch'
+  | 'onCompare'
 >) {
   const { t: tx } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -700,6 +707,17 @@ export function BranchMenu({
         label: tx('toolbar.merge-into-branch', { branch: status.branch }),
         icon: GitMerge,
         onClick: () => mergeIn(b.name),
+      })
+    if (!b.current && onCompare)
+      items.push({
+        label: tx('compare.with', {
+          name: status?.branch ?? tx('toolbar.detached-head'),
+        }),
+        icon: GitCompareArrows,
+        onClick: () => {
+          setOpen(false)
+          onCompare(b.name)
+        },
       })
     if (!b.current && onSummarizeBranch)
       items.push({

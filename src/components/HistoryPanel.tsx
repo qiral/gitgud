@@ -5,6 +5,7 @@ import {
   EyeOff,
   GitBranchPlus,
   GitCommitHorizontal,
+  GitCompareArrows,
   Minus,
   PencilLine,
   Plus,
@@ -60,6 +61,10 @@ interface Props {
   /** Asks Copilot for release notes from `from` up to `to`, or up to HEAD
    *  when `to` is null; unset to hide. */
   onReleaseNotes?: (from: Commit, to: Commit | null) => void
+  /** Shows what differs between two commits, the older one first. */
+  onCompare?: (from: Commit, to: Commit) => void
+  /** The commits being compared. */
+  comparing?: string[]
   /** Focuses the search box whenever this changes, e.g. from a shortcut. */
   focusSearch?: number
   /** Scrolls to this commit whenever it changes. */
@@ -101,6 +106,8 @@ export default function HistoryPanel({
   filtered = null,
   onExplain,
   onReleaseNotes,
+  onCompare,
+  comparing,
   focusSearch,
   reveal,
 }: Props) {
@@ -195,6 +202,19 @@ export default function HistoryPanel({
     // Only when asked: not again as commits load.
   }, [reveal])
 
+  /** The commit selected along with `c`, e.g. to compare the two. */
+  const otherThan = (c: Commit) =>
+    selection?.kind === 'commit' && selection.commit.hash !== c.hash
+      ? selection.commit
+      : null
+
+  function compareWith(c: Commit, other: Commit) {
+    const at = (x: Commit) => commits.findIndex((y) => y.hash === x.hash)
+    // Newest first; a commit that isn't listed counts as older.
+    const older = at(other) === -1 || at(other) > at(c)
+    onCompare?.(older ? other : c, older ? c : other)
+  }
+
   function menuFor(c: Commit): MenuItem[] {
     const items: MenuItem[] = [
       {
@@ -213,6 +233,13 @@ export default function HistoryPanel({
         onClick: () => copyText(c.subject),
       },
     ]
+    const other = otherThan(c)
+    if (onCompare && other)
+      items.push('separator', {
+        label: t('compare.with', { name: other.shortHash }),
+        icon: GitCompareArrows,
+        onClick: () => compareWith(c, other),
+      })
     if (onExplain)
       items.push('separator', {
         label: t('historypanel.explain-with-copilot'),
@@ -229,10 +256,6 @@ export default function HistoryPanel({
         icon: ScrollText,
         onClick: () => onReleaseNotes(c, null),
       })
-      const other =
-        selection?.kind === 'commit' && selection.commit.hash !== c.hash
-          ? selection.commit
-          : null
       if (other)
         items.push({
           label: t('historypanel.summarize-changes-between', {
@@ -388,12 +411,19 @@ export default function HistoryPanel({
             <li aria-hidden style={{ height: rows.top }} />
             {commits.slice(rows.start, rows.end).map((c) => {
               const selected =
-                selection?.kind === 'commit' && selection.commit.hash === c.hash
+                comparing?.includes(c.hash) ||
+                (selection?.kind === 'commit' &&
+                  selection.commit.hash === c.hash)
               const isHead = c.refs.some((r) => r.kind === 'head')
               return (
                 <li
                   key={c.hash}
-                  onClick={() => onSelect({ kind: 'commit', commit: c })}
+                  onClick={(e) => {
+                    const other = otherThan(c)
+                    if ((e.ctrlKey || e.metaKey) && other && onCompare)
+                      compareWith(c, other)
+                    else onSelect({ kind: 'commit', commit: c })
+                  }}
                   onContextMenu={(e) => {
                     onSelect({ kind: 'commit', commit: c })
                     open(e, menuFor(c))

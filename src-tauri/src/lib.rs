@@ -1,5 +1,6 @@
 mod blame;
 mod cache;
+mod compare;
 mod conflict;
 mod copilot;
 pub mod git;
@@ -14,6 +15,7 @@ mod remotes;
 mod undo;
 
 use blame::Blame;
+use compare::Differences;
 use conflict::{Choice, Part};
 use copilot::{Copilot, InstallProgress};
 use git::{
@@ -203,6 +205,17 @@ fn graph_layout(commits: Vec<(String, Vec<String>)>) -> Vec<graph::GraphRow> {
 #[tauri::command(async)]
 fn show_commit(repo: String, hash: String, ignore_whitespace: bool) -> Result<String> {
     git::show_commit(Path::new(&repo), &hash, ignore_whitespace)
+}
+
+#[tauri::command(async)]
+fn compare(
+    repo: String,
+    base: String,
+    head: String,
+    direct: bool,
+    ignore_whitespace: bool,
+) -> Result<Differences> {
+    compare::compare(Path::new(&repo), &base, &head, direct, ignore_whitespace)
 }
 
 #[tauri::command(async)]
@@ -791,6 +804,7 @@ pub fn run() {
             blame,
             graph_layout,
             show_commit,
+            compare,
             merge,
             merge_abort,
             merge_commit,

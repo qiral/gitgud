@@ -1145,7 +1145,7 @@ const LOG_FORMAT: &str = "--format=%H%x1f%h%x1f%an%x1f%ae%x1f%at%x1f%P%x1f%D%x1f
 const ALL_REFS: [&str; 4] = ["--branches", "--remotes", "--tags", "HEAD"];
 
 /// `git log` with `args` added, parsed.
-fn log_with(repo: &Path, limit: u32, args: &[&str]) -> Result<Vec<Commit>> {
+pub(crate) fn log_with(repo: &Path, limit: u32, args: &[&str]) -> Result<Vec<Commit>> {
     if !has_head(repo)? {
         return Ok(Vec::new());
     }

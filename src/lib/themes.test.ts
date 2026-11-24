@@ -35,13 +35,18 @@ it('has no duplicate themes', () => {
 
 it.each(THEMES)('$label has every color, readable', ({ id }) => {
   const c = colors(id)
-  expect(Object.keys(c)).toHaveLength(13)
+  expect(Object.keys(c)).toHaveLength(19)
   for (const bg of [c.bg, c.panel]) {
     expect(contrast(c.fg, bg)).toBeGreaterThan(5.5)
     expect(contrast(c.muted, bg)).toBeGreaterThan(3)
   }
   expect(contrast(c.fg, c['added-bg'])).toBeGreaterThan(4.5)
   expect(contrast(c.fg, c['removed-bg'])).toBeGreaterThan(4.5)
+  for (const [name, color] of Object.entries(c).filter(([k]) =>
+    k.startsWith('syn-'),
+  ))
+    for (const bg of [c.bg, c['added-bg'], c['removed-bg']])
+      expect(contrast(color, bg), name).toBeGreaterThan(3.5)
   expect(contrast(c.accent, c.bg)).toBeGreaterThan(3)
   expect(contrast(c['on-accent'], c.accent)).toBeGreaterThan(2.8)
 })

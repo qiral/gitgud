@@ -13,6 +13,7 @@ import {
   FolderOpen,
   GitBranch,
   GitBranchPlus,
+  GitCompareArrows,
   GitMerge,
   Globe,
   History,
@@ -38,6 +39,7 @@ import { THEMES } from '../lib/themes'
 import { isTyping, matches } from '../lib/shortcuts'
 import { useUpdates } from '../lib/updates'
 import CommandPalette, { type Command } from './CommandPalette'
+import { branchSide, remoteSide, type CompareSide } from './CompareView'
 import ShortcutsDialog from './ShortcutsDialog'
 import PromptDialog from './PromptDialog'
 import type { Sync } from './SyncActions'
@@ -64,6 +66,8 @@ interface Options {
   onOpenRecent: (path: string) => void
   onClone: () => void
   onAppearance: () => void
+  /** Compares the current branch with another. */
+  onCompare: (side: CompareSide) => void
   onStash: () => void
   onSignIn: () => void
   onSignOut: () => void
@@ -231,6 +235,34 @@ export function useRepoCommands(o: Options) {
             run: () =>
               o.act('switch', () => git.switchBranch(o.repo.path, b.name)),
           })),
+      },
+    },
+    {
+      id: 'compare',
+      group: t('repocommands.group-branch'),
+      label: t('compare.command'),
+      icon: GitCompareArrows,
+      shortcut: 'mod+shift+d',
+      keywords: 'diff ahead behind',
+      disabled: others.length + o.remoteBranches.length === 0,
+      page: {
+        placeholder: t('compare.pick'),
+        items: () => [
+          ...others.map((b) => ({
+            id: `compare:${b.name}`,
+            group: t('repocommands.group-branches'),
+            label: b.name,
+            icon: GitCompareArrows,
+            run: () => o.onCompare(branchSide(b.name)),
+          })),
+          ...o.remoteBranches.map((name) => ({
+            id: `compare:remote:${name}`,
+            group: t('repocommands.group-remote-branches'),
+            label: name,
+            icon: GitCompareArrows,
+            run: () => o.onCompare(remoteSide(name)),
+          })),
+        ],
       },
     },
     {

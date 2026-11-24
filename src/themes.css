@@ -18,6 +18,12 @@
   --app-removed-bg: #fdebec;
   --app-modified: #9a6700;
   --app-on-accent: #ffffff;
+  --app-syn-keyword: #cf222e;
+  --app-syn-string: #0a3069;
+  --app-syn-number: #0550ae;
+  --app-syn-function: #6639ba;
+  --app-syn-type: #953800;
+  --app-syn-variable: #116329;
   color-scheme: light;
 }
 
@@ -35,6 +41,12 @@
   --app-removed-bg: #2d1517;
   --app-modified: #d4a72c;
   --app-on-accent: #ffffff;
+  --app-syn-keyword: #ff7b72;
+  --app-syn-string: #a5d6ff;
+  --app-syn-number: #79c0ff;
+  --app-syn-function: #d2a8ff;
+  --app-syn-type: #ffa657;
+  --app-syn-variable: #7ee787;
   color-scheme: dark;
 }
 
@@ -52,6 +64,12 @@
   --app-removed-bg: #f9e1d8;
   --app-modified: #a67c00;
   --app-on-accent: #ffffff;
+  --app-syn-keyword: #6d7d00;
+  --app-syn-string: #22817a;
+  --app-syn-number: #d33682;
+  --app-syn-function: #217ab9;
+  --app-syn-type: #947000;
+  --app-syn-variable: #6a6fc0;
   color-scheme: light;
 }
 
@@ -69,6 +87,12 @@
   --app-removed-bg: #3d2027;
   --app-modified: #b58900;
   --app-on-accent: #ffffff;
+  --app-syn-keyword: #859900;
+  --app-syn-string: #2aa198;
+  --app-syn-number: #db5a99;
+  --app-syn-function: #2f90d4;
+  --app-syn-type: #b58900;
+  --app-syn-variable: #7e82cb;
   color-scheme: dark;
 }
 
@@ -86,6 +110,12 @@
   --app-removed-bg: #4a3540;
   --app-modified: #ebcb8b;
   --app-on-accent: #2e3440;
+  --app-syn-keyword: #81a1c1;
+  --app-syn-string: #a3be8c;
+  --app-syn-number: #b48ead;
+  --app-syn-function: #88c0d0;
+  --app-syn-type: #8fbcbb;
+  --app-syn-variable: #ebcb8b;
   color-scheme: dark;
 }
 
@@ -103,6 +133,12 @@
   --app-removed-bg: #45262c;
   --app-modified: #f1fa8c;
   --app-on-accent: #21222c;
+  --app-syn-keyword: #ff79c6;
+  --app-syn-string: #f1fa8c;
+  --app-syn-number: #bd93f9;
+  --app-syn-function: #50fa7b;
+  --app-syn-type: #8be9fd;
+  --app-syn-variable: #ffb86c;
   color-scheme: dark;
 }
 
@@ -120,6 +156,12 @@
   --app-removed-bg: #3f201e;
   --app-modified: #fabd2f;
   --app-on-accent: #1d2021;
+  --app-syn-keyword: #fb4934;
+  --app-syn-string: #b8bb26;
+  --app-syn-number: #d3869b;
+  --app-syn-function: #8ec07c;
+  --app-syn-type: #fabd2f;
+  --app-syn-variable: #83a598;
   color-scheme: dark;
 }
 
@@ -137,6 +179,12 @@
   --app-removed-bg: #f6d7dc;
   --app-modified: #c27a12;
   --app-on-accent: #ffffff;
+  --app-syn-keyword: #8839ef;
+  --app-syn-string: #338022;
+  --app-syn-number: #c14c08;
+  --app-syn-function: #1e66f5;
+  --app-syn-type: #9c6314;
+  --app-syn-variable: #147e84;
   color-scheme: light;
 }
 
@@ -154,6 +202,12 @@
   --app-removed-bg: #3c2535;
   --app-modified: #f9e2af;
   --app-on-accent: #1e1e2e;
+  --app-syn-keyword: #cba6f7;
+  --app-syn-string: #a6e3a1;
+  --app-syn-number: #fab387;
+  --app-syn-function: #89b4fa;
+  --app-syn-type: #f9e2af;
+  --app-syn-variable: #94e2d5;
   color-scheme: dark;
 }
 
@@ -171,6 +225,12 @@
   --app-removed-bg: #33212b;
   --app-modified: #e0af68;
   --app-on-accent: #1a1b26;
+  --app-syn-keyword: #bb9af7;
+  --app-syn-string: #9ece6a;
+  --app-syn-number: #ff9e64;
+  --app-syn-function: #7aa2f7;
+  --app-syn-type: #2ac3de;
+  --app-syn-variable: #73daca;
   color-scheme: dark;
 }
 
@@ -188,6 +248,12 @@
   --app-removed-bg: #f8e0e2;
   --app-modified: #9a6700;
   --app-on-accent: #ffffff;
+  --app-syn-keyword: #cf222e;
+  --app-syn-string: #0a3069;
+  --app-syn-number: #0550ae;
+  --app-syn-function: #6639ba;
+  --app-syn-type: #953800;
+  --app-syn-variable: #116329;
   color-scheme: light;
 }
 
@@ -205,6 +271,12 @@
   --app-removed-bg: #f3e2e0;
   --app-modified: #9e6c01;
   --app-on-accent: #ffffff;
+  --app-syn-keyword: #a626a4;
+  --app-syn-string: #428441;
+  --app-syn-number: #986801;
+  --app-syn-function: #3b6edf;
+  --app-syn-type: #9e6c01;
+  --app-syn-variable: #c94c40;
   color-scheme: light;
 }
 
@@ -222,6 +294,12 @@
   --app-removed-bg: #eecfac;
   --app-modified: #986311;
   --app-on-accent: #ffffff;
+  --app-syn-keyword: #9d0006;
+  --app-syn-string: #726d0d;
+  --app-syn-number: #8f3f71;
+  --app-syn-function: #3f7654;
+  --app-syn-type: #915e10;
+  --app-syn-variable: #076678;
   color-scheme: light;
 }
 
@@ -239,6 +317,12 @@
   --app-removed-bg: #eedfdc;
   --app-modified: #9a6822;
   --app-on-accent: #ffffff;
+  --app-syn-keyword: #286983;
+  --app-syn-string: #9a6822;
+  --app-syn-number: #9f605d;
+  --app-syn-function: #9f605d;
+  --app-syn-type: #487c86;
+  --app-syn-variable: #7f6b95;
   color-scheme: light;
 }
 
@@ -256,6 +340,12 @@
   --app-removed-bg: #f6ddcd;
   --app-modified: #986d00;
   --app-on-accent: #ffffff;
+  --app-syn-keyword: #c64442;
+  --app-syn-string: #6b7a01;
+  --app-syn-number: #ae5291;
+  --app-syn-function: #298261;
+  --app-syn-type: #936a00;
+  --app-syn-variable: #3079a2;
   color-scheme: light;
 }
 
@@ -273,6 +363,12 @@
   --app-removed-bg: #dcc7d2;
   --app-modified: #7e6138;
   --app-on-accent: #ffffff;
+  --app-syn-keyword: #7d45c6;
+  --app-syn-string: #516c34;
+  --app-syn-number: #9c5100;
+  --app-syn-function: #2564ba;
+  --app-syn-type: #006c91;
+  --app-syn-variable: #376e66;
   color-scheme: light;
 }
 
@@ -290,6 +386,12 @@
   --app-removed-bg: #e9d3ac;
   --app-modified: #766443;
   --app-on-accent: #ffffff;
+  --app-syn-keyword: #624c83;
+  --app-syn-string: #5b7040;
+  --app-syn-number: #a1526d;
+  --app-syn-function: #4d699b;
+  --app-syn-type: #52716c;
+  --app-syn-variable: #726c3c;
   color-scheme: light;
 }
 
@@ -307,6 +409,12 @@
   --app-removed-bg: #f6e3e3;
   --app-modified: #9b6f2f;
   --app-on-accent: #ffffff;
+  --app-syn-keyword: #af632b;
+  --app-syn-string: #608100;
+  --app-syn-number: #8966ab;
+  --app-syn-function: #9b6f2f;
+  --app-syn-type: #2c7bb3;
+  --app-syn-variable: #3b7e94;
   color-scheme: light;
 }
 
@@ -324,6 +432,12 @@
   --app-removed-bg: #f4dfd4;
   --app-modified: #916e01;
   --app-on-accent: #ffffff;
+  --app-syn-keyword: #647d0b;
+  --app-syn-string: #238079;
+  --app-syn-number: #5e409d;
+  --app-syn-function: #bc5215;
+  --app-syn-type: #916e01;
+  --app-syn-variable: #205ea6;
   color-scheme: light;
 }
 
@@ -341,6 +455,12 @@
   --app-removed-bg: #f2dbdf;
   --app-modified: #6a4300;
   --app-on-accent: #ffffff;
+  --app-syn-keyword: #a0001c;
+  --app-syn-string: #003a7a;
+  --app-syn-number: #4b1fa8;
+  --app-syn-function: #4b1fa8;
+  --app-syn-type: #6a4300;
+  --app-syn-variable: #00581f;
   color-scheme: light;
 }
 
@@ -358,6 +478,12 @@
   --app-removed-bg: #331b1f;
   --app-modified: #d29922;
   --app-on-accent: #0d1117;
+  --app-syn-keyword: #ff7b72;
+  --app-syn-string: #a5d6ff;
+  --app-syn-number: #79c0ff;
+  --app-syn-function: #d2a8ff;
+  --app-syn-type: #ffa657;
+  --app-syn-variable: #7ee787;
   color-scheme: dark;
 }
 
@@ -375,6 +501,12 @@
   --app-removed-bg: #413036;
   --app-modified: #c69026;
   --app-on-accent: #212830;
+  --app-syn-keyword: #f47067;
+  --app-syn-string: #96d0ff;
+  --app-syn-number: #6cb6ff;
+  --app-syn-function: #dcbdfb;
+  --app-syn-type: #f69d50;
+  --app-syn-variable: #8ddb8c;
   color-scheme: dark;
 }
 
@@ -392,6 +524,12 @@
   --app-removed-bg: #45363e;
   --app-modified: #e5c07b;
   --app-on-accent: #282c34;
+  --app-syn-keyword: #c77bde;
+  --app-syn-string: #98c379;
+  --app-syn-number: #d19a66;
+  --app-syn-function: #61afef;
+  --app-syn-type: #e5c07b;
+  --app-syn-variable: #e27880;
   color-scheme: dark;
 }
 
@@ -409,6 +547,12 @@
   --app-removed-bg: #492930;
   --app-modified: #e6db74;
   --app-on-accent: #272822;
+  --app-syn-keyword: #fb5e97;
+  --app-syn-string: #e6db74;
+  --app-syn-number: #ae81ff;
+  --app-syn-function: #a6e22e;
+  --app-syn-type: #66d9ef;
+  --app-syn-variable: #fd971f;
   color-scheme: dark;
 }
 
@@ -426,6 +570,12 @@
   --app-removed-bg: #3b2536;
   --app-modified: #f6c177;
   --app-on-accent: #191724;
+  --app-syn-keyword: #5a90a5;
+  --app-syn-string: #f6c177;
+  --app-syn-number: #ebbcba;
+  --app-syn-function: #ebbcba;
+  --app-syn-type: #9ccfd8;
+  --app-syn-variable: #c4a7e7;
   color-scheme: dark;
 }
 
@@ -443,6 +593,12 @@
   --app-removed-bg: #432d45;
   --app-modified: #f6c177;
   --app-on-accent: #232136;
+  --app-syn-keyword: #519ab8;
+  --app-syn-string: #f6c177;
+  --app-syn-number: #ea9a97;
+  --app-syn-function: #ea9a97;
+  --app-syn-type: #9ccfd8;
+  --app-syn-variable: #c4a7e7;
   color-scheme: dark;
 }
 
@@ -460,6 +616,12 @@
   --app-removed-bg: #4d4050;
   --app-modified: #e5c890;
   --app-on-accent: #303446;
+  --app-syn-keyword: #ca9ee6;
+  --app-syn-string: #a6d189;
+  --app-syn-number: #ef9f76;
+  --app-syn-function: #8caaee;
+  --app-syn-type: #e5c890;
+  --app-syn-variable: #81c8be;
   color-scheme: dark;
 }
 
@@ -477,6 +639,12 @@
   --app-removed-bg: #443649;
   --app-modified: #eed49f;
   --app-on-accent: #24273a;
+  --app-syn-keyword: #c6a0f6;
+  --app-syn-string: #a6da95;
+  --app-syn-number: #f5a97f;
+  --app-syn-function: #8aadf4;
+  --app-syn-type: #eed49f;
+  --app-syn-variable: #8bd5ca;
   color-scheme: dark;
 }
 
@@ -494,6 +662,12 @@
   --app-removed-bg: #463448;
   --app-modified: #e0af68;
   --app-on-accent: #24283b;
+  --app-syn-keyword: #bb9af7;
+  --app-syn-string: #9ece6a;
+  --app-syn-number: #ff9e64;
+  --app-syn-function: #7aa2f7;
+  --app-syn-type: #2ac3de;
+  --app-syn-variable: #73daca;
   color-scheme: dark;
 }
 
@@ -511,6 +685,12 @@
   --app-removed-bg: #4b4146;
   --app-modified: #dbbc7f;
   --app-on-accent: #2d353b;
+  --app-syn-keyword: #e78385;
+  --app-syn-string: #a7c080;
+  --app-syn-number: #d699b6;
+  --app-syn-function: #83c092;
+  --app-syn-type: #dbbc7f;
+  --app-syn-variable: #7fbbb3;
   color-scheme: dark;
 }
 
@@ -528,6 +708,12 @@
   --app-removed-bg: #3f2b34;
   --app-modified: #e6c384;
   --app-on-accent: #1f1f28;
+  --app-syn-keyword: #9782b9;
+  --app-syn-string: #98bb6c;
+  --app-syn-number: #d27e99;
+  --app-syn-function: #7e9cd8;
+  --app-syn-type: #7aa89f;
+  --app-syn-variable: #e6c384;
   color-scheme: dark;
 }
 
@@ -545,6 +731,12 @@
   --app-removed-bg: #321f27;
   --app-modified: #ffb454;
   --app-on-accent: #0d1017;
+  --app-syn-keyword: #ff8f40;
+  --app-syn-string: #aad94c;
+  --app-syn-number: #d2a6ff;
+  --app-syn-function: #ffb454;
+  --app-syn-type: #59c2ff;
+  --app-syn-variable: #39bae6;
   color-scheme: dark;
 }
 
@@ -562,6 +754,12 @@
   --app-removed-bg: #453642;
   --app-modified: #ffad66;
   --app-on-accent: #242936;
+  --app-syn-keyword: #ffad66;
+  --app-syn-string: #d5ff80;
+  --app-syn-number: #dfbfff;
+  --app-syn-function: #ffd173;
+  --app-syn-type: #73d0ff;
+  --app-syn-variable: #5ccfe6;
   color-scheme: dark;
 }
 
@@ -579,6 +777,12 @@
   --app-removed-bg: #27202e;
   --app-modified: #ecc48d;
   --app-on-accent: #011627;
+  --app-syn-keyword: #c792ea;
+  --app-syn-string: #ecc48d;
+  --app-syn-number: #f78c6c;
+  --app-syn-function: #82aaff;
+  --app-syn-type: #ffcb8b;
+  --app-syn-variable: #7fdbca;
   color-scheme: dark;
 }
 
@@ -596,6 +800,12 @@
   --app-removed-bg: #3e3c54;
   --app-modified: #ff9d00;
   --app-on-accent: #193549;
+  --app-syn-keyword: #ff9d00;
+  --app-syn-string: #a5ff90;
+  --app-syn-number: #ff6f95;
+  --app-syn-function: #ffc600;
+  --app-syn-type: #80ffbb;
+  --app-syn-variable: #9effff;
   color-scheme: dark;
 }
 
@@ -613,6 +823,12 @@
   --app-removed-bg: #492839;
   --app-modified: #fede5d;
   --app-on-accent: #262335;
+  --app-syn-keyword: #fede5d;
+  --app-syn-string: #ff8b39;
+  --app-syn-number: #f97e72;
+  --app-syn-function: #36f9f6;
+  --app-syn-type: #fe626c;
+  --app-syn-variable: #ff7edb;
   color-scheme: dark;
 }
 
@@ -630,6 +846,12 @@
   --app-removed-bg: #2f1a18;
   --app-modified: #d0a215;
   --app-on-accent: #100f0f;
+  --app-syn-keyword: #879a39;
+  --app-syn-string: #3aa99f;
+  --app-syn-number: #8b7ec8;
+  --app-syn-function: #da702c;
+  --app-syn-type: #d0a215;
+  --app-syn-variable: #4385be;
   color-scheme: dark;
 }
 
@@ -647,6 +869,12 @@
   --app-removed-bg: #362222;
   --app-modified: #ffd9a8;
   --app-on-accent: #101010;
+  --app-syn-keyword: #a0a0a0;
+  --app-syn-string: #99ffe4;
+  --app-syn-number: #ffc799;
+  --app-syn-function: #ffc799;
+  --app-syn-type: #ffc799;
+  --app-syn-variable: #ffffff;
   color-scheme: dark;
 }
 
@@ -664,6 +892,12 @@
   --app-removed-bg: #271210;
   --app-modified: #d4a72c;
   --app-on-accent: #000000;
+  --app-syn-keyword: #c792ea;
+  --app-syn-string: #9ece6a;
+  --app-syn-number: #f2a97e;
+  --app-syn-function: #8ea2ff;
+  --app-syn-type: #e6c384;
+  --app-syn-variable: #7fdbca;
   color-scheme: dark;
 }
 
@@ -681,6 +915,12 @@
   --app-removed-bg: #291817;
   --app-modified: #f0b72f;
   --app-on-accent: #000000;
+  --app-syn-keyword: #ff9492;
+  --app-syn-string: #addcff;
+  --app-syn-number: #91cbff;
+  --app-syn-function: #dbb7ff;
+  --app-syn-type: #ffb757;
+  --app-syn-variable: #72f088;
   color-scheme: dark;
 }
 

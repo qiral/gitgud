@@ -17,6 +17,8 @@ interface Props {
   header: React.ReactNode
   /** Selects this file first when the patch has it, e.g. in file history. */
   focusPath?: string
+  /** Shown when the patch touches no files. */
+  empty?: string
   onFileHistory?: (path: string) => void
   /** Blames a file of the patch; not offered for deleted ones. */
   onBlame?: (path: string) => void
@@ -33,6 +35,7 @@ export default function PatchView({
   patch,
   header,
   focusPath,
+  empty,
   onFileHistory,
   onBlame,
   onExplainFile,
@@ -77,7 +80,7 @@ export default function PatchView({
           <p>
             {ignoreWhitespace
               ? t('diffview.only-whitespace')
-              : t('patchview.no-file-changes-in-this-commit')}
+              : (empty ?? t('patchview.no-file-changes-in-this-commit'))}
           </p>
           {ignoreWhitespace && (
             <button
@@ -160,7 +163,7 @@ export default function PatchView({
               }
             />
             <div ref={diffPane} className="min-h-0 flex-1 overflow-auto">
-              <DiffView diff={file.diff} />
+              <DiffView diff={file.diff} path={file.path} />
             </div>
           </div>
         </div>

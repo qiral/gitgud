@@ -3,6 +3,7 @@ import { confirm } from '@tauri-apps/plugin-dialog'
 import type { LineAction } from '../lib/git'
 import { codeRow, useAppearance } from '../lib/appearance'
 import { useVirtualRows } from '../lib/virtual'
+import { diffTokens, paint, useTokens, SYNTAX, type Token } from '../lib/syntax'
 import {
   parseDiff,
   splitRows,
@@ -62,6 +63,8 @@ const SIGN: Record<LineKind, string> = {
 
 interface Props {
   diff: string
+  /** Names the language for syntax highlighting. */
+  path?: string
   /** Enables selecting lines and hunks of a working tree or staged diff. */
   actions?: {
     staged: boolean
@@ -69,7 +72,7 @@ interface Props {
   }
 }
 
-export default function DiffView({ diff, actions: rawActions }: Props) {
+export default function DiffView({ diff, path, actions: rawActions }: Props) {
   const { t, tp } = useTranslation()
   const { split, ignoreWhitespace } = useDiffPrefs()
   const lines = useMemo(() => parseDiff(diff), [diff])
@@ -85,7 +88,8 @@ export default function DiffView({ diff, actions: rawActions }: Props) {
   const [anchor, setAnchor] = useState<number | null>(null)
   const rowCount = pairs ? pairs.length : lines.length
   const virtual = rowCount >= VIRTUAL_FROM
-  const { codeSize } = useAppearance()
+  const { codeSize, syntax } = useAppearance()
+  const tokens = useTokens(syntax ? path : undefined, lines, diffTokens)
   const rows = useVirtualRows<HTMLTableElement>(
     rowCount,
     codeRow(codeSize),
@@ -184,7 +188,12 @@ export default function DiffView({ diff, actions: rawActions }: Props) {
 
   const text = (line: Line) => {
     const segments = words.get(line.index)
-    return segments ? <Words segments={segments} kind={line.kind} /> : line.text
+    const code = tokens?.get(line.index)
+    return segments || code ? (
+      <Code segments={segments} tokens={code} line={line} />
+    ) : (
+      line.text
+    )
   }
 
   /** A hunk header with its buttons, or (side by side) a meta line, across
@@ -347,19 +356,30 @@ export default function DiffView({ diff, actions: rawActions }: Props) {
   )
 }
 
-/** A changed line with the words that differ from its counterpart marked. */
-function Words({ segments, kind }: { segments: Segment[]; kind: LineKind }) {
+/** A line with its syntax colored and the words that changed marked. */
+function Code({
+  segments,
+  tokens,
+  line,
+}: {
+  segments?: Segment[]
+  tokens?: Token[]
+  line: Line
+}) {
   return (
     <>
-      {segments.map((s, i) =>
-        s.changed ? (
-          <span key={i} className={WORD[kind]}>
-            {s.text}
-          </span>
-        ) : (
-          <span key={i}>{s.text}</span>
-        ),
-      )}
+      {paint(line.text, tokens, segments).map((s, i) => (
+        <span
+          key={i}
+          className={
+            [s.kind && SYNTAX[s.kind], s.changed && WORD[line.kind]]
+              .filter(Boolean)
+              .join(' ') || undefined
+          }
+        >
+          {s.text}
+        </span>
+      ))}
     </>
   )
 }
