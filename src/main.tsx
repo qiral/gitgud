@@ -4,11 +4,11 @@ import App from './App'
 import UpdateNotice from './components/UpdateNotice'
 import './index.css'
 import { UpdatesProvider } from './lib/updates'
-import { applyTheme, readTheme } from './lib/prefs'
+import { applyAppearance } from './lib/appearance'
 import { I18nProvider } from './i18n'
 
 // Before the first render, so the app doesn't flash the wrong colors.
-applyTheme(readTheme())
+applyAppearance()
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>

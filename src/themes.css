@@ -1,0 +1,700 @@
+/* One block per theme in src/lib/themes.ts. applyAppearance in
+   src/lib/appearance.ts sets data-theme on <html>. The selectors match any
+   element, so a preview card shows another theme by setting its own
+   data-theme. Colors come from each palette's published values, nudged where
+   text was too faint to read; themes.test.ts checks the contrast. */
+:root,
+[data-theme='light'] {
+  --app-bg: #ffffff;
+  --app-panel: #f6f7f9;
+  --app-hover: #eceef2;
+  --app-line: #dfe2e7;
+  --app-fg: #1d2129;
+  --app-muted: #6b7280;
+  --app-accent: #4f6ef7;
+  --app-added: #1a7f37;
+  --app-added-bg: #e6f6ea;
+  --app-removed: #cf222e;
+  --app-removed-bg: #fdebec;
+  --app-modified: #9a6700;
+  --app-on-accent: #ffffff;
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --app-bg: #16181d;
+  --app-panel: #1d2026;
+  --app-hover: #272b33;
+  --app-line: #2e323b;
+  --app-fg: #e6e8eb;
+  --app-muted: #8b919c;
+  --app-accent: #7b93ff;
+  --app-added: #4ac26b;
+  --app-added-bg: #12261a;
+  --app-removed: #f47067;
+  --app-removed-bg: #2d1517;
+  --app-modified: #d4a72c;
+  --app-on-accent: #ffffff;
+  color-scheme: dark;
+}
+
+[data-theme='solarized-light'] {
+  --app-bg: #fdf6e3;
+  --app-panel: #eee8d5;
+  --app-hover: #e4ddc8;
+  --app-line: #d9d2bc;
+  --app-fg: #3d5058;
+  --app-muted: #74858a;
+  --app-accent: #268bd2;
+  --app-added: #6c8000;
+  --app-added-bg: #eef0d0;
+  --app-removed: #dc322f;
+  --app-removed-bg: #f9e1d8;
+  --app-modified: #a67c00;
+  --app-on-accent: #ffffff;
+  color-scheme: light;
+}
+
+[data-theme='solarized-dark'] {
+  --app-bg: #002b36;
+  --app-panel: #073642;
+  --app-hover: #0e4351;
+  --app-line: #1b4a56;
+  --app-fg: #c3cfd0;
+  --app-muted: #839496;
+  --app-accent: #3a96dd;
+  --app-added: #859900;
+  --app-added-bg: #12392a;
+  --app-removed: #e0504d;
+  --app-removed-bg: #3d2027;
+  --app-modified: #b58900;
+  --app-on-accent: #ffffff;
+  color-scheme: dark;
+}
+
+[data-theme='nord'] {
+  --app-bg: #2e3440;
+  --app-panel: #3b4252;
+  --app-hover: #434c5e;
+  --app-line: #4c566a;
+  --app-fg: #eceff4;
+  --app-muted: #a1aabb;
+  --app-accent: #88c0d0;
+  --app-added: #a3be8c;
+  --app-added-bg: #36423b;
+  --app-removed: #d0717a;
+  --app-removed-bg: #4a3540;
+  --app-modified: #ebcb8b;
+  --app-on-accent: #2e3440;
+  color-scheme: dark;
+}
+
+[data-theme='dracula'] {
+  --app-bg: #282a36;
+  --app-panel: #21222c;
+  --app-hover: #343746;
+  --app-line: #3d4052;
+  --app-fg: #f8f8f2;
+  --app-muted: #9aa1c4;
+  --app-accent: #bd93f9;
+  --app-added: #50fa7b;
+  --app-added-bg: #233a2d;
+  --app-removed: #ff5c5c;
+  --app-removed-bg: #45262c;
+  --app-modified: #f1fa8c;
+  --app-on-accent: #21222c;
+  color-scheme: dark;
+}
+
+[data-theme='gruvbox'] {
+  --app-bg: #282828;
+  --app-panel: #1d2021;
+  --app-hover: #32302f;
+  --app-line: #45403d;
+  --app-fg: #ebdbb2;
+  --app-muted: #a89984;
+  --app-accent: #83a598;
+  --app-added: #b8bb26;
+  --app-added-bg: #33361b;
+  --app-removed: #fb4934;
+  --app-removed-bg: #3f201e;
+  --app-modified: #fabd2f;
+  --app-on-accent: #1d2021;
+  color-scheme: dark;
+}
+
+[data-theme='catppuccin-latte'] {
+  --app-bg: #eff1f5;
+  --app-panel: #e6e9ef;
+  --app-hover: #dce0e8;
+  --app-line: #ccd0da;
+  --app-fg: #4c4f69;
+  --app-muted: #6c6f85;
+  --app-accent: #1e66f5;
+  --app-added: #40a02b;
+  --app-added-bg: #dcefd6;
+  --app-removed: #d20f39;
+  --app-removed-bg: #f6d7dc;
+  --app-modified: #c27a12;
+  --app-on-accent: #ffffff;
+  color-scheme: light;
+}
+
+[data-theme='catppuccin-mocha'] {
+  --app-bg: #1e1e2e;
+  --app-panel: #181825;
+  --app-hover: #2a2b3c;
+  --app-line: #363849;
+  --app-fg: #cdd6f4;
+  --app-muted: #9399b2;
+  --app-accent: #89b4fa;
+  --app-added: #a6e3a1;
+  --app-added-bg: #22332b;
+  --app-removed: #f38ba8;
+  --app-removed-bg: #3c2535;
+  --app-modified: #f9e2af;
+  --app-on-accent: #1e1e2e;
+  color-scheme: dark;
+}
+
+[data-theme='tokyo-night'] {
+  --app-bg: #1a1b26;
+  --app-panel: #16161e;
+  --app-hover: #292e42;
+  --app-line: #3b4261;
+  --app-fg: #c0caf5;
+  --app-muted: #a9b1d6;
+  --app-accent: #7aa2f7;
+  --app-added: #9ece6a;
+  --app-added-bg: #1e2a2b;
+  --app-removed: #f7768e;
+  --app-removed-bg: #33212b;
+  --app-modified: #e0af68;
+  --app-on-accent: #1a1b26;
+  color-scheme: dark;
+}
+
+[data-theme='github-light'] {
+  --app-bg: #ffffff;
+  --app-panel: #f6f8fa;
+  --app-hover: #eaeef2;
+  --app-line: #d0d7de;
+  --app-fg: #1f2328;
+  --app-muted: #59636e;
+  --app-accent: #0969da;
+  --app-added: #1a7f37;
+  --app-added-bg: #e4f0e7;
+  --app-removed: #cf222e;
+  --app-removed-bg: #f8e0e2;
+  --app-modified: #9a6700;
+  --app-on-accent: #ffffff;
+  color-scheme: light;
+}
+
+[data-theme='one-light'] {
+  --app-bg: #fafafa;
+  --app-panel: #f0f0f1;
+  --app-hover: #e5e5e6;
+  --app-line: #dbdbdc;
+  --app-fg: #383a42;
+  --app-muted: #6b6d75;
+  --app-accent: #3b6edf;
+  --app-added: #428441;
+  --app-added-bg: #e4ece4;
+  --app-removed: #c94c40;
+  --app-removed-bg: #f3e2e0;
+  --app-modified: #9e6c01;
+  --app-on-accent: #ffffff;
+  color-scheme: light;
+}
+
+[data-theme='gruvbox-light'] {
+  --app-bg: #fbf1c7;
+  --app-panel: #f2e5bc;
+  --app-hover: #ebdbb2;
+  --app-line: #d5c4a1;
+  --app-fg: #3c3836;
+  --app-muted: #70645a;
+  --app-accent: #076678;
+  --app-added: #746f0d;
+  --app-added-bg: #ebe1b1;
+  --app-removed: #9d0006;
+  --app-removed-bg: #eecfac;
+  --app-modified: #986311;
+  --app-on-accent: #ffffff;
+  color-scheme: light;
+}
+
+[data-theme='rose-pine-dawn'] {
+  --app-bg: #faf4ed;
+  --app-panel: #f2e9e1;
+  --app-hover: #eae1da;
+  --app-line: #dfdad9;
+  --app-fg: #575279;
+  --app-muted: #6a6781;
+  --app-accent: #7c6991;
+  --app-added: #477982;
+  --app-added-bg: #e5e5e0;
+  --app-removed: #a65b70;
+  --app-removed-bg: #eedfdc;
+  --app-modified: #9a6822;
+  --app-on-accent: #ffffff;
+  color-scheme: light;
+}
+
+[data-theme='everforest-light'] {
+  --app-bg: #fdf6e3;
+  --app-panel: #f4f0d9;
+  --app-hover: #efebd4;
+  --app-line: #e0dcc7;
+  --app-fg: #4f5b62;
+  --app-muted: #636e62;
+  --app-accent: #317ca5;
+  --app-added: #6b7a01;
+  --app-added-bg: #ebe7c8;
+  --app-removed: #cb4643;
+  --app-removed-bg: #f6ddcd;
+  --app-modified: #986d00;
+  --app-on-accent: #ffffff;
+  color-scheme: light;
+}
+
+[data-theme='tokyo-night-day'] {
+  --app-bg: #e1e2e7;
+  --app-panel: #d6d8df;
+  --app-hover: #c9ccd8;
+  --app-line: #b7bccf;
+  --app-fg: #29478d;
+  --app-muted: #4e5b8d;
+  --app-accent: #2564ba;
+  --app-added: #536e36;
+  --app-added-bg: #d0d4d2;
+  --app-removed: #bf214f;
+  --app-removed-bg: #dcc7d2;
+  --app-modified: #7e6138;
+  --app-on-accent: #ffffff;
+  color-scheme: light;
+}
+
+[data-theme='kanagawa-lotus'] {
+  --app-bg: #f2ecbc;
+  --app-panel: #e7dba0;
+  --app-hover: #e4d794;
+  --app-line: #d5cea3;
+  --app-fg: #4c4c5a;
+  --app-muted: #615f53;
+  --app-accent: #4b6798;
+  --app-added: #596e3e;
+  --app-added-bg: #e0ddad;
+  --app-removed: #b43a4b;
+  --app-removed-bg: #e9d3ac;
+  --app-modified: #766443;
+  --app-on-accent: #ffffff;
+  color-scheme: light;
+}
+
+[data-theme='ayu-light'] {
+  --app-bg: #fcfcfc;
+  --app-panel: #f3f4f5;
+  --app-hover: #e9ebee;
+  --app-line: #dcdfe3;
+  --app-fg: #585d62;
+  --app-muted: #6c6f73;
+  --app-accent: #2c7bb3;
+  --app-added: #4c862f;
+  --app-added-bg: #e7eee3;
+  --app-removed: #cf4848;
+  --app-removed-bg: #f6e3e3;
+  --app-modified: #9b6f2f;
+  --app-on-accent: #ffffff;
+  color-scheme: light;
+}
+
+[data-theme='flexoki-light'] {
+  --app-bg: #fffcf0;
+  --app-panel: #f2f0e5;
+  --app-hover: #e6e4d9;
+  --app-line: #dad8ce;
+  --app-fg: #100f0f;
+  --app-muted: #6d6c67;
+  --app-accent: #205ea6;
+  --app-added: #647d0b;
+  --app-added-bg: #ecedd5;
+  --app-removed: #af3029;
+  --app-removed-bg: #f4dfd4;
+  --app-modified: #916e01;
+  --app-on-accent: #ffffff;
+  color-scheme: light;
+}
+
+[data-theme='high-contrast-light'] {
+  --app-bg: #ffffff;
+  --app-panel: #ffffff;
+  --app-hover: #e3e6ea;
+  --app-line: #6b737c;
+  --app-fg: #000000;
+  --app-muted: #3a4048;
+  --app-accent: #0037b8;
+  --app-added: #00581f;
+  --app-added-bg: #e0ebe4;
+  --app-removed: #a0001c;
+  --app-removed-bg: #f2dbdf;
+  --app-modified: #6a4300;
+  --app-on-accent: #ffffff;
+  color-scheme: light;
+}
+
+[data-theme='github-dark'] {
+  --app-bg: #0d1117;
+  --app-panel: #151b23;
+  --app-hover: #212830;
+  --app-line: #3d444d;
+  --app-fg: #f0f6fc;
+  --app-muted: #9198a1;
+  --app-accent: #4493f8;
+  --app-added: #3fb950;
+  --app-added-bg: #14291f;
+  --app-removed: #f85149;
+  --app-removed-bg: #331b1f;
+  --app-modified: #d29922;
+  --app-on-accent: #0d1117;
+  color-scheme: dark;
+}
+
+[data-theme='github-dimmed'] {
+  --app-bg: #212830;
+  --app-panel: #262c36;
+  --app-hover: #2f3742;
+  --app-line: #3d444d;
+  --app-fg: #d1d7e0;
+  --app-muted: #9198a1;
+  --app-accent: #478be6;
+  --app-added: #57ab5a;
+  --app-added-bg: #293a36;
+  --app-removed: #e75d56;
+  --app-removed-bg: #413036;
+  --app-modified: #c69026;
+  --app-on-accent: #212830;
+  color-scheme: dark;
+}
+
+[data-theme='one-dark'] {
+  --app-bg: #282c34;
+  --app-panel: #21252b;
+  --app-hover: #2c313a;
+  --app-line: #3e4451;
+  --app-fg: #abb2bf;
+  --app-muted: #8e94a0;
+  --app-accent: #61afef;
+  --app-added: #98c379;
+  --app-added-bg: #38413e;
+  --app-removed: #e06c75;
+  --app-removed-bg: #45363e;
+  --app-modified: #e5c07b;
+  --app-on-accent: #282c34;
+  color-scheme: dark;
+}
+
+[data-theme='monokai'] {
+  --app-bg: #272822;
+  --app-panel: #1e1f1c;
+  --app-hover: #3e3d32;
+  --app-line: #49483e;
+  --app-fg: #f8f8f2;
+  --app-muted: #a59f85;
+  --app-accent: #66d9ef;
+  --app-added: #a6e22e;
+  --app-added-bg: #394224;
+  --app-removed: #f92f78;
+  --app-removed-bg: #492930;
+  --app-modified: #e6db74;
+  --app-on-accent: #272822;
+  color-scheme: dark;
+}
+
+[data-theme='rose-pine'] {
+  --app-bg: #191724;
+  --app-panel: #1f1d2e;
+  --app-hover: #26233a;
+  --app-line: #403d52;
+  --app-fg: #e0def4;
+  --app-muted: #908caa;
+  --app-accent: #c4a7e7;
+  --app-added: #9ccfd8;
+  --app-added-bg: #2b313d;
+  --app-removed: #eb6f92;
+  --app-removed-bg: #3b2536;
+  --app-modified: #f6c177;
+  --app-on-accent: #191724;
+  color-scheme: dark;
+}
+
+[data-theme='rose-pine-moon'] {
+  --app-bg: #232136;
+  --app-panel: #2a273f;
+  --app-hover: #393552;
+  --app-line: #44415a;
+  --app-fg: #e0def4;
+  --app-muted: #928eac;
+  --app-accent: #c4a7e7;
+  --app-added: #9ccfd8;
+  --app-added-bg: #34394d;
+  --app-removed: #eb6f92;
+  --app-removed-bg: #432d45;
+  --app-modified: #f6c177;
+  --app-on-accent: #232136;
+  color-scheme: dark;
+}
+
+[data-theme='catppuccin-frappe'] {
+  --app-bg: #303446;
+  --app-panel: #292c3c;
+  --app-hover: #3b3f54;
+  --app-line: #51576d;
+  --app-fg: #c6d0f5;
+  --app-muted: #a5adce;
+  --app-accent: #8caaee;
+  --app-added: #a6d189;
+  --app-added-bg: #414a4f;
+  --app-removed: #e78284;
+  --app-removed-bg: #4d4050;
+  --app-modified: #e5c890;
+  --app-on-accent: #303446;
+  color-scheme: dark;
+}
+
+[data-theme='catppuccin-macchiato'] {
+  --app-bg: #24273a;
+  --app-panel: #1e2030;
+  --app-hover: #2f3349;
+  --app-line: #494d64;
+  --app-fg: #cad3f5;
+  --app-muted: #a5adcb;
+  --app-accent: #8aadf4;
+  --app-added: #a6da95;
+  --app-added-bg: #364047;
+  --app-removed: #ed8796;
+  --app-removed-bg: #443649;
+  --app-modified: #eed49f;
+  --app-on-accent: #24273a;
+  color-scheme: dark;
+}
+
+[data-theme='tokyo-night-storm'] {
+  --app-bg: #24283b;
+  --app-panel: #1f2335;
+  --app-hover: #2f344d;
+  --app-line: #3b4261;
+  --app-fg: #c0caf5;
+  --app-muted: #9aa5ce;
+  --app-accent: #7aa2f7;
+  --app-added: #9ece6a;
+  --app-added-bg: #353f42;
+  --app-removed: #f7768e;
+  --app-removed-bg: #463448;
+  --app-modified: #e0af68;
+  --app-on-accent: #24283b;
+  color-scheme: dark;
+}
+
+[data-theme='everforest-dark'] {
+  --app-bg: #2d353b;
+  --app-panel: #272e33;
+  --app-hover: #3d484d;
+  --app-line: #475258;
+  --app-fg: #d3c6aa;
+  --app-muted: #9da9a0;
+  --app-accent: #a7c080;
+  --app-added: #83c092;
+  --app-added-bg: #394847;
+  --app-removed: #e67e80;
+  --app-removed-bg: #4b4146;
+  --app-modified: #dbbc7f;
+  --app-on-accent: #2d353b;
+  color-scheme: dark;
+}
+
+[data-theme='kanagawa'] {
+  --app-bg: #1f1f28;
+  --app-panel: #16161d;
+  --app-hover: #2a2a37;
+  --app-line: #363646;
+  --app-fg: #dcd7ba;
+  --app-muted: #938f86;
+  --app-accent: #7e9cd8;
+  --app-added: #98bb6c;
+  --app-added-bg: #303532;
+  --app-removed: #e46876;
+  --app-removed-bg: #3f2b34;
+  --app-modified: #e6c384;
+  --app-on-accent: #1f1f28;
+  color-scheme: dark;
+}
+
+[data-theme='ayu-dark'] {
+  --app-bg: #0d1017;
+  --app-panel: #0b0e14;
+  --app-hover: #1a1f29;
+  --app-line: #252b37;
+  --app-fg: #bfbdb6;
+  --app-muted: #828a99;
+  --app-accent: #e6b450;
+  --app-added: #7fd962;
+  --app-added-bg: #1d2c22;
+  --app-removed: #f26d78;
+  --app-removed-bg: #321f27;
+  --app-modified: #ffb454;
+  --app-on-accent: #0d1017;
+  color-scheme: dark;
+}
+
+[data-theme='ayu-mirage'] {
+  --app-bg: #242936;
+  --app-panel: #1f2430;
+  --app-hover: #2d3342;
+  --app-line: #3a4254;
+  --app-fg: #cccac2;
+  --app-muted: #8a919e;
+  --app-accent: #ffcc66;
+  --app-added: #87d96c;
+  --app-added-bg: #32423e;
+  --app-removed: #f27983;
+  --app-removed-bg: #453642;
+  --app-modified: #ffad66;
+  --app-on-accent: #242936;
+  color-scheme: dark;
+}
+
+[data-theme='night-owl'] {
+  --app-bg: #011627;
+  --app-panel: #01111d;
+  --app-hover: #0b2942;
+  --app-line: #1d3b53;
+  --app-fg: #d6deeb;
+  --app-muted: #7f93a8;
+  --app-accent: #82aaff;
+  --app-added: #addb67;
+  --app-added-bg: #193230;
+  --app-removed: #ef5350;
+  --app-removed-bg: #27202e;
+  --app-modified: #ecc48d;
+  --app-on-accent: #011627;
+  color-scheme: dark;
+}
+
+[data-theme='cobalt'] {
+  --app-bg: #193549;
+  --app-panel: #15232d;
+  --app-hover: #1f4662;
+  --app-line: #2a5573;
+  --app-fg: #e1efff;
+  --app-muted: #9db5c9;
+  --app-accent: #ffc600;
+  --app-added: #3ad900;
+  --app-added-bg: #1e4c3f;
+  --app-removed: #ff628c;
+  --app-removed-bg: #3e3c54;
+  --app-modified: #ff9d00;
+  --app-on-accent: #193549;
+  color-scheme: dark;
+}
+
+[data-theme='synthwave'] {
+  --app-bg: #262335;
+  --app-panel: #241b2f;
+  --app-hover: #34294f;
+  --app-line: #463465;
+  --app-fg: #f4eeff;
+  --app-muted: #a599c4;
+  --app-accent: #ff7edb;
+  --app-added: #72f1b8;
+  --app-added-bg: #314047;
+  --app-removed: #fe4450;
+  --app-removed-bg: #492839;
+  --app-modified: #fede5d;
+  --app-on-accent: #262335;
+  color-scheme: dark;
+}
+
+[data-theme='flexoki-dark'] {
+  --app-bg: #100f0f;
+  --app-panel: #1c1b1a;
+  --app-hover: #282726;
+  --app-line: #343331;
+  --app-fg: #cecdc3;
+  --app-muted: #878580;
+  --app-accent: #4385be;
+  --app-added: #879a39;
+  --app-added-bg: #212215;
+  --app-removed: #d25145;
+  --app-removed-bg: #2f1a18;
+  --app-modified: #d0a215;
+  --app-on-accent: #100f0f;
+  color-scheme: dark;
+}
+
+[data-theme='vesper'] {
+  --app-bg: #101010;
+  --app-panel: #161616;
+  --app-hover: #232323;
+  --app-line: #2f2f2f;
+  --app-fg: #ffffff;
+  --app-muted: #a0a0a0;
+  --app-accent: #ffc799;
+  --app-added: #99ffe4;
+  --app-added-bg: #23312e;
+  --app-removed: #ff8080;
+  --app-removed-bg: #362222;
+  --app-modified: #ffd9a8;
+  --app-on-accent: #101010;
+  color-scheme: dark;
+}
+
+[data-theme='midnight'] {
+  --app-bg: #000000;
+  --app-panel: #0a0a0c;
+  --app-hover: #17181c;
+  --app-line: #24262c;
+  --app-fg: #e4e6eb;
+  --app-muted: #8b909c;
+  --app-accent: #8ea2ff;
+  --app-added: #4ac26b;
+  --app-added-bg: #0a1b0f;
+  --app-removed: #f47067;
+  --app-removed-bg: #271210;
+  --app-modified: #d4a72c;
+  --app-on-accent: #000000;
+  color-scheme: dark;
+}
+
+[data-theme='high-contrast-dark'] {
+  --app-bg: #000000;
+  --app-panel: #000000;
+  --app-hover: #24262b;
+  --app-line: #8b919c;
+  --app-fg: #ffffff;
+  --app-muted: #d0d4da;
+  --app-accent: #71b7ff;
+  --app-added: #4ae168;
+  --app-added-bg: #0a200f;
+  --app-removed: #ff9492;
+  --app-removed-bg: #291817;
+  --app-modified: #f0b72f;
+  --app-on-accent: #000000;
+  color-scheme: dark;
+}
+
+/* Blue and orange instead of green and red, for people who have trouble
+   telling those apart. :root makes these win over the theme's own colors,
+   and over preview cards inside it they don't apply. */
+:root[data-diff-colors='blue-orange'] {
+  --app-added: #0a5fc4;
+  --app-removed: #a84300;
+  --app-added-bg: color-mix(in srgb, var(--app-added) 13%, var(--app-bg));
+  --app-removed-bg: color-mix(in srgb, var(--app-removed) 15%, var(--app-bg));
+}
+
+:root[data-diff-colors='blue-orange'][data-dark] {
+  --app-added: #79b8ff;
+  --app-removed: #ffa657;
+}

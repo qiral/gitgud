@@ -19,6 +19,9 @@ export interface Command {
   disabled?: boolean
   /** Runs the command after the palette closes. */
   run?: () => void
+  /** Shows what the command would do while it is highlighted; the function
+   *  returned takes that back. */
+  preview?: () => () => void
   /** Opens a second list instead, e.g. the branches to switch to. */
   page?: { placeholder: string; items: () => Command[] }
 }
@@ -82,6 +85,8 @@ export default function CommandPalette({ commands, start, onClose }: Props) {
   )
 
   useEffect(() => setActive(0), [query, page])
+  const highlighted = shown[active]
+  useEffect(() => highlighted?.preview?.(), [highlighted])
   useEffect(() => {
     list.current
       ?.querySelector(`[data-index="${active}"]`)

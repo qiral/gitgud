@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { message, open } from '@tauri-apps/plugin-dialog'
-import { Download, FolderGit2, FolderOpen, X } from 'lucide-react'
+import { Download, FolderGit2, FolderOpen, Palette, X } from 'lucide-react'
 import {
   errorMessage,
   git,
@@ -9,6 +9,7 @@ import {
   type RepoInfo,
 } from './lib/git'
 import RepoView from './components/RepoView'
+import AppearanceDialog from './components/AppearanceDialog'
 import CloneDialog from './components/CloneDialog'
 import { addRecent, readRecents, removeRecent } from './lib/prefs'
 import logoMark from './assets/logo-mark.png'
@@ -25,6 +26,7 @@ export default function App() {
   const [account, setAccount] = useState<Account | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [appearance, setAppearance] = useState(false)
   const [cloning, setCloning] = useState(false)
   const [recents, setRecents] = useState(readRecents)
 
@@ -129,6 +131,10 @@ export default function App() {
     </>
   )
 
+  const appearanceDialog = appearance && (
+    <AppearanceDialog onClose={() => setAppearance(false)} />
+  )
+
   const cloneDialog = cloning && (
     <CloneDialog
       account={account}
@@ -154,8 +160,10 @@ export default function App() {
           recents={recents}
           onOpenRecent={openPath}
           onClone={() => setCloning(true)}
+          onAppearance={() => setAppearance(true)}
         />
         {cloneDialog}
+        {appearanceDialog}
         {signInUi}
       </>
     )
@@ -226,7 +234,16 @@ export default function App() {
         </div>
       )}
       <VersionLine />
+      <button
+        onClick={() => setAppearance(true)}
+        title={t('appearance.title')}
+        aria-label={t('appearance.title')}
+        className="fixed top-4 right-4 rounded-md p-2 text-muted hover:bg-hover hover:text-fg"
+      >
+        <Palette className="size-4" />
+      </button>
       {cloneDialog}
+      {appearanceDialog}
       {signInUi}
     </main>
   )

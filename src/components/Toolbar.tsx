@@ -26,12 +26,10 @@ import {
   RefreshCw,
   Server,
   Sparkles,
-  SunMoon,
   Trash2,
 } from 'lucide-react'
 import GithubIcon from './GithubIcon'
 import { useUpdates } from '../lib/updates'
-import { readTheme, setTheme, THEMES, type ThemeInfo } from '../lib/prefs'
 import type { Sync } from './SyncActions'
 import { shortcutKeys } from '../lib/shortcuts'
 import PromptDialog from './PromptDialog'
@@ -69,6 +67,7 @@ interface Props {
   onManageRemotes: () => void
   sync: Sync
   onPalette: () => void
+  onAppearance: () => void
   /** The pull request button, when the branch can have one. */
   pullRequest?: React.ReactNode
   act: (label: string, action: () => Promise<unknown>) => Promise<boolean>
@@ -94,6 +93,7 @@ export default function Toolbar({
   onManageRemotes,
   sync,
   onPalette,
+  onAppearance,
   pullRequest,
   act,
   onSummarizeBranch,
@@ -186,7 +186,14 @@ export default function Toolbar({
       >
         <Command className="size-4" />
       </button>
-      <ThemeMenu />
+      <button
+        onClick={onAppearance}
+        title={`${tx('appearance.title')} (${shortcutKeys('mod+,').join('+')})`}
+        aria-label={tx('appearance.title')}
+        className="flex items-center border-r border-line px-3 text-muted hover:bg-hover hover:text-fg"
+      >
+        <Palette className="size-4" />
+      </button>
       <LanguageMenu />
       <CopilotMenu />
       {sync.dialog}
@@ -363,73 +370,6 @@ function UpdateButton() {
       <CircleArrowUp className="size-4" />
       {tx('toolbar.update')}
     </button>
-  )
-}
-
-function Swatch({ theme }: { theme: ThemeInfo }) {
-  const [bg, panel, accent] = theme.swatch
-  return (
-    <span
-      className="flex size-4 shrink-0 overflow-hidden rounded-full border border-line"
-      aria-hidden
-    >
-      <span className="w-1/3" style={{ background: panel }} />
-      <span className="w-1/3" style={{ background: bg }} />
-      <span className="w-1/3" style={{ background: accent }} />
-    </span>
-  )
-}
-
-function ThemeMenu() {
-  const { t: tx } = useTranslation()
-  const [open, setOpen] = useState(false)
-  // Read when shown: the command palette can change it too.
-  const theme = readTheme()
-  const ref = useRef<HTMLDivElement>(null)
-  useClickOutside(ref, open, () => setOpen(false))
-
-  const choose = (id: string) => {
-    setTheme(id)
-    setOpen(false)
-  }
-  const row =
-    'flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-hover'
-  const groups = [
-    { label: tx('toolbar.light'), list: THEMES.filter((t) => !t.dark) },
-    { label: tx('toolbar.dark'), list: THEMES.filter((t) => t.dark) },
-  ]
-
-  return (
-    <div ref={ref} className="relative flex border-r border-line">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        title={tx('toolbar.theme')}
-        className="flex items-center px-3 text-muted hover:bg-hover hover:text-fg"
-      >
-        <Palette className="size-4" />
-      </button>
-      {open && (
-        <div className="absolute top-full right-1 z-10 mt-1 max-h-[70vh] w-56 overflow-auto rounded-md border border-line bg-panel py-1 shadow-lg">
-          <button onClick={() => choose('system')} className={row}>
-            <SunMoon className="size-4 text-muted" />
-            <span className="flex-1">{tx('toolbar.match-system')}</span>
-            {theme === 'system' && <Check className="size-4 text-accent" />}
-          </button>
-          {groups.map((g) => (
-            <div key={g.label} className="mt-1 border-t border-line pt-1">
-              <div className="px-3 py-1 text-xs text-muted">{g.label}</div>
-              {g.list.map((t) => (
-                <button key={t.id} onClick={() => choose(t.id)} className={row}>
-                  <Swatch theme={t} />
-                  <span className="flex-1">{t.label}</span>
-                  {theme === t.id && <Check className="size-4 text-accent" />}
-                </button>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
   )
 }
 

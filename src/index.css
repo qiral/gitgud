@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './themes.css';
 
 /* The language picker shows every language by its own name. On machines with
    no CJK fonts (common on Linux) these would draw as boxes, so we ship Noto
@@ -15,178 +16,16 @@
   font-weight: 100 900;
 }
 
+/* Code in diffs, blame and conflicts. Set from the appearance settings. */
 :root {
-  --app-bg: #ffffff;
-  --app-panel: #f6f7f9;
-  --app-hover: #eceef2;
-  --app-line: #dfe2e7;
-  --app-fg: #1d2129;
-  --app-muted: #6b7280;
-  --app-accent: #4f6ef7;
-  --app-added: #1a7f37;
-  --app-added-bg: #e6f6ea;
-  --app-removed: #cf222e;
-  --app-removed-bg: #fdebec;
-  --app-modified: #9a6700;
-  --app-on-accent: #ffffff;
-  color-scheme: light;
+  --code-size: 12px;
+  --code-row: 20px;
 }
 
-/* Set by applyTheme in src/lib/prefs.ts, which resolves "system". */
-:root[data-theme='dark'] {
-  --app-bg: #16181d;
-  --app-panel: #1d2026;
-  --app-hover: #272b33;
-  --app-line: #2e323b;
-  --app-fg: #e6e8eb;
-  --app-muted: #8b919c;
-  --app-accent: #7b93ff;
-  --app-added: #4ac26b;
-  --app-added-bg: #12261a;
-  --app-removed: #f47067;
-  --app-removed-bg: #2d1517;
-  --app-modified: #d4a72c;
-  --app-on-accent: #ffffff;
-  color-scheme: dark;
-}
-
-/* Extra themes. Colors come from each palette's published values,
-   nudged where text was too faint to read. Keep the swatches in
-   src/lib/prefs.ts in sync. */
-:root[data-theme='solarized-light'] {
-  --app-bg: #fdf6e3;
-  --app-panel: #eee8d5;
-  --app-hover: #e4ddc8;
-  --app-line: #d9d2bc;
-  --app-fg: #3d5058;
-  --app-muted: #74858a;
-  --app-accent: #268bd2;
-  --app-added: #6c8000;
-  --app-added-bg: #eef0d0;
-  --app-removed: #dc322f;
-  --app-removed-bg: #f9e1d8;
-  --app-modified: #a67c00;
-  --app-on-accent: #ffffff;
-  color-scheme: light;
-}
-
-:root[data-theme='solarized-dark'] {
-  --app-bg: #002b36;
-  --app-panel: #073642;
-  --app-hover: #0e4351;
-  --app-line: #1b4a56;
-  --app-fg: #c3cfd0;
-  --app-muted: #839496;
-  --app-accent: #3a96dd;
-  --app-added: #859900;
-  --app-added-bg: #12392a;
-  --app-removed: #e0504d;
-  --app-removed-bg: #3d2027;
-  --app-modified: #b58900;
-  --app-on-accent: #ffffff;
-  color-scheme: dark;
-}
-
-:root[data-theme='nord'] {
-  --app-bg: #2e3440;
-  --app-panel: #3b4252;
-  --app-hover: #434c5e;
-  --app-line: #4c566a;
-  --app-fg: #eceff4;
-  --app-muted: #a1aabb;
-  --app-accent: #88c0d0;
-  --app-added: #a3be8c;
-  --app-added-bg: #36423b;
-  --app-removed: #d0717a;
-  --app-removed-bg: #4a3540;
-  --app-modified: #ebcb8b;
-  --app-on-accent: #2e3440;
-  color-scheme: dark;
-}
-
-:root[data-theme='dracula'] {
-  --app-bg: #282a36;
-  --app-panel: #21222c;
-  --app-hover: #343746;
-  --app-line: #3d4052;
-  --app-fg: #f8f8f2;
-  --app-muted: #9aa1c4;
-  --app-accent: #bd93f9;
-  --app-added: #50fa7b;
-  --app-added-bg: #233a2d;
-  --app-removed: #ff5c5c;
-  --app-removed-bg: #45262c;
-  --app-modified: #f1fa8c;
-  --app-on-accent: #21222c;
-  color-scheme: dark;
-}
-
-:root[data-theme='gruvbox'] {
-  --app-bg: #282828;
-  --app-panel: #1d2021;
-  --app-hover: #32302f;
-  --app-line: #45403d;
-  --app-fg: #ebdbb2;
-  --app-muted: #a89984;
-  --app-accent: #83a598;
-  --app-added: #b8bb26;
-  --app-added-bg: #33361b;
-  --app-removed: #fb4934;
-  --app-removed-bg: #3f201e;
-  --app-modified: #fabd2f;
-  --app-on-accent: #1d2021;
-  color-scheme: dark;
-}
-
-:root[data-theme='catppuccin-latte'] {
-  --app-bg: #eff1f5;
-  --app-panel: #e6e9ef;
-  --app-hover: #dce0e8;
-  --app-line: #ccd0da;
-  --app-fg: #4c4f69;
-  --app-muted: #6c6f85;
-  --app-accent: #1e66f5;
-  --app-added: #40a02b;
-  --app-added-bg: #dcefd6;
-  --app-removed: #d20f39;
-  --app-removed-bg: #f6d7dc;
-  --app-modified: #c27a12;
-  --app-on-accent: #ffffff;
-  color-scheme: light;
-}
-
-:root[data-theme='catppuccin-mocha'] {
-  --app-bg: #1e1e2e;
-  --app-panel: #181825;
-  --app-hover: #2a2b3c;
-  --app-line: #363849;
-  --app-fg: #cdd6f4;
-  --app-muted: #9399b2;
-  --app-accent: #89b4fa;
-  --app-added: #a6e3a1;
-  --app-added-bg: #22332b;
-  --app-removed: #f38ba8;
-  --app-removed-bg: #3c2535;
-  --app-modified: #f9e2af;
-  --app-on-accent: #1e1e2e;
-  color-scheme: dark;
-}
-
-:root[data-theme='tokyo-night'] {
-  --app-bg: #1a1b26;
-  --app-panel: #16161e;
-  --app-hover: #292e42;
-  --app-line: #3b4261;
-  --app-fg: #c0caf5;
-  --app-muted: #a9b1d6;
-  --app-accent: #7aa2f7;
-  --app-added: #9ece6a;
-  --app-added-bg: #1e2a2b;
-  --app-removed: #f7768e;
-  --app-removed-bg: #33212b;
-  --app-modified: #e0af68;
-  --app-on-accent: #1a1b26;
-  color-scheme: dark;
+@utility code-text {
+  font-family: var(--code-font, var(--font-mono));
+  font-size: var(--code-size);
+  line-height: var(--code-row);
 }
 
 @theme inline {

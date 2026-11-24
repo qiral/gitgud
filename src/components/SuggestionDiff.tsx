@@ -48,7 +48,7 @@ export default function SuggestionDiff({
           {t('suggestiondiff.reject')}
         </button>
       </div>
-      <div className="max-h-60 overflow-auto font-mono text-xs leading-5">
+      <div className="max-h-60 overflow-auto code-text">
         {diffLines(lines(before), lines(after)).map((line, i) => (
           <div
             key={i}
