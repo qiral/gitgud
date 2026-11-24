@@ -760,6 +760,7 @@ pub fn diff(
     if untracked {
         // `--no-index` exits with 1 when the files differ, which is always the
         // case here, so read the output regardless of the exit code.
+        file_in_repo(repo, path)?;
         args.extend(["--no-index", "--", "/dev/null", path]);
         let out = output(repo, &args)?;
         return Ok(String::from_utf8_lossy(&out.stdout).into_owned());
@@ -2034,6 +2035,22 @@ mod tests {
         );
         std::fs::remove_dir_all(&dir).unwrap();
         std::fs::remove_dir_all(&outside).unwrap();
+    }
+
+    #[test]
+    fn an_untracked_diff_stays_inside_the_repo() {
+        let dir = std::env::temp_dir().join(format!("gitgud-untracked-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        run(&dir, &["init", "-q", "-b", "main"]).unwrap();
+        let elsewhere =
+            std::env::temp_dir().join(format!("gitgud-elsewhere-{}", std::process::id()));
+        std::fs::write(&elsewhere, "secret\n").unwrap();
+        let absolute = elsewhere.to_string_lossy().to_string();
+        assert!(diff(&dir, &absolute, false, true, false).is_err());
+        assert!(diff(&dir, "../x", false, true, false).is_err());
+        std::fs::remove_dir_all(&dir).unwrap();
+        std::fs::remove_file(&elsewhere).unwrap();
     }
 
     #[test]
