@@ -35,16 +35,56 @@ impl Serialize for GitError {
 
 pub type Result<T> = std::result::Result<T, GitError>;
 
-fn command(repo: &Path, args: &[&str]) -> Command {
-    let mut cmd = Command::new("git");
+#[cfg(windows)]
+const GIT: &str = "git.exe";
+#[cfg(not(windows))]
+const GIT: &str = "git";
+
+/// The first `binary` in an absolute `path_var` entry. A relative entry like
+/// `.` is looked up from the folder the program runs in: for git that's the
+/// repository, which could ship its own `git`.
+pub(crate) fn find_on_path(path_var: &std::ffi::OsStr, binary: &str) -> Option<PathBuf> {
+    std::env::split_paths(path_var)
+        .filter(|dir| dir.is_absolute())
+        .map(|dir| dir.join(binary))
+        .find(|bin| bin.is_file())
+}
+
+fn git_program() -> Result<&'static Path> {
+    static PROGRAM: std::sync::OnceLock<Option<PathBuf>> = std::sync::OnceLock::new();
+    PROGRAM
+        .get_or_init(|| find_on_path(&std::env::var_os("PATH").unwrap_or_default(), GIT))
+        .as_deref()
+        .ok_or_else(|| GitError::Failed("Git isn't installed, or isn't on PATH".into()))
+}
+
+fn command(repo: &Path, args: &[&str]) -> Result<Command> {
+    let mut cmd = Command::new(git_program()?);
+    // A repo's own config (e.g. one unzipped rather than cloned) must not run
+    // programs just because GitGud looked at it: no fsmonitor hook, and no
+    // textconv filters for anything that shows a diff.
+    cmd.args(["-c", "core.fsmonitor=false"]);
+    let textconv_at = match args {
+        ["diff" | "show" | "log" | "blame", ..] => Some(1),
+        ["stash", "show", ..] => Some(2),
+        _ => None,
+    };
+    match textconv_at {
+        Some(at) => cmd.args(&args[..at]).arg("--no-textconv").args(&args[at..]),
+        None => cmd.args(args),
+    };
     cmd.current_dir(repo)
-        .args(args)
         // Fail instead of hanging on an invisible credential prompt.
         .env("GIT_TERMINAL_PROMPT", "0")
         // Don't take locks for read-only commands like `status`.
         .env("GIT_OPTIONAL_LOCKS", "0")
         // Stable, parseable output regardless of the user's locale.
         .env("LC_ALL", "C");
+    // File names are names: `*` or `:!x` must not match other files. Stash
+    // takes no file names here and uses pathspec magic itself for -u.
+    if args.first() != Some(&"stash") {
+        cmd.env("GIT_LITERAL_PATHSPECS", "1");
+    }
 
     #[cfg(windows)]
     {
@@ -53,11 +93,11 @@ fn command(repo: &Path, args: &[&str]) -> Command {
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
 
-    cmd
+    Ok(cmd)
 }
 
 pub(crate) fn output(repo: &Path, args: &[&str]) -> Result<Output> {
-    Ok(command(repo, args).output()?)
+    Ok(command(repo, args)?.output()?)
 }
 
 /// Runs git and returns stdout, or stderr as the error when git exits non-zero.
@@ -67,14 +107,14 @@ pub(crate) fn run(repo: &Path, args: &[&str]) -> Result<String> {
 
 /// Like [`run`], with extra environment variables (used for credentials).
 pub(crate) fn run_with_env(repo: &Path, args: &[&str], env: &[(String, String)]) -> Result<String> {
-    let out = command(repo, args).envs(env.iter().cloned()).output()?;
+    let out = command(repo, args)?.envs(env.iter().cloned()).output()?;
     finish(out, args)
 }
 
 /// Like [`run`], writing `input` to git's stdin.
 pub(crate) fn run_with_input(repo: &Path, args: &[&str], input: &str) -> Result<String> {
     use std::io::Write;
-    let mut child = command(repo, args)
+    let mut child = command(repo, args)?
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -541,6 +581,30 @@ pub(crate) fn file_in_repo(repo: &Path, path: &str) -> Result<PathBuf> {
     Ok(repo.join(relative))
 }
 
+/// Like [`file_in_repo`], for writing: refuses a path that leads out of the
+/// repository through a symlink, which a cloned repository can contain.
+pub(crate) fn writable_file_in_repo(repo: &Path, path: &str) -> Result<PathBuf> {
+    let full = file_in_repo(repo, path)?;
+    let outside = || GitError::Failed(format!("{path} links outside the repository"));
+    if full
+        .symlink_metadata()
+        .is_ok_and(|m| m.file_type().is_symlink())
+    {
+        return Err(outside());
+    }
+    // The nearest folder that exists must still be inside the repository.
+    let existing = full
+        .ancestors()
+        .skip(1)
+        .find(|dir| dir.exists())
+        .unwrap_or(repo);
+    let root = repo.canonicalize()?;
+    if !existing.canonicalize()?.starts_with(&root) {
+        return Err(outside());
+    }
+    Ok(full)
+}
+
 pub(crate) fn read_text(repo: &Path, path: &str) -> Result<String> {
     let bytes = std::fs::read(file_in_repo(repo, path)?)?;
     String::from_utf8(bytes).map_err(|_| GitError::Failed(format!("{path} is not a text file")))
@@ -560,7 +624,7 @@ pub fn resolve_block(
     let content = read_text(repo, path)?;
     let resolved = conflict::resolve(&content, index, choice)
         .ok_or_else(|| GitError::Failed("That conflict no longer exists".into()))?;
-    std::fs::write(file_in_repo(repo, path)?, resolved)?;
+    std::fs::write(writable_file_in_repo(repo, path)?, resolved)?;
     Ok(())
 }
 
@@ -569,7 +633,7 @@ pub fn resolve_block_text(repo: &Path, path: &str, index: usize, text: &str) -> 
     let content = read_text(repo, path)?;
     let resolved = conflict::replace(&content, index, text)
         .ok_or_else(|| GitError::Failed("That conflict no longer exists".into()))?;
-    std::fs::write(file_in_repo(repo, path)?, resolved)?;
+    std::fs::write(writable_file_in_repo(repo, path)?, resolved)?;
     Ok(())
 }
 
@@ -719,6 +783,7 @@ pub fn diff(
     if untracked {
         // `--no-index` exits with 1 when the files differ, which is always the
         // case here, so read the output regardless of the exit code.
+        file_in_repo(repo, path)?;
         args.extend(["--no-index", "--", "/dev/null", path]);
         let out = output(repo, &args)?;
         return Ok(String::from_utf8_lossy(&out.stdout).into_owned());
@@ -1130,9 +1195,7 @@ pub fn file_log(repo: &Path, path: &str, limit: u32) -> Result<Vec<Commit>> {
     if path.is_empty() {
         return Err(GitError::Failed("No file given".into()));
     }
-    // `:(literal)` so characters like `*` in the name aren't patterns.
-    let spec = format!(":(literal){path}");
-    log_with(repo, limit, &["--follow", "HEAD", "--", &spec])
+    log_with(repo, limit, &["--follow", "HEAD", "--", path])
 }
 
 /// Full patch for a single commit, with a short header.
@@ -1446,6 +1509,19 @@ pub fn push_force(repo: &Path, env: &[(String, String)]) -> Result<()> {
 }
 
 /// URL of the `origin` remote, if there is one.
+/// Every remote's fetch and push URL.
+pub fn remote_urls(repo: &Path) -> Result<Vec<String>> {
+    let out = run(repo, &["remote", "-v"])?;
+    let mut urls: Vec<String> = out
+        .lines()
+        .filter_map(|line| line.split_whitespace().nth(1))
+        .map(str::to_string)
+        .collect();
+    urls.sort();
+    urls.dedup();
+    Ok(urls)
+}
+
 pub fn origin_url(repo: &Path) -> Result<Option<String>> {
     let out = output(repo, &["remote", "get-url", "origin"])?;
     Ok(out
@@ -1591,7 +1667,7 @@ fn clone_unchecked(
         )));
     }
 
-    let mut cmd = command(parent, &["clone", "--progress", "--", url, name]);
+    let mut cmd = command(parent, &["clone", "--progress", "--", url, name])?;
     cmd.envs(env.iter().cloned())
         .stdout(Stdio::null())
         .stderr(Stdio::piped());
@@ -2006,6 +2082,158 @@ mod tests {
         assert!(diff.contains("+staged line"));
         assert!(!diff.contains("unstaged"));
         assert!(staged_stat(repo).unwrap().contains("c.txt"));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_repos_own_config_cant_run_commands_on_status_or_diff() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = std::env::temp_dir().join(format!("gitgud-untrusted-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = dir.as_path();
+        run(repo, &["init", "-q", "-b", "main"]).unwrap();
+        for (k, v) in [
+            ("user.name", "T"),
+            ("user.email", "t@x"),
+            ("commit.gpgsign", "false"),
+        ] {
+            run(repo, &["config", k, v]).unwrap();
+        }
+        std::fs::write(dir.join("a.txt"), "old\n").unwrap();
+        stage(repo, &["a.txt".into()]).unwrap();
+        commit(repo, "init").unwrap();
+
+        let marker = dir.join("ran");
+        let script = dir.join(".git").join("evil.sh");
+        std::fs::write(
+            &script,
+            format!(
+                "#!/bin/sh\ntouch '{}'\ncat \"$1\" 2>/dev/null\n",
+                marker.display()
+            ),
+        )
+        .unwrap();
+        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let script = script.to_string_lossy().to_string();
+        run(repo, &["config", "core.fsmonitor", &script]).unwrap();
+        run(repo, &["config", "diff.evil.textconv", &script]).unwrap();
+        std::fs::write(dir.join(".gitattributes"), "*.txt diff=evil\n").unwrap();
+        std::fs::write(dir.join("a.txt"), "new\n").unwrap();
+
+        status(repo).unwrap();
+        diff(repo, "a.txt", false, false, false).unwrap();
+        let head = run(repo, &["rev-parse", "HEAD"]).unwrap();
+        show_commit(repo, head.trim(), false).unwrap();
+        assert!(!marker.exists(), "the repo's config ran a command");
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn writes_never_follow_a_link_out_of_the_repo() {
+        let dir = std::env::temp_dir().join(format!("gitgud-links-{}", std::process::id()));
+        let outside =
+            std::env::temp_dir().join(format!("gitgud-links-outside-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let _ = std::fs::remove_dir_all(&outside);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::create_dir_all(&outside).unwrap();
+        std::fs::write(outside.join("victim"), "keep\n").unwrap();
+        std::os::unix::fs::symlink(outside.join("victim"), dir.join("link")).unwrap();
+        std::os::unix::fs::symlink(&outside, dir.join("folder")).unwrap();
+        std::fs::create_dir_all(dir.join("real")).unwrap();
+
+        assert!(writable_file_in_repo(&dir, "link").is_err());
+        assert!(writable_file_in_repo(&dir, "folder/victim").is_err());
+        assert!(writable_file_in_repo(&dir, "folder/new/file").is_err());
+        assert!(writable_file_in_repo(&dir, "real/file").is_ok());
+        assert!(writable_file_in_repo(&dir, "not/yet/there").is_ok());
+        assert!(resolve_block_text(&dir, "link", 0, "x").is_err());
+        assert_eq!(
+            std::fs::read_to_string(outside.join("victim")).unwrap(),
+            "keep\n"
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
+        std::fs::remove_dir_all(&outside).unwrap();
+    }
+
+    #[test]
+    fn an_untracked_diff_stays_inside_the_repo() {
+        let dir = std::env::temp_dir().join(format!("gitgud-untracked-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        run(&dir, &["init", "-q", "-b", "main"]).unwrap();
+        let elsewhere =
+            std::env::temp_dir().join(format!("gitgud-elsewhere-{}", std::process::id()));
+        std::fs::write(&elsewhere, "secret\n").unwrap();
+        let absolute = elsewhere.to_string_lossy().to_string();
+        assert!(diff(&dir, &absolute, false, true, false).is_err());
+        assert!(diff(&dir, "../x", false, true, false).is_err());
+        std::fs::remove_dir_all(&dir).unwrap();
+        std::fs::remove_file(&elsewhere).unwrap();
+    }
+
+    #[test]
+    fn git_is_never_found_through_a_relative_path_entry() {
+        let relative = Path::new("target").join("gitgud-relative-git");
+        std::fs::create_dir_all(&relative).unwrap();
+        std::fs::write(relative.join(GIT), "").unwrap();
+        assert_eq!(find_on_path(relative.as_os_str(), GIT), None);
+        let absolute = std::env::current_dir().unwrap().join(&relative);
+        assert_eq!(
+            find_on_path(absolute.as_os_str(), GIT),
+            Some(absolute.join(GIT))
+        );
+    }
+
+    // Windows doesn't allow `*` or `:` in file names.
+    #[cfg(unix)]
+    #[test]
+    fn file_names_are_never_patterns() {
+        let dir = std::env::temp_dir().join(format!("gitgud-pathspec-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = dir.as_path();
+        run(repo, &["init", "-q", "-b", "main"]).unwrap();
+        for (k, v) in [
+            ("user.name", "T"),
+            ("user.email", "t@x"),
+            ("commit.gpgsign", "false"),
+        ] {
+            run(repo, &["config", k, v]).unwrap();
+        }
+        let names = ["a.txt", "b.txt", ":!zz", "*"];
+        for name in names {
+            std::fs::write(dir.join(name), "old\n").unwrap();
+        }
+        stage(repo, &names.map(String::from)).unwrap();
+        commit(repo, "files").unwrap();
+        for name in names {
+            std::fs::write(dir.join(name), "new\n").unwrap();
+        }
+
+        discard(repo, &[":!zz".into()]).unwrap();
+        discard(repo, &["*".into()]).unwrap();
+        for (name, expected) in [
+            (":!zz", "old\n"),
+            ("*", "old\n"),
+            ("a.txt", "new\n"),
+            ("b.txt", "new\n"),
+        ] {
+            assert_eq!(
+                std::fs::read_to_string(dir.join(name)).unwrap(),
+                expected,
+                "{name}"
+            );
+        }
+
+        stage(repo, &["*".into()]).unwrap();
+        std::fs::write(dir.join("*"), "newer\n").unwrap();
+        stage(repo, &["*".into()]).unwrap();
+        let staged = run(repo, &["diff", "--cached", "--name-only"]).unwrap();
+        assert_eq!(staged.trim(), "*", "only the file named *");
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

@@ -8,6 +8,7 @@
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 
+use crate::cache::Cached;
 use crate::git::{GitError, Result};
 use crate::github;
 
@@ -51,24 +52,34 @@ fn token_entry(url: &str) -> Result<keyring::Entry> {
     keyring::Entry::new(KEYRING_SERVICE, &format!("host:{url}")).map_err(keyring_error)
 }
 
+/// Read from the keychain once per run, like the GitHub sign-in.
+static HOSTS: Cached<Vec<Host>> = Cached::new();
+/// `(url, username, token)` for each host, for `git_env`.
+static CREDENTIALS: Cached<Vec<(String, String, String)>> = Cached::new();
+
 pub fn list() -> Result<Vec<Host>> {
-    match index_entry()?.get_password() {
+    HOSTS.get_or_load(|| match index_entry()?.get_password() {
         Ok(json) => Ok(serde_json::from_str(&json).unwrap_or_default()),
         Err(keyring::Error::NoEntry) => Ok(Vec::new()),
         Err(e) => Err(keyring_error(e)),
-    }
+    })
 }
 
 fn save_list(hosts: &[Host]) -> Result<()> {
     let entry = index_entry()?;
-    if hosts.is_empty() {
-        return match entry.delete_credential() {
+    let saved = if hosts.is_empty() {
+        match entry.delete_credential() {
             Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
             Err(e) => Err(keyring_error(e)),
-        };
-    }
-    let json = serde_json::to_string(hosts).expect("serializable");
-    entry.set_password(&json).map_err(keyring_error)
+        }
+    } else {
+        let json = serde_json::to_string(hosts).expect("serializable");
+        entry.set_password(&json).map_err(keyring_error)
+    };
+    HOSTS.set(hosts.to_vec());
+    // Last, so credentials are never rebuilt from the old list.
+    CREDENTIALS.clear();
+    saved
 }
 
 /// Checks the token with the host (when its API is known), then stores it.
@@ -167,7 +178,8 @@ struct ApiUser {
 /// Asks the host who the token belongs to and returns that username.
 fn verify(url: &str, kind: HostKind, token: &str) -> Result<String> {
     let request = match kind {
-        HostKind::Gitlab => ureq::get(format!("{url}api/v4/user")).header("PRIVATE-TOKEN", token),
+        HostKind::Gitlab => ureq::get(format!("{url}api/v4/user"))
+            .header("Authorization", format!("Bearer {token}")),
         HostKind::Gitea => {
             ureq::get(format!("{url}api/v1/user")).header("Authorization", format!("token {token}"))
         }
@@ -178,6 +190,9 @@ fn verify(url: &str, kind: HostKind, token: &str) -> Result<String> {
         .header("User-Agent", USER_AGENT)
         .config()
         .http_status_as_error(false)
+        // The token is only for the address the user typed, never wherever
+        // that server sends us next.
+        .max_redirects(0)
         .build()
         .call()
         .map_err(|e| GitError::Failed(format!("Could not reach {url}: {e}")))?;
@@ -206,22 +221,68 @@ fn verify(url: &str, kind: HostKind, token: &str) -> Result<String> {
 // ---------------------------------------------------------------------------
 // git
 
-/// Environment variables that make git authenticate to every signed-in host,
-/// GitHub included. Passed via `GIT_CONFIG_*` rather than `-c` so tokens
-/// don't show up in the process list.
-pub fn git_env() -> Vec<(String, String)> {
+/// [`git_env_for`] the remotes of `repo`.
+pub fn git_env_for_repo(repo: &std::path::Path) -> Vec<(String, String)> {
+    git_env_for(&crate::git::remote_urls(repo).unwrap_or_default())
+}
+
+/// Environment variables that make git authenticate to the signed-in hosts,
+/// GitHub included, that `remotes` point at, and no others: hooks and
+/// filters git starts see this environment too. Passed via `GIT_CONFIG_*`
+/// rather than `-c` so tokens don't show up in the process list.
+pub fn git_env_for(remotes: &[String]) -> Vec<(String, String)> {
     let mut creds = Vec::new();
     if let Some(github) = github::credentials() {
         creds.push(github);
     }
-    for host in list().unwrap_or_default() {
-        if let Ok(token) =
-            token_entry(&host.url).and_then(|e| e.get_password().map_err(keyring_error))
-        {
-            creds.push((host.url, host.login, token));
-        }
+    creds.extend(
+        CREDENTIALS
+            .get_or_load(|| {
+                let mut creds = Vec::new();
+                for host in list()? {
+                    match token_entry(&host.url)?.get_password() {
+                        Ok(token) => creds.push((host.url, host.login, token)),
+                        Err(keyring::Error::NoEntry) => {}
+                        // Not cached, so a denied keychain prompt is asked again.
+                        Err(e) => return Err(keyring_error(e)),
+                    }
+                }
+                Ok(creds)
+            })
+            .unwrap_or_default(),
+    );
+    env_for(&for_remotes(&creds, remotes))
+}
+
+/// The credentials whose URL covers one of `remotes`.
+fn for_remotes(
+    creds: &[(String, String, String)],
+    remotes: &[String],
+) -> Vec<(String, String, String)> {
+    let remotes: Vec<String> = remotes.iter().filter_map(|r| comparable(r)).collect();
+    creds
+        .iter()
+        .filter(|(url, _, _)| {
+            comparable(url).is_some_and(|url| remotes.iter().any(|r| r.starts_with(&url)))
+        })
+        .cloned()
+        .collect()
+}
+
+/// An http(s) URL with the scheme and host lowercased and any `user@`
+/// dropped, the way git compares `http.<url>` settings.
+fn comparable(url: &str) -> Option<String> {
+    let (scheme, rest) = url.split_once("://")?;
+    let scheme = scheme.to_ascii_lowercase();
+    if scheme != "https" && scheme != "http" {
+        return None;
     }
-    env_for(&creds)
+    let (authority, path) = rest.split_once('/').unwrap_or((rest, ""));
+    let host = authority
+        .rsplit_once('@')
+        .map_or(authority, |(_, host)| host)
+        .to_ascii_lowercase();
+    Some(format!("{scheme}://{host}/{path}"))
 }
 
 /// Builds `GIT_CONFIG_*` variables setting an `Authorization` header for
@@ -248,6 +309,83 @@ fn env_for(creds: &[(String, String, String)]) -> Vec<(String, String)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_the_hosts_a_command_talks_to_get_their_tokens() {
+        let cred = |url: &str| {
+            (
+                url.to_string(),
+                "me".to_string(),
+                format!("token-for-{url}"),
+            )
+        };
+        let creds = [
+            cred("https://github.com/"),
+            cred("https://gitlab.example.com/"),
+            cred("https://example.org/git/"),
+        ];
+        let urls = |targets: &[&str]| {
+            for_remotes(
+                &creds,
+                &targets.iter().map(|t| t.to_string()).collect::<Vec<_>>(),
+            )
+            .into_iter()
+            .map(|(url, _, _)| url)
+            .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            urls(&["https://GitHub.com/qiral/gitgud.git"]),
+            ["https://github.com/"]
+        );
+        assert_eq!(
+            urls(&["https://me@gitlab.example.com/a/b.git"]),
+            ["https://gitlab.example.com/"]
+        );
+        assert_eq!(
+            urls(&["https://example.org/git/repo.git"]),
+            ["https://example.org/git/"]
+        );
+        assert!(urls(&["https://example.org/other/repo.git"]).is_empty());
+        assert!(
+            urls(&["git@github.com:qiral/gitgud.git"]).is_empty(),
+            "ssh needs no token"
+        );
+        assert!(urls(&["https://github.com.evil.example/x.git"]).is_empty());
+        assert!(urls(&[]).is_empty());
+    }
+
+    /// Answers one request with `response` and reports what it was sent.
+    fn serve_once(response: String) -> (String, std::sync::mpsc::Receiver<String>) {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = format!("http://{}/", listener.local_addr().unwrap());
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            if let Ok((mut stream, _)) = listener.accept() {
+                let mut buf = [0u8; 4096];
+                let n = stream.read(&mut buf).unwrap_or(0);
+                let _ = tx.send(String::from_utf8_lossy(&buf[..n]).into_owned());
+                let _ = stream.write_all(response.as_bytes());
+            }
+        });
+        (addr, rx)
+    }
+
+    #[test]
+    fn a_redirect_never_carries_a_token_to_another_host() {
+        let ok = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 17\r\nConnection: close\r\n\r\n{\"username\":\"x\"}";
+        for kind in [HostKind::Gitlab, HostKind::Gitea] {
+            let (other, seen_by_other) = serve_once(ok.to_string());
+            let (first, _) = serve_once(format!(
+                "HTTP/1.1 302 Found\r\nLocation: {other}api/v4/user\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+            ));
+            assert!(verify(&first, kind, "secret-token").is_err(), "{kind:?}");
+            let leaked = seen_by_other
+                .recv_timeout(std::time::Duration::from_millis(300))
+                .is_ok_and(|request| request.contains("secret-token"));
+            assert!(!leaked, "{kind:?} sent the token to the other host");
+        }
+    }
 
     #[test]
     fn normalizes_what_people_type() {

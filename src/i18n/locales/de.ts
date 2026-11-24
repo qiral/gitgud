@@ -14,6 +14,12 @@ const messages: Messages = {
   'app.recent-repositories': 'Zuletzt verwendet',
   'app.remove-from-list': 'Aus der Liste entfernen',
   'app.update-to': 'Auf {version} aktualisieren',
+  'auth.expired':
+    'Deine GitHub-Anmeldung ist abgelaufen oder wurde widerrufen. Melde dich erneut an, um GitHub und Copilot weiter zu nutzen.',
+  'auth.missing-scopes':
+    'Deiner GitHub-Anmeldung fehlen Berechtigungen ({scopes}). Melde dich ab und wieder an, um sie zu erteilen.',
+  'authnotice.dismiss': 'Schließen',
+  'authnotice.sign-in': 'Anmelden',
   'blameview.back': 'Zurück',
   'blameview.blame-parent': 'Blame für den Eltern-Commit',
   'blameview.close': 'Blame schließen',
@@ -475,6 +481,7 @@ const messages: Messages = {
     'Ein Force-Push ersetzt den Remote-Branch durch deinen. Mach das, nachdem du bereits gepushten Verlauf bearbeitet hast. Wenn jemand anderes auf diesen Branch gepusht hat, mach stattdessen einen Pull, sonst gehen dessen Commits verloren.',
   'toolbar.language': 'Sprache',
   'toolbar.light': 'Hell',
+  'toolbar.manage-access-on-github': 'Zugriff auf GitHub verwalten',
   'toolbar.manage-remotes': 'Remotes verwalten…',
   'toolbar.match-system': 'Wie System',
   'toolbar.merge': 'Mergen',

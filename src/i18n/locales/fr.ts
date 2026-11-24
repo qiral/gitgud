@@ -14,6 +14,12 @@ const messages: Messages = {
   'app.recent-repositories': 'Dépôts récents',
   'app.remove-from-list': 'Retirer de la liste',
   'app.update-to': 'Mettre à jour vers {version}',
+  'auth.expired':
+    'Votre connexion GitHub a expiré ou a été révoquée. Reconnectez-vous pour continuer à utiliser GitHub et Copilot.',
+  'auth.missing-scopes':
+    'Il manque des autorisations à votre connexion GitHub ({scopes}). Déconnectez-vous puis reconnectez-vous pour les accorder.',
+  'authnotice.dismiss': 'Fermer',
+  'authnotice.sign-in': 'Se connecter',
   'blameview.back': 'Retour',
   'blameview.blame-parent': 'Blame du commit parent',
   'blameview.close': 'Fermer le blame',
@@ -477,6 +483,7 @@ const messages: Messages = {
     "Un push forcé remplace la branche distante par la vôtre. Faites-le après avoir modifié un historique déjà poussé. Si quelqu'un d'autre a poussé sur cette branche, faites plutôt un pull, sinon ses commits seront perdus.",
   'toolbar.language': 'Langue',
   'toolbar.light': 'Clair',
+  'toolbar.manage-access-on-github': "Gérer l'accès sur GitHub",
   'toolbar.manage-remotes': 'Gérer les dépôts distants…',
   'toolbar.match-system': 'Comme le système',
   'toolbar.merge': 'Fusionner',

@@ -14,6 +14,12 @@ const messages: Messages = {
   'app.recent-repositories': '最近のリポジトリ',
   'app.remove-from-list': '一覧から削除',
   'app.update-to': '{version} にアップデート',
+  'auth.expired':
+    'GitHub のサインインの有効期限が切れたか、取り消されました。GitHub と Copilot を引き続き使うには、もう一度サインインしてください。',
+  'auth.missing-scopes':
+    'GitHub のサインインに必要な権限がありません（{scopes}）。サインアウトしてもう一度サインインし、権限を付与してください。',
+  'authnotice.dismiss': '閉じる',
+  'authnotice.sign-in': 'サインイン',
   'blameview.back': '戻る',
   'blameview.blame-parent': '親コミットの Blame',
   'blameview.close': 'Blame を閉じる',
@@ -450,6 +456,7 @@ const messages: Messages = {
     '強制プッシュはリモートのブランチをあなたのブランチで置き換えます。プッシュ済みの履歴を編集した後に使ってください。他の人がこのブランチにプッシュしている場合は、代わりにプルしてください。そうしないと、その人のコミットが失われます。',
   'toolbar.language': '言語',
   'toolbar.light': 'ライト',
+  'toolbar.manage-access-on-github': 'GitHub でアクセスを管理',
   'toolbar.manage-remotes': 'リモートを管理…',
   'toolbar.match-system': 'システムに合わせる',
   'toolbar.merge': 'マージ',

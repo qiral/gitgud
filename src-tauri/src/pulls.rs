@@ -34,12 +34,24 @@ pub fn parse_remote(url: &str) -> Option<(String, String)> {
     let rest = rest.trim_end_matches('/');
     let rest = rest.strip_suffix(".git").unwrap_or(rest);
     let (owner, name) = rest.split_once('/')?;
-    let valid = |s: &str| {
-        !s.is_empty()
-            && s.chars()
-                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
-    };
-    (valid(owner) && valid(name)).then(|| (owner.to_string(), name.to_string()))
+    (valid_part(owner) && valid_part(name)).then(|| (owner.to_string(), name.to_string()))
+}
+
+/// A GitHub owner or repository name, safe to put in an API path.
+fn valid_part(s: &str) -> bool {
+    !s.is_empty()
+        && s != "."
+        && s != ".."
+        && s.chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
+}
+
+/// Checks an `owner/name` the frontend passed back before it goes in a URL.
+fn check_repo(full_name: &str) -> Result<()> {
+    match full_name.split_once('/') {
+        Some((owner, name)) if valid_part(owner) && valid_part(name) => Ok(()),
+        _ => Err(GitError::Failed(format!("Invalid repository: {full_name}"))),
+    }
 }
 
 /// Percent-encodes a branch name for a URL path, keeping `/`.
@@ -59,8 +71,15 @@ fn encode_path(text: &str) -> String {
 // API plumbing
 
 /// Reads a JSON response, or GitHub's own explanation when it failed.
-fn read<T: DeserializeOwned>(res: ureq::http::Response<ureq::Body>, what: &str) -> Result<T> {
+fn read<T: DeserializeOwned>(
+    res: ureq::http::Response<ureq::Body>,
+    what: &str,
+    token: &str,
+) -> Result<T> {
     let status = res.status();
+    if status == 401 {
+        return Err(crate::github::signed_out(token));
+    }
     let mut body = res.into_body();
     if status.is_success() {
         return body.read_json().map_err(http_error);
@@ -90,7 +109,7 @@ fn get<T: DeserializeOwned>(
         .build()
         .call()
         .map_err(http_error)?;
-    read(res, what)
+    read(res, what, token)
 }
 
 // ---------------------------------------------------------------------------
@@ -280,6 +299,7 @@ fn missing_parent(list: &[Remote], origin_url: &str, full_name: String) -> Optio
 
 /// Branch names of a repository, for picking the base.
 pub fn branches(base_repo: &str) -> Result<Vec<String>> {
+    check_repo(base_repo)?;
     #[derive(Deserialize)]
     struct Branch {
         name: String,
@@ -303,6 +323,8 @@ pub struct Comparison {
 }
 
 pub fn compare(base_repo: &str, base: &str, head_repo: &str, branch: &str) -> Result<Comparison> {
+    check_repo(base_repo)?;
+    check_repo(head_repo)?;
     #[derive(Deserialize)]
     struct Sha {
         sha: String,
@@ -345,13 +367,16 @@ pub fn create(
     body: &str,
     draft: bool,
 ) -> Result<PullRequest> {
+    check_repo(&target.base_repo)?;
+    check_repo(&target.head_repo)?;
     let head_owner = target.head_repo.split('/').next().unwrap_or_default();
+    let token = token()?;
     let res = ureq::post(format!(
         "https://api.github.com/repos/{}/pulls",
         target.base_repo
     ))
     .header("Accept", "application/vnd.github+json")
-    .header("Authorization", format!("Bearer {}", token()?))
+    .header("Authorization", format!("Bearer {token}"))
     .header("User-Agent", USER_AGENT)
     .config()
     .http_status_as_error(false)
@@ -364,7 +389,7 @@ pub fn create(
         "draft": draft,
     }))
     .map_err(http_error)?;
-    read::<ApiPull>(res, "create the pull request").map(Into::into)
+    read::<ApiPull>(res, "create the pull request", &token).map(Into::into)
 }
 
 #[cfg(test)]
@@ -419,6 +444,27 @@ mod tests {
         ] {
             assert_eq!(parse_remote(url), None, "{url}");
         }
+    }
+
+    #[test]
+    fn only_owner_slash_name_reaches_the_api() {
+        for ok in ["qiral/gitgud", "me/my.repo-name_2"] {
+            assert!(check_repo(ok).is_ok(), "{ok}");
+        }
+        for bad in [
+            "qiral",
+            "qiral/gitgud/pulls",
+            "../user",
+            "qiral/..",
+            "a/b?x=1",
+            "a/b#c",
+            "/x",
+            "x/",
+            "a b/c",
+        ] {
+            assert!(check_repo(bad).is_err(), "{bad}");
+        }
+        assert!(branches("../../user").is_err());
     }
 
     #[test]

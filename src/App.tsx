@@ -14,6 +14,10 @@ import { addRecent, readRecents, removeRecent } from './lib/prefs'
 import logoMark from './assets/logo-mark.png'
 import { useUpdates } from './lib/updates'
 import { useTranslation } from './i18n'
+import { listen } from '@tauri-apps/api/event'
+import { authMessage, type SignInProblem } from './lib/auth'
+import AuthNotice from './components/AuthNotice'
+import SignInDialog from './components/SignInDialog'
 
 export default function App() {
   const { t } = useTranslation()
@@ -53,12 +57,41 @@ export default function App() {
     if (typeof path === 'string') await openPath(path)
   }
 
+  const [signInProblem, setSignInProblem] = useState<SignInProblem | null>(null)
+  const [signingIn, setSigningIn] = useState(false)
+
+  function changeAccount(a: Account | null) {
+    setAccount(a)
+    if (a) setSignInProblem(null)
+  }
+
   useEffect(() => {
-    // Without keychain access the user just appears signed out.
+    // Without keychain access the user just appears signed out. Then ask
+    // GitHub whether the sign-in still works; offline keeps it as it is.
     github
       .account()
-      .then(setAccount)
+      .then(async (stored) => {
+        setAccount(stored)
+        if (!stored) return
+        const v = await github.validate()
+        if (v.state !== 'valid') return
+        // Unless they signed out or in as someone else meanwhile.
+        setAccount((a) => (a?.login === stored.login ? v.account : a))
+        if (v.missingScopes.length > 0)
+          setSignInProblem({ kind: 'scopes', scopes: v.missingScopes })
+      })
       .catch(() => {})
+  }, [])
+
+  // The backend forgot a sign-in GitHub rejected, wherever that happened.
+  useEffect(() => {
+    const unlisten = listen('github-signed-out', () => {
+      setAccount(null)
+      setSignInProblem({ kind: 'expired' })
+    })
+    return () => {
+      unlisten.then((stop) => stop())
+    }
   }, [])
 
   // Open the repo given on the command line, or else the last one used.
@@ -75,10 +108,31 @@ export default function App() {
 
   if (loading) return null
 
+  const signInUi = (
+    <>
+      {signInProblem && !signingIn && (
+        <AuthNotice
+          message={authMessage(signInProblem, t)}
+          onSignIn={() => setSigningIn(true)}
+          onDismiss={() => setSignInProblem(null)}
+        />
+      )}
+      {signingIn && (
+        <SignInDialog
+          onClose={() => setSigningIn(false)}
+          onSignedIn={(a) => {
+            changeAccount(a)
+            setSigningIn(false)
+          }}
+        />
+      )}
+    </>
+  )
+
   const cloneDialog = cloning && (
     <CloneDialog
       account={account}
-      onAccountChange={setAccount}
+      onAccountChange={changeAccount}
       onClose={() => setCloning(false)}
       onCloned={(info) => {
         setCloning(false)
@@ -95,13 +149,14 @@ export default function App() {
           key={repo.path}
           repo={repo}
           account={account}
-          onAccountChange={setAccount}
+          onAccountChange={changeAccount}
           onOpenOther={pickRepo}
           recents={recents}
           onOpenRecent={openPath}
           onClone={() => setCloning(true)}
         />
         {cloneDialog}
+        {signInUi}
       </>
     )
 
@@ -172,6 +227,7 @@ export default function App() {
       )}
       <VersionLine />
       {cloneDialog}
+      {signInUi}
     </main>
   )
 }

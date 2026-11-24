@@ -1,4 +1,5 @@
 mod blame;
+mod cache;
 mod conflict;
 mod copilot;
 pub mod git;
@@ -257,12 +258,12 @@ fn delete_tag(repo: String, name: String) -> Result<()> {
 
 #[tauri::command(async)]
 fn push_tag(repo: String, name: String, remote: Option<String>) -> Result<()> {
-    git::push_tag(
+    check_github_auth(git::push_tag(
         Path::new(&repo),
         &name,
         remote.as_deref(),
-        &hosts::git_env(),
-    )
+        &hosts::git_env_for_repo(Path::new(&repo)),
+    ))
 }
 
 #[tauri::command(async)]
@@ -319,7 +320,10 @@ fn rebase_abort(repo: String) -> Result<()> {
 
 #[tauri::command(async)]
 fn push_force(repo: String) -> Result<()> {
-    git::push_force(Path::new(&repo), &hosts::git_env())
+    check_github_auth(git::push_force(
+        Path::new(&repo),
+        &hosts::git_env_for_repo(Path::new(&repo)),
+    ))
 }
 
 #[tauri::command(async)]
@@ -381,22 +385,31 @@ fn recover_stash(repo: String, hash: String) -> Result<()> {
 
 #[tauri::command(async)]
 fn fetch(repo: String, remote: Option<String>, prune: bool) -> Result<()> {
-    git::fetch(
+    check_github_auth(git::fetch(
         Path::new(&repo),
         remote.as_deref(),
         prune,
-        &hosts::git_env(),
-    )
+        &hosts::git_env_for_repo(Path::new(&repo)),
+    ))
 }
 
 #[tauri::command(async)]
 fn pull(repo: String, mode: Option<PullMode>, remember: bool) -> Result<PullOutcome> {
-    git::pull(Path::new(&repo), &hosts::git_env(), mode, remember)
+    check_github_auth(git::pull(
+        Path::new(&repo),
+        &hosts::git_env_for_repo(Path::new(&repo)),
+        mode,
+        remember,
+    ))
 }
 
 #[tauri::command(async)]
 fn push(repo: String, remote: Option<String>) -> Result<()> {
-    git::push(Path::new(&repo), remote.as_deref(), &hosts::git_env())
+    check_github_auth(git::push(
+        Path::new(&repo),
+        remote.as_deref(),
+        &hosts::git_env_for_repo(Path::new(&repo)),
+    ))
 }
 
 #[tauri::command(async)]
@@ -454,9 +467,41 @@ fn github_poll_sign_in(device_code: String, interval: u64) -> Result<PollResult>
     github::poll_sign_in(&device_code, interval)
 }
 
+/// Also stops the Copilot CLI, so it doesn't keep the token in memory.
+#[tauri::command]
+async fn github_sign_out(copilot: tauri::State<'_, Copilot>) -> Result<()> {
+    let signed_out = tauri::async_runtime::spawn_blocking(github::sign_out)
+        .await
+        .map_err(|e| GitError::Failed(e.to_string()))
+        .and_then(|r| r);
+    copilot.stop().await;
+    signed_out
+}
+
 #[tauri::command(async)]
-fn github_sign_out() -> Result<()> {
-    github::sign_out()
+fn github_validate() -> Result<github::Validation> {
+    github::validate()
+}
+
+/// Whether git's error says github.com turned down GitGud's token.
+fn rejected_by_github(error: &str) -> bool {
+    error.contains("Authentication failed for 'https://github.com/")
+        // Without a credential helper git asks for a username instead.
+        || error.contains("could not read Username for 'https://github.com'")
+}
+
+/// When github.com turns down a git command, asks GitHub whether the token
+/// was revoked, and if so forgets it and says so.
+fn check_github_auth<T>(result: Result<T>) -> Result<T> {
+    match result {
+        Err(GitError::Failed(e))
+            if rejected_by_github(&e)
+                && matches!(github::validate(), Ok(github::Validation::Expired)) =>
+        {
+            Err(GitError::Failed(github::SIGNED_OUT.into()))
+        }
+        other => other,
+    }
 }
 
 #[tauri::command(async)]
@@ -490,7 +535,11 @@ fn publish_to_github(
     }
     let created = github::create_repo(&name, &description, private)?;
     git::add_origin(path, &created.clone_url)?;
-    git::push(path, Some("origin"), &hosts::git_env())?;
+    check_github_auth(git::push(
+        path,
+        Some("origin"),
+        &hosts::git_env_for_repo(path),
+    ))?;
     Ok(created)
 }
 
@@ -543,16 +592,16 @@ fn clone_repo(
     name: String,
 ) -> Result<RepoInfo> {
     let cancel = app.state::<CloneCancel>();
-    let dest = git::clone(
+    let dest = check_github_auth(git::clone(
         &url,
         Path::new(&parent),
         &name,
-        &hosts::git_env(),
+        &hosts::git_env_for(&[url.trim().to_string()]),
         &cancel,
         |p| {
             let _ = app.emit("clone-progress", p);
         },
-    )?;
+    ))?;
     git::open(&dest)
 }
 
@@ -707,6 +756,10 @@ fn cancel_clone(cancel: tauri::State<CloneCancel>) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .setup(|app| {
+            github::set_app(app.handle().clone());
+            Ok(())
+        })
         .manage(CloneCancel::default())
         .manage(Copilot::default())
         .manage(UndoLog::default())
@@ -784,6 +837,7 @@ pub fn run() {
             github_start_sign_in,
             github_poll_sign_in,
             github_sign_out,
+            github_validate,
             hosts_list,
             host_add,
             host_remove,
@@ -815,4 +869,25 @@ pub fn run() {
                 tauri::async_runtime::block_on(app.state::<Copilot>().stop());
             }
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn spots_github_rejecting_the_token() {
+        assert!(rejected_by_github(
+            "remote: Invalid username or token.\nfatal: Authentication failed for 'https://github.com/qiral/gitgud.git/'"
+        ));
+        assert!(!rejected_by_github(
+            "fatal: Authentication failed for 'https://gitlab.com/me/app.git/'"
+        ));
+        assert!(rejected_by_github(
+            "fatal: could not read Username for 'https://github.com': terminal prompts disabled"
+        ));
+        assert!(!rejected_by_github(
+            "fatal: unable to access 'https://github.com/x/y.git/': Could not resolve host"
+        ));
+    }
 }

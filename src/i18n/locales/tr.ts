@@ -14,6 +14,12 @@ const messages: Messages = {
   'app.recent-repositories': 'Son depolar',
   'app.remove-from-list': 'Listeden kaldır',
   'app.update-to': '{version} sürümüne güncelle',
+  'auth.expired':
+    "GitHub girişinizin süresi doldu ya da iptal edildi. GitHub ve Copilot'u kullanmaya devam etmek için yeniden giriş yapın.",
+  'auth.missing-scopes':
+    'GitHub girişinizde eksik izinler var ({scopes}). Bunları vermek için çıkış yapıp yeniden giriş yapın.',
+  'authnotice.dismiss': 'Kapat',
+  'authnotice.sign-in': 'Giriş yap',
   'blameview.back': 'Geri',
   'blameview.blame-parent': 'Üst commit için blame',
   'blameview.close': "Blame'i kapat",
@@ -465,6 +471,7 @@ const messages: Messages = {
     "Force push, uzak dalı sizinkiyle değiştirir. Bunu, zaten push ettiğiniz geçmişi düzenledikten sonra yapın. Bu dala başka biri push ettiyse bunun yerine pull yapın, yoksa onun commit'leri kaybolur.",
   'toolbar.language': 'Dil',
   'toolbar.light': 'Açık',
+  'toolbar.manage-access-on-github': "GitHub'da erişimi yönet",
   'toolbar.manage-remotes': 'Uzak depoları yönet…',
   'toolbar.match-system': 'Sisteme uy',
   'toolbar.merge': 'Birleştir',

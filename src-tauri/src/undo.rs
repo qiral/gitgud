@@ -545,7 +545,7 @@ fn apply(repo: &Path, step: &Step) -> Result<()> {
         }
         Step::Files(files) => {
             for f in files {
-                let full = file_in_repo(repo, &f.path)?;
+                let full = git::writable_file_in_repo(repo, &f.path)?;
                 match &f.before {
                     None => std::fs::remove_file(&full)?,
                     Some((oid, executable)) => {
