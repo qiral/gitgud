@@ -283,6 +283,8 @@ const messages: Messages = {
   'pullrequests.view-pull-request': 'プルリクエスト #{number} を表示',
   'pullrequests.write-with-copilot': 'Copilot で書く',
   'pullrequests.write-with-copilot-title': 'タイトルと説明を Copilot で書く',
+  'rebasedialog.combined-message-placeholder':
+    'まとめたコミットのメッセージ（空欄なら git のメッセージを使用）',
   'rebasedialog.drop': '削除',
   'rebasedialog.edit-history': '履歴を編集',
   'rebasedialog.fixup': 'Fixup',
@@ -305,6 +307,8 @@ const messages: Messages = {
   'rebasedialog.squash': 'スカッシュ',
   'rebasedialog.squash-first':
     '残す最初のコミットの上には、まとめる先のコミットがありません。',
+  'rebasedialog.write-combined-message-with-copilot':
+    'まとめたコミットのメッセージを Copilot で作成',
   'reflogdialog.create-branch': 'ここにブランチを作成…',
   'reflogdialog.deleted-stashes': '削除されたスタッシュ',
   'reflogdialog.empty': '何もありません。',

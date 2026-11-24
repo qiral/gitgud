@@ -279,6 +279,8 @@ const messages: Messages = {
   'pullrequests.view-pull-request': '풀 리퀘스트 #{number} 보기',
   'pullrequests.write-with-copilot': 'Copilot으로 작성',
   'pullrequests.write-with-copilot-title': 'Copilot으로 제목과 설명 작성',
+  'rebasedialog.combined-message-placeholder':
+    '합친 커밋의 메시지 (비워 두면 git의 메시지를 사용)',
   'rebasedialog.drop': '삭제',
   'rebasedialog.edit-history': '기록 편집',
   'rebasedialog.fixup': 'Fixup',
@@ -300,6 +302,8 @@ const messages: Messages = {
   'rebasedialog.squash': '스쿼시',
   'rebasedialog.squash-first':
     '처음 유지하는 커밋 위에는 합칠 커밋이 없습니다.',
+  'rebasedialog.write-combined-message-with-copilot':
+    '합친 커밋 메시지를 Copilot으로 작성',
   'reflogdialog.create-branch': '여기에 브랜치 만들기…',
   'reflogdialog.deleted-stashes': '삭제된 스태시',
   'reflogdialog.empty': '아무것도 없습니다.',

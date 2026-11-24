@@ -477,6 +477,26 @@ impl Copilot {
 }
 
 impl Copilot {
+    /// One message for commits squashed together, oldest first.
+    pub async fn squash_message(
+        &self,
+        app_data: &Path,
+        repo: PathBuf,
+        hashes: Vec<String>,
+    ) -> Result<String> {
+        let commits = blocking(move || {
+            hashes
+                .iter()
+                .map(|hash| git::show_commit(&repo, hash, false))
+                .collect::<Result<Vec<_>>>()
+        })
+        .await?;
+        let message = self.ask(app_data, squash_prompt(&commits)).await?;
+        Ok(message.trim().to_string())
+    }
+}
+
+impl Copilot {
     /// Release notes for the commits after `from` up to `to` (HEAD when
     /// unset). Without `from` they start at the last tag. The two can be
     /// given in either order.
@@ -664,6 +684,22 @@ fn commit_prompt(stat: &str, diff: &str, subjects: &[String]) -> String {
         "\nStaged files:\n{stat}\nStaged changes:\n{}",
         cap(diff, MAX_INPUT)
     ));
+    prompt
+}
+
+fn squash_prompt(commits: &[String]) -> String {
+    let share = MAX_INPUT / commits.len().max(1);
+    let mut prompt = String::from(
+        "These commits are being squashed into one. Write a single git commit \
+         message for the result.\n\n\
+         - First line: a summary under 72 characters.\n\
+         - If more explanation helps, add a blank line and a short body.\n\
+         - Reply with the commit message only: no code fences, no commentary.\n\n\
+         Commits, oldest first:\n",
+    );
+    for commit in commits {
+        prompt.push_str(&format!("---\n{}\n", cap(commit, share)));
+    }
     prompt
 }
 
@@ -1176,6 +1212,22 @@ mod tests {
         }
         let many: Vec<String> = (0..10_000).map(|i| format!("commit number {i}")).collect();
         assert!(release_notes_prompt(&many, "").len() < MAX_INPUT + 2_000);
+    }
+
+    #[test]
+    fn squash_prompt_shares_the_budget_between_commits() {
+        let prompt = squash_prompt(&["add login\n+form".into(), "fix typo\n+text".into()]);
+        for expected in ["add login", "+form", "fix typo", "+text"] {
+            assert!(prompt.contains(expected), "missing {expected}");
+        }
+        let big = vec!["x".repeat(MAX_INPUT); 4];
+        let prompt = squash_prompt(&big);
+        assert!(prompt.len() < MAX_INPUT + 2_000, "{}", prompt.len());
+        assert_eq!(
+            prompt.matches("[… truncated]").count(),
+            4,
+            "each commit keeps a share"
+        );
     }
 
     #[test]

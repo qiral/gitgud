@@ -594,6 +594,18 @@ async fn copilot_pull_request(
 }
 
 #[tauri::command]
+async fn copilot_squash_message(
+    app: tauri::AppHandle,
+    copilot: tauri::State<'_, Copilot>,
+    repo: String,
+    hashes: Vec<String>,
+) -> Result<String> {
+    copilot
+        .squash_message(&app_data(&app)?, repo.into(), hashes)
+        .await
+}
+
+#[tauri::command]
 async fn copilot_release_notes(
     app: tauri::AppHandle,
     copilot: tauri::State<'_, Copilot>,
@@ -752,6 +764,7 @@ pub fn run() {
             copilot_review,
             copilot_branch_name,
             copilot_release_notes,
+            copilot_squash_message,
             copilot_pull_request,
             copilot_resolve,
         ])

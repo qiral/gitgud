@@ -266,6 +266,8 @@ const messages: Messages = {
   'pullrequests.view-pull-request': '查看拉取请求 #{number}',
   'pullrequests.write-with-copilot': '用 Copilot 撰写',
   'pullrequests.write-with-copilot-title': '用 Copilot 撰写标题和描述',
+  'rebasedialog.combined-message-placeholder':
+    '合并后提交的信息（留空则使用 git 的信息）',
   'rebasedialog.drop': '删除',
   'rebasedialog.edit-history': '编辑历史',
   'rebasedialog.fixup': 'Fixup',
@@ -285,6 +287,8 @@ const messages: Messages = {
     '其中一些提交已经推送。改写后需要强制推送，这会影响其他使用此分支的人。',
   'rebasedialog.squash': '压缩',
   'rebasedialog.squash-first': '第一个保留的提交上方没有可以压缩进去的提交。',
+  'rebasedialog.write-combined-message-with-copilot':
+    '使用 Copilot 编写合并后的提交信息',
   'reflogdialog.create-branch': '在此创建分支…',
   'reflogdialog.deleted-stashes': '已删除的贮藏',
   'reflogdialog.empty': '这里什么都没有。',

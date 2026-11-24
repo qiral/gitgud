@@ -241,6 +241,9 @@ export const copilot = {
   commitMessage: (repo: string) =>
     invoke<string>('copilot_commit_message', { repo }),
   explain: (diff: string) => invoke<string>('copilot_explain', { diff }),
+  /** One message for commits squashed together, oldest first. */
+  squashMessage: (repo: string, hashes: string[]) =>
+    invoke<string>('copilot_squash_message', { repo, hashes }),
   /** Release notes for the commits after `from` up to `to` (HEAD when
    *  null). A null `from` starts at the last tag. */
   releaseNotes: (repo: string, from: string | null, to: string | null) =>

@@ -301,6 +301,8 @@ const messages: Messages = {
   'pullrequests.write-with-copilot': 'Mit Copilot schreiben',
   'pullrequests.write-with-copilot-title':
     'Titel und Beschreibung mit Copilot schreiben',
+  'rebasedialog.combined-message-placeholder':
+    'Nachricht für den zusammengefassten Commit (leer lassen für die von Git)',
   'rebasedialog.drop': 'Verwerfen',
   'rebasedialog.edit-history': 'Verlauf bearbeiten',
   'rebasedialog.fixup': 'Fixup',
@@ -324,6 +326,8 @@ const messages: Messages = {
   'rebasedialog.squash': 'Squash',
   'rebasedialog.squash-first':
     'Über dem ersten behaltenen Commit gibt es nichts, in das gesquasht werden kann.',
+  'rebasedialog.write-combined-message-with-copilot':
+    'Gemeinsame Nachricht mit Copilot schreiben',
   'reflogdialog.create-branch': 'Hier Branch erstellen…',
   'reflogdialog.deleted-stashes': 'Gelöschte Stashes',
   'reflogdialog.empty': 'Hier ist nichts.',

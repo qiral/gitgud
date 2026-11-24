@@ -294,6 +294,8 @@ const messages: Messages = {
   'pullrequests.write-with-copilot': 'Copilot ile yaz',
   'pullrequests.write-with-copilot-title':
     'Başlığı ve açıklamayı Copilot ile yaz',
+  'rebasedialog.combined-message-placeholder':
+    "Birleşik commit mesajı (git'in mesajını korumak için boş bırakın)",
   'rebasedialog.drop': 'Çıkar',
   'rebasedialog.edit-history': 'Geçmişi düzenle',
   'rebasedialog.fixup': 'Fixup',
@@ -315,6 +317,8 @@ const messages: Messages = {
   'rebasedialog.squash': 'Squash',
   'rebasedialog.squash-first':
     "Tutulan ilk commit'in üstünde squash yapılacak commit yok.",
+  'rebasedialog.write-combined-message-with-copilot':
+    'Birleşik mesajı Copilot ile yaz',
   'reflogdialog.create-branch': 'Burada dal oluştur…',
   'reflogdialog.deleted-stashes': "Silinmiş stash'ler",
   'reflogdialog.empty': 'Burada bir şey yok.',

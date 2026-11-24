@@ -48,7 +48,8 @@ pub enum Action {
 pub struct TodoItem {
     pub hash: String,
     pub action: Action,
-    /// New message for `Reword`.
+    /// New message for `Reword`, or for a `Pick` that others are squashed
+    /// into (empty keeps git's combined message).
     pub message: Option<String>,
 }
 
@@ -163,24 +164,16 @@ fn shell_path(path: &Path) -> Result<String> {
     Ok(format!("'{p}'"))
 }
 
-/// Builds the todo list. Returns its text and the reword messages to write,
-/// as (file name, message) pairs.
+/// Builds the todo list. Returns its text and the new messages to write, as
+/// (file name, message) pairs. A kept commit's new message goes on once the
+/// squashes and fixups that follow it are in, so it replaces git's combined
+/// message for the whole group.
 fn todo(items: &[TodoItem], dir: &Path) -> Result<(String, Vec<(String, String)>)> {
     let mut lines = Vec::new();
     let mut messages = Vec::new();
-    for (i, item) in items.iter().enumerate() {
-        let verb = match item.action {
-            Action::Pick | Action::Reword => "pick",
-            Action::Squash => "squash",
-            Action::Fixup => "fixup",
-            Action::Drop => "drop",
-        };
-        lines.push(format!("{verb} {}", item.hash));
-        if item.action == Action::Reword {
-            let message = item.message.as_deref().unwrap_or("").trim();
-            if message.is_empty() {
-                return Err(GitError::Failed("A reworded commit needs a message".into()));
-            }
+    let mut pending: Option<(usize, &str)> = None;
+    let mut flush = |lines: &mut Vec<String>, pending: Option<(usize, &str)>| -> Result<()> {
+        if let Some((i, message)) = pending {
             let name = format!("message-{i}.txt");
             let path = shell_path(&dir.join(&name))?;
             lines.push(format!(
@@ -188,7 +181,26 @@ fn todo(items: &[TodoItem], dir: &Path) -> Result<(String, Vec<(String, String)>
             ));
             messages.push((name, format!("{message}\n")));
         }
+        Ok(())
+    };
+    for (i, item) in items.iter().enumerate() {
+        let verb = match item.action {
+            Action::Pick | Action::Reword => "pick",
+            Action::Squash => "squash",
+            Action::Fixup => "fixup",
+            Action::Drop => "drop",
+        };
+        let message = item.message.as_deref().unwrap_or("").trim();
+        if matches!(item.action, Action::Pick | Action::Reword) {
+            flush(&mut lines, pending.take())?;
+            if item.action == Action::Reword && message.is_empty() {
+                return Err(GitError::Failed("A reworded commit needs a message".into()));
+            }
+            pending = (!message.is_empty()).then_some((i, message));
+        }
+        lines.push(format!("{verb} {}", item.hash));
     }
+    flush(&mut lines, pending)?;
     Ok((lines.join("\n") + "\n", messages))
 }
 
@@ -415,6 +427,56 @@ mod tests {
         assert!(
             !git_path(repo, "gitgud-rebase").unwrap().exists(),
             "cleaned up"
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn a_squash_group_gets_its_combined_message() {
+        let dir = repo_with_commits(
+            "squashmsg",
+            &[
+                ("a.txt", "a\n", "add a"),
+                ("b.txt", "b\n", "add b"),
+                ("c.txt", "c\n", "add c"),
+                ("d.txt", "d\n", "add d"),
+                ("e.txt", "e\n", "add e"),
+            ],
+        );
+        let repo = dir.as_path();
+        let from = &git::log(repo, 10).unwrap()[3].hash; // "add b"
+        let p = plan(repo, from).unwrap();
+        let [b, c, d, e] = &p.commits[..] else {
+            panic!()
+        };
+        let items = vec![
+            TodoItem {
+                hash: b.hash.clone(),
+                action: Action::Pick,
+                message: Some("add b and c together".into()),
+            },
+            item(c, Action::Squash),
+            TodoItem {
+                hash: d.hash.clone(),
+                action: Action::Reword,
+                message: Some("add d, reworded".into()),
+            },
+            item(e, Action::Fixup),
+        ];
+        assert_eq!(
+            start(repo, from, &items).unwrap(),
+            RebaseOutcome { stopped: false }
+        );
+        assert_eq!(
+            subjects(repo),
+            ["add d, reworded", "add b and c together", "add a"]
+        );
+        assert!(dir.join("c.txt").exists() && dir.join("e.txt").exists());
+        let body = run(repo, &["log", "-1", "--skip=1", "--format=%B"]).unwrap();
+        assert_eq!(
+            body.trim(),
+            "add b and c together",
+            "no leftover squash text"
         );
         std::fs::remove_dir_all(&dir).unwrap();
     }

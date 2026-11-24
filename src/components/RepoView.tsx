@@ -517,6 +517,12 @@ export default function RepoView({
           from={rebaseFrom}
           onClose={() => setRebaseFrom(null)}
           act={act}
+          suggestSquashMessage={
+            copilotOn.squashMessage
+              ? (hashes) =>
+                  ai.run(() => copilot.squashMessage(repo.path, hashes))
+              : undefined
+          }
         />
       )}
       {dialog === 'stash' && (
