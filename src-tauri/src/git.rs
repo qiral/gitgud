@@ -764,6 +764,63 @@ pub fn branch_stat(repo: &Path, merge_base: &str) -> Result<String> {
     run(repo, &["diff", "--no-color", "--stat", merge_base, "HEAD"])
 }
 
+/// The newest tag reachable from HEAD, if any.
+pub fn last_tag(repo: &Path) -> Result<Option<String>> {
+    let out = output(repo, &["describe", "--tags", "--abbrev=0", "HEAD"])?;
+    Ok(out
+        .status
+        .success()
+        .then(|| String::from_utf8_lossy(&out.stdout).trim().to_string())
+        .filter(|tag| !tag.is_empty()))
+}
+
+/// The commit id a branch, tag or hash points to.
+pub fn resolve_commit(repo: &Path, rev: &str) -> Result<String> {
+    if rev.starts_with('-') {
+        return Err(GitError::Failed(format!("not a commit: {rev}")));
+    }
+    Ok(run(
+        repo,
+        &[
+            "rev-parse",
+            "--verify",
+            "--quiet",
+            &format!("{rev}^{{commit}}"),
+        ],
+    )
+    .map_err(|_| GitError::Failed(format!("not a commit: {rev}")))?
+    .trim()
+    .to_string())
+}
+
+/// Whether `ancestor` is part of `commit`'s history.
+pub fn is_ancestor(repo: &Path, ancestor: &str, commit: &str) -> Result<bool> {
+    check_sha(ancestor)?;
+    check_sha(commit)?;
+    Ok(
+        output(repo, &["merge-base", "--is-ancestor", ancestor, commit])?
+            .status
+            .success(),
+    )
+}
+
+/// Messages of the commits after `from` up to `to`, oldest first, and the
+/// files they changed. Takes commit ids only.
+pub fn range(repo: &Path, from: &str, to: &str) -> Result<(Vec<String>, String)> {
+    check_sha(from)?;
+    check_sha(to)?;
+    let span = format!("{from}..{to}");
+    let log = run(repo, &["log", "--reverse", "--format=%B%x00", &span])?;
+    let messages = log
+        .split('\0')
+        .map(str::trim)
+        .filter(|m| !m.is_empty())
+        .map(str::to_string)
+        .collect();
+    let stat = run(repo, &["diff", "--no-color", "--stat", from, to])?;
+    Ok((messages, stat))
+}
+
 /// Subjects of the last `n` commits on the current branch, newest first.
 pub fn recent_subjects(repo: &Path, n: usize) -> Result<Vec<String>> {
     if !has_head(repo)? {
@@ -1907,6 +1964,55 @@ mod tests {
         assert!(diff.contains("+staged line"));
         assert!(!diff.contains("unstaged"));
         assert!(staged_stat(repo).unwrap().contains("c.txt"));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn ranges_and_the_last_tag() {
+        let dir = std::env::temp_dir().join(format!("gitgud-range-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = dir.as_path();
+        run(repo, &["init", "-q", "-b", "main"]).unwrap();
+        for (k, v) in [
+            ("user.name", "T"),
+            ("user.email", "t@x"),
+            ("commit.gpgsign", "false"),
+            ("tag.gpgsign", "false"),
+        ] {
+            run(repo, &["config", k, v]).unwrap();
+        }
+        assert_eq!(last_tag(repo).unwrap(), None);
+
+        let mut hashes = Vec::new();
+        for (file, msg) in [
+            ("a.txt", "first"),
+            ("b.txt", "second\n\nwith a body"),
+            ("c.txt", "third"),
+        ] {
+            std::fs::write(dir.join(file), "x\n").unwrap();
+            stage(repo, &[file.into()]).unwrap();
+            commit(repo, msg).unwrap();
+            hashes.push(
+                run(repo, &["rev-parse", "HEAD"])
+                    .unwrap()
+                    .trim()
+                    .to_string(),
+            );
+            if file == "a.txt" {
+                run(repo, &["tag", "v1"]).unwrap();
+            }
+        }
+        assert_eq!(last_tag(repo).unwrap().as_deref(), Some("v1"));
+        assert_eq!(resolve_commit(repo, "v1").unwrap(), hashes[0]);
+        assert!(is_ancestor(repo, &hashes[0], &hashes[2]).unwrap());
+        assert!(!is_ancestor(repo, &hashes[2], &hashes[0]).unwrap());
+
+        let (messages, stat) = range(repo, &hashes[0], &hashes[2]).unwrap();
+        assert_eq!(messages, ["second\n\nwith a body", "third"]);
+        assert!(stat.contains("b.txt") && stat.contains("c.txt"));
+        assert!(!stat.contains("a.txt"));
+        assert!(range(repo, "v1", &hashes[2]).is_err(), "only commit ids");
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

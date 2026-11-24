@@ -221,6 +221,10 @@ const messages: Messages = {
   'historypanel.no-commits-match': 'Eşleşen commit yok',
   'historypanel.no-commits-yet': 'Henüz commit yok',
   'historypanel.push-tag': '{name} etiketini push et',
+  'historypanel.release-notes-since-here':
+    'Buradan itibaren sürüm notu taslağı hazırla',
+  'historypanel.release-notes-since-tag':
+    '{name} sonrası için sürüm notu taslağı hazırla',
   'historypanel.reset-current-branch-to-here': 'Geçerli dalı buraya sıfırla…',
   'historypanel.revert-this-commit': "Bu commit'i geri al…",
   'historypanel.search-commits': "Commit'lerde ara",
@@ -231,6 +235,8 @@ const messages: Messages = {
   'historypanel.show-all': 'Tümünü göster',
   'historypanel.show-all-commits': "Tüm commit'leri göster",
   'historypanel.show-lines': 'Dal çizgilerini göster',
+  'historypanel.summarize-changes-between':
+    'Burası ile {hash} arasındaki değişiklikleri özetle',
   'historypanel.tag-title': 'Etiket {name}',
   'hostsdialog.create-one': 'Oluştur',
   'hostsdialog.other': 'Diğer',
@@ -373,11 +379,17 @@ const messages: Messages = {
   'repocommands.stash-changes': "Değişiklikleri stash'le…",
   'repocommands.switch-branch': 'Dal değiştir…',
   'repocommands.switch-to-branch': 'Geçilecek dal',
+  'repoview.changes-between': '{from} ile {to} arasındaki değişiklikler',
   'repoview.changes-empty': 'Değişikliklerini görmek için bir dosya seçin',
   'repoview.commit-not-found': "{hash} commit'i bulunamadı",
   'repoview.diff-error': 'Fark yüklenemedi:',
   'repoview.dismiss': 'Kapat',
+  'repoview.draft-release-notes-since-the-last-tag':
+    "Son tag'den bu yana sürüm notu taslağı hazırla",
   'repoview.history-empty': 'Neyin değiştiğini görmek için bir commit seçin',
+  'repoview.release-notes-since': '{name} sonrası sürüm notları',
+  'repoview.release-notes-since-the-last-tag':
+    "Son tag'den bu yana sürüm notları",
   'repoview.review-of-staged-changes': 'Hazırlanan değişikliklerin incelemesi',
   'repoview.stashes-empty': 'İçeriğini görmek için bir stash seçin',
   'repoview.tab-changes': 'Değişiklikler',

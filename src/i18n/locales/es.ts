@@ -228,6 +228,10 @@ const messages: Messages = {
   'historypanel.no-commits-match': 'Ningún commit coincide',
   'historypanel.no-commits-yet': 'Aún no hay commits',
   'historypanel.push-tag': 'Subir la etiqueta {name}',
+  'historypanel.release-notes-since-here':
+    'Redactar notas de la versión desde aquí',
+  'historypanel.release-notes-since-tag':
+    'Redactar notas de la versión desde {name}',
   'historypanel.reset-current-branch-to-here':
     'Restablecer la rama actual aquí…',
   'historypanel.revert-this-commit': 'Revertir este commit…',
@@ -239,6 +243,8 @@ const messages: Messages = {
   'historypanel.show-all': 'Mostrar todo',
   'historypanel.show-all-commits': 'Mostrar todos los commits',
   'historypanel.show-lines': 'Mostrar líneas de ramas',
+  'historypanel.summarize-changes-between':
+    'Resumir los cambios entre aquí y {hash}',
   'historypanel.tag-title': 'Etiqueta {name}',
   'hostsdialog.create-one': 'Crear uno',
   'hostsdialog.other': 'Otro',
@@ -383,11 +389,17 @@ const messages: Messages = {
   'repocommands.stash-changes': 'Guardar cambios en el stash…',
   'repocommands.switch-branch': 'Cambiar de rama…',
   'repocommands.switch-to-branch': 'Cambiar a la rama',
+  'repoview.changes-between': 'Cambios entre {from} y {to}',
   'repoview.changes-empty': 'Selecciona un archivo para ver sus cambios',
   'repoview.commit-not-found': 'No se encontró el commit {hash}',
   'repoview.diff-error': 'No se pudo cargar el diff:',
   'repoview.dismiss': 'Cerrar',
+  'repoview.draft-release-notes-since-the-last-tag':
+    'Redactar notas de la versión desde la última etiqueta',
   'repoview.history-empty': 'Selecciona un commit para ver qué cambió',
+  'repoview.release-notes-since': 'Notas de la versión desde {name}',
+  'repoview.release-notes-since-the-last-tag':
+    'Notas de la versión desde la última etiqueta',
   'repoview.review-of-staged-changes': 'Revisión de los cambios preparados',
   'repoview.stashes-empty': 'Selecciona un stash para ver su contenido',
   'repoview.tab-changes': 'Cambios',

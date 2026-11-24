@@ -241,6 +241,10 @@ export const copilot = {
   commitMessage: (repo: string) =>
     invoke<string>('copilot_commit_message', { repo }),
   explain: (diff: string) => invoke<string>('copilot_explain', { diff }),
+  /** Release notes for the commits after `from` up to `to` (HEAD when
+   *  null). A null `from` starts at the last tag. */
+  releaseNotes: (repo: string, from: string | null, to: string | null) =>
+    invoke<string>('copilot_release_notes', { repo, from, to }),
   /** A branch name for the work `description` describes. */
   branchName: (repo: string, description: string) =>
     invoke<string>('copilot_branch_name', { repo, description }),

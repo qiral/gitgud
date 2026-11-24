@@ -39,6 +39,7 @@ import PublishDialog from './PublishDialog'
 import ExplainDialog from './ExplainDialog'
 import { useResizable } from './Resizable'
 import { useCommitActions } from './CommitActions'
+import { ScrollText } from 'lucide-react'
 import { useCopilot } from '../lib/copilot'
 import { useCopilotPrefs } from '../lib/copilotPrefs'
 import { useTranslation, type Translate } from '../i18n'
@@ -422,7 +423,25 @@ export default function RepoView({
     undoable,
     onUndo: undo,
     onReflog: () => setDialog('reflog'),
-    extra: pullRequests.commands,
+    extra: [
+      ...pullRequests.commands,
+      ...(copilotOn.releaseNotes
+        ? [
+            {
+              id: 'releaseNotes',
+              group: tx('repocommands.group-repository'),
+              label: tx('repoview.draft-release-notes-since-the-last-tag'),
+              keywords: 'copilot changelog summary tag',
+              icon: ScrollText,
+              run: () =>
+                showAnswer(
+                  tx('repoview.release-notes-since-the-last-tag'),
+                  () => copilot.releaseNotes(repo.path, null, null),
+                ),
+            },
+          ]
+        : []),
+    ],
   })
 
   return (
@@ -580,6 +599,29 @@ export default function RepoView({
               filtered={filtered}
               focusSearch={focusSearch}
               reveal={reveal}
+              onReleaseNotes={
+                copilotOn.releaseNotes
+                  ? (from, to) =>
+                      showAnswer(
+                        to
+                          ? tx('repoview.changes-between', {
+                              from: from.shortHash,
+                              to: to.shortHash,
+                            })
+                          : tx('repoview.release-notes-since', {
+                              name:
+                                from.refs.find((r) => r.kind === 'tag')?.name ??
+                                from.shortHash,
+                            }),
+                        () =>
+                          copilot.releaseNotes(
+                            repo.path,
+                            from.hash,
+                            to?.hash ?? null,
+                          ),
+                      )
+                  : undefined
+              }
               onExplain={
                 copilotOn.explain
                   ? (c) =>

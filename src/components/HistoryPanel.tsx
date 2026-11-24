@@ -9,6 +9,7 @@ import {
   PencilLine,
   Plus,
   RotateCcw,
+  ScrollText,
   Tag,
   Trash2,
   Undo2,
@@ -56,6 +57,9 @@ interface Props {
   filtered?: Commit[] | null
   /** Asks Copilot to explain a commit; unset to hide. */
   onExplain?: (commit: Commit) => void
+  /** Asks Copilot for release notes from `from` up to `to`, or up to HEAD
+   *  when `to` is null; unset to hide. */
+  onReleaseNotes?: (from: Commit, to: Commit | null) => void
   /** Focuses the search box whenever this changes, e.g. from a shortcut. */
   focusSearch?: number
   /** Scrolls to this commit whenever it changes. */
@@ -96,6 +100,7 @@ export default function HistoryPanel({
   onFilter,
   filtered = null,
   onExplain,
+  onReleaseNotes,
   focusSearch,
   reveal,
 }: Props) {
@@ -214,6 +219,29 @@ export default function HistoryPanel({
         icon: Sparkles,
         onClick: () => onExplain(c),
       })
+    if (onReleaseNotes) {
+      const tag = c.refs.find((r) => r.kind === 'tag')
+      if (!onExplain) items.push('separator')
+      items.push({
+        label: tag
+          ? t('historypanel.release-notes-since-tag', { name: tag.name })
+          : t('historypanel.release-notes-since-here'),
+        icon: ScrollText,
+        onClick: () => onReleaseNotes(c, null),
+      })
+      const other =
+        selection?.kind === 'commit' && selection.commit.hash !== c.hash
+          ? selection.commit
+          : null
+      if (other)
+        items.push({
+          label: t('historypanel.summarize-changes-between', {
+            hash: other.shortHash,
+          }),
+          icon: ScrollText,
+          onClick: () => onReleaseNotes(c, other),
+        })
+    }
     if (actions) {
       const isHead = c.refs.some((r) => r.kind === 'head')
       items.push(

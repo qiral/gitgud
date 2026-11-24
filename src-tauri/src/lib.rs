@@ -594,6 +594,19 @@ async fn copilot_pull_request(
 }
 
 #[tauri::command]
+async fn copilot_release_notes(
+    app: tauri::AppHandle,
+    copilot: tauri::State<'_, Copilot>,
+    repo: String,
+    from: Option<String>,
+    to: Option<String>,
+) -> Result<String> {
+    copilot
+        .release_notes(&app_data(&app)?, repo.into(), from, to)
+        .await
+}
+
+#[tauri::command]
 async fn copilot_branch_name(
     app: tauri::AppHandle,
     copilot: tauri::State<'_, Copilot>,
@@ -738,6 +751,7 @@ pub fn run() {
             copilot_explain,
             copilot_review,
             copilot_branch_name,
+            copilot_release_notes,
             copilot_pull_request,
             copilot_resolve,
         ])

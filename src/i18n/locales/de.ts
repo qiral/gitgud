@@ -227,6 +227,9 @@ const messages: Messages = {
   'historypanel.no-commits-match': 'Keine passenden Commits',
   'historypanel.no-commits-yet': 'Noch keine Commits',
   'historypanel.push-tag': 'Tag {name} pushen',
+  'historypanel.release-notes-since-here': 'Versionshinweise ab hier entwerfen',
+  'historypanel.release-notes-since-tag':
+    'Versionshinweise seit {name} entwerfen',
   'historypanel.reset-current-branch-to-here':
     'Aktuellen Branch hierher zurücksetzen…',
   'historypanel.revert-this-commit': 'Diesen Commit rückgängig machen…',
@@ -238,6 +241,8 @@ const messages: Messages = {
   'historypanel.show-all': 'Alle anzeigen',
   'historypanel.show-all-commits': 'Alle Commits anzeigen',
   'historypanel.show-lines': 'Branch-Linien anzeigen',
+  'historypanel.summarize-changes-between':
+    'Änderungen zwischen hier und {hash} zusammenfassen',
   'historypanel.tag-title': 'Tag {name}',
   'hostsdialog.create-one': 'Erstellen',
   'hostsdialog.other': 'Andere',
@@ -383,12 +388,18 @@ const messages: Messages = {
   'repocommands.stash-changes': 'Änderungen stashen…',
   'repocommands.switch-branch': 'Branch wechseln…',
   'repocommands.switch-to-branch': 'Zu Branch wechseln',
+  'repoview.changes-between': 'Änderungen zwischen {from} und {to}',
   'repoview.changes-empty': 'Wähle eine Datei, um ihre Änderungen zu sehen',
   'repoview.commit-not-found': 'Commit {hash} nicht gefunden',
   'repoview.diff-error': 'Diff konnte nicht geladen werden:',
   'repoview.dismiss': 'Schließen',
+  'repoview.draft-release-notes-since-the-last-tag':
+    'Versionshinweise seit dem letzten Tag entwerfen',
   'repoview.history-empty':
     'Wähle einen Commit, um zu sehen, was sich geändert hat',
+  'repoview.release-notes-since': 'Versionshinweise seit {name}',
+  'repoview.release-notes-since-the-last-tag':
+    'Versionshinweise seit dem letzten Tag',
   'repoview.review-of-staged-changes': 'Prüfung der vorgemerkten Änderungen',
   'repoview.stashes-empty': 'Wähle einen Stash, um seinen Inhalt zu sehen',
   'repoview.tab-changes': 'Änderungen',

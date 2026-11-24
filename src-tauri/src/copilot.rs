@@ -477,6 +477,49 @@ impl Copilot {
 }
 
 impl Copilot {
+    /// Release notes for the commits after `from` up to `to` (HEAD when
+    /// unset). Without `from` they start at the last tag. The two can be
+    /// given in either order.
+    pub async fn release_notes(
+        &self,
+        app_data: &Path,
+        repo: PathBuf,
+        from: Option<String>,
+        to: Option<String>,
+    ) -> Result<String> {
+        let (messages, stat) = blocking(move || {
+            let to = git::resolve_commit(&repo, to.as_deref().unwrap_or("HEAD"))?;
+            let from = match from {
+                Some(rev) => git::resolve_commit(&repo, &rev)?,
+                None => {
+                    let tag = git::last_tag(&repo)?.ok_or_else(|| {
+                        GitError::Failed(
+                            "This repository has no tags yet. Pick a commit in History instead."
+                                .into(),
+                        )
+                    })?;
+                    git::resolve_commit(&repo, &tag)?
+                }
+            };
+            let (from, to) = if git::is_ancestor(&repo, &to, &from)? {
+                (to, from)
+            } else {
+                (from, to)
+            };
+            git::range(&repo, &from, &to)
+        })
+        .await?;
+        if messages.is_empty() {
+            return Err(GitError::Failed("No commits in that range".into()));
+        }
+        let notes = self
+            .ask(app_data, release_notes_prompt(&messages, &stat))
+            .await?;
+        Ok(notes.trim().to_string())
+    }
+}
+
+impl Copilot {
     /// A branch name for the work `description` describes, in the style of
     /// the repository's existing branches.
     pub async fn branch_name(
@@ -622,6 +665,22 @@ fn commit_prompt(stat: &str, diff: &str, subjects: &[String]) -> String {
         cap(diff, MAX_INPUT)
     ));
     prompt
+}
+
+fn release_notes_prompt(messages: &[String], stat: &str) -> String {
+    let mut commits = String::new();
+    for message in messages {
+        commits.push_str(&format!("---\n{}\n", message.trim()));
+    }
+    format!(
+        "Draft release notes from the commits below. Write short, user-facing \
+         bullets in Markdown, grouped under headings such as New, Improved and \
+         Fixed (only the ones that apply). Leave out internal chores like CI, \
+         formatting and version bumps. Reply with the notes only.\n\n\
+         Commits, oldest first:\n{}\nChanged files:\n{}",
+        cap(&commits, MAX_INPUT),
+        cap(stat, MAX_INPUT / 10)
+    )
 }
 
 fn branch_name_prompt(description: &str, existing: &[String]) -> String {
@@ -1096,6 +1155,27 @@ mod tests {
             clean_branch_name("feature/Add  dark mode!"),
             "feature/add-dark-mode"
         );
+    }
+
+    #[test]
+    fn release_notes_prompt_uses_messages_and_files_only() {
+        let prompt = release_notes_prompt(
+            &[
+                "add blame\n\nshows who changed each line".into(),
+                "fix crash".into(),
+            ],
+            " src/blame.rs | 120 +++\n",
+        );
+        for expected in [
+            "add blame",
+            "shows who changed each line",
+            "fix crash",
+            "src/blame.rs | 120 +++",
+        ] {
+            assert!(prompt.contains(expected), "missing {expected}");
+        }
+        let many: Vec<String> = (0..10_000).map(|i| format!("commit number {i}")).collect();
+        assert!(release_notes_prompt(&many, "").len() < MAX_INPUT + 2_000);
     }
 
     #[test]

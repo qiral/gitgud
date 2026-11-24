@@ -226,6 +226,9 @@ const messages: Messages = {
   'historypanel.no-commits-match': 'Nessun commit corrisponde',
   'historypanel.no-commits-yet': 'Ancora nessun commit',
   'historypanel.push-tag': 'Invia il tag {name}',
+  'historypanel.release-notes-since-here': 'Scrivi le note di rilascio da qui',
+  'historypanel.release-notes-since-tag':
+    'Scrivi le note di rilascio da {name}',
   'historypanel.reset-current-branch-to-here':
     'Reimposta il branch corrente qui…',
   'historypanel.revert-this-commit': 'Annulla questo commit…',
@@ -237,6 +240,8 @@ const messages: Messages = {
   'historypanel.show-all': 'Mostra tutto',
   'historypanel.show-all-commits': 'Mostra tutti i commit',
   'historypanel.show-lines': 'Mostra linee dei branch',
+  'historypanel.summarize-changes-between':
+    'Riassumi le modifiche tra qui e {hash}',
   'historypanel.tag-title': 'Tag {name}',
   'hostsdialog.create-one': 'Creane uno',
   'hostsdialog.other': 'Altro',
@@ -383,11 +388,17 @@ const messages: Messages = {
   'repocommands.stash-changes': 'Metti le modifiche nello stash…',
   'repocommands.switch-branch': 'Cambia branch…',
   'repocommands.switch-to-branch': 'Passa al branch',
+  'repoview.changes-between': 'Modifiche tra {from} e {to}',
   'repoview.changes-empty': 'Seleziona un file per vederne le modifiche',
   'repoview.commit-not-found': 'Commit {hash} non trovato',
   'repoview.diff-error': 'Impossibile caricare il diff:',
   'repoview.dismiss': 'Chiudi',
+  'repoview.draft-release-notes-since-the-last-tag':
+    "Scrivi le note di rilascio dall'ultimo tag",
   'repoview.history-empty': 'Seleziona un commit per vedere cosa è cambiato',
+  'repoview.release-notes-since': 'Note di rilascio da {name}',
+  'repoview.release-notes-since-the-last-tag':
+    "Note di rilascio dall'ultimo tag",
   'repoview.review-of-staged-changes': 'Revisione delle modifiche in stage',
   'repoview.stashes-empty': 'Seleziona uno stash per vederne il contenuto',
   'repoview.tab-changes': 'Modifiche',

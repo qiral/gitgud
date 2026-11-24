@@ -230,6 +230,10 @@ const messages: Messages = {
   'historypanel.no-commits-match': 'Aucun commit ne correspond',
   'historypanel.no-commits-yet': "Aucun commit pour l'instant",
   'historypanel.push-tag': 'Pousser le tag {name}',
+  'historypanel.release-notes-since-here':
+    'Rédiger les notes de version depuis ici',
+  'historypanel.release-notes-since-tag':
+    'Rédiger les notes de version depuis {name}',
   'historypanel.reset-current-branch-to-here':
     'Réinitialiser la branche actuelle ici…',
   'historypanel.revert-this-commit': 'Annuler ce commit…',
@@ -241,6 +245,8 @@ const messages: Messages = {
   'historypanel.show-all': 'Tout afficher',
   'historypanel.show-all-commits': 'Afficher tous les commits',
   'historypanel.show-lines': 'Afficher les lignes de branche',
+  'historypanel.summarize-changes-between':
+    'Résumer les modifications entre ici et {hash}',
   'historypanel.tag-title': 'Tag {name}',
   'hostsdialog.create-one': 'En créer un',
   'hostsdialog.other': 'Autre',
@@ -384,12 +390,18 @@ const messages: Messages = {
   'repocommands.stash-changes': 'Mettre les modifications dans le stash…',
   'repocommands.switch-branch': 'Changer de branche…',
   'repocommands.switch-to-branch': 'Basculer sur la branche',
+  'repoview.changes-between': 'Modifications entre {from} et {to}',
   'repoview.changes-empty':
     'Sélectionnez un fichier pour voir ses modifications',
   'repoview.commit-not-found': 'Commit {hash} introuvable',
   'repoview.diff-error': 'Impossible de charger le diff :',
   'repoview.dismiss': 'Fermer',
+  'repoview.draft-release-notes-since-the-last-tag':
+    'Rédiger les notes de version depuis le dernier tag',
   'repoview.history-empty': 'Sélectionnez un commit pour voir ce qui a changé',
+  'repoview.release-notes-since': 'Notes de version depuis {name}',
+  'repoview.release-notes-since-the-last-tag':
+    'Notes de version depuis le dernier tag',
   'repoview.review-of-staged-changes': 'Relecture des modifications indexées',
   'repoview.stashes-empty': 'Sélectionnez un stash pour voir son contenu',
   'repoview.tab-changes': 'Modifications',
