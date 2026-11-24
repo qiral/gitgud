@@ -84,6 +84,14 @@ struct Stored {
 /// password on macOS.
 static STORED: Cached<Option<Stored>> = Cached::new();
 
+/// Held while the cache and the keychain are changed together, so two
+/// changes can't interleave and leave them disagreeing.
+static WRITING: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+fn writing() -> std::sync::MutexGuard<'static, ()> {
+    WRITING.lock().unwrap_or_else(|e| e.into_inner())
+}
+
 fn entry() -> Result<keyring::Entry> {
     keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER).map_err(keyring_error)
 }
@@ -98,6 +106,7 @@ fn load() -> Result<Option<Stored>> {
 
 fn save(stored: Stored) -> Result<()> {
     let json = serde_json::to_string(&stored).expect("serializable");
+    let _writing = writing();
     entry()?.set_password(&json).map_err(keyring_error)?;
     STORED.set(Some(stored));
     Ok(())
@@ -108,6 +117,7 @@ pub fn account() -> Result<Option<Account>> {
 }
 
 pub fn sign_out() -> Result<()> {
+    let _writing = writing();
     STORED.set(None);
     delete()
 }
@@ -123,12 +133,14 @@ fn delete() -> Result<()> {
 /// about an old token can't remove a newer sign-in. Returns whether it did,
 /// and tells the frontend.
 fn forget_if(rejected: &str) -> bool {
+    let writing = writing();
     let forgot = STORED.replace_if(
         |stored| stored.as_ref().is_some_and(|s| s.token == rejected),
         None,
     );
     if forgot {
         let _ = delete();
+        drop(writing);
         if let Some(app) = APP.get() {
             let _ = app.emit("github-signed-out", ());
         }
@@ -329,6 +341,7 @@ pub fn validate() -> Result<Validation> {
                     token: stored.token.clone(),
                     account: account.clone(),
                 };
+                let _writing = writing();
                 let still_current = STORED.replace_if(
                     |s| s.as_ref().is_some_and(|s| s.token == stored.token),
                     Some(updated.clone()),
