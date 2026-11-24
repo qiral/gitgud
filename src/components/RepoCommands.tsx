@@ -33,7 +33,8 @@ import {
   type Undoable,
 } from '../lib/git'
 import { copyText } from '../lib/copy'
-import { readTheme, setTheme, THEMES } from '../lib/prefs'
+import { getAppearance, previewTheme, setAppearance } from '../lib/appearance'
+import { THEMES } from '../lib/themes'
 import { isTyping, matches } from '../lib/shortcuts'
 import { useUpdates } from '../lib/updates'
 import CommandPalette, { type Command } from './CommandPalette'
@@ -62,6 +63,7 @@ interface Options {
   onOpenOther: () => void
   onOpenRecent: (path: string) => void
   onClone: () => void
+  onAppearance: () => void
   onStash: () => void
   onSignIn: () => void
   onSignOut: () => void
@@ -325,6 +327,14 @@ export function useRepoCommands(o: Options) {
       run: o.searchHistory,
     },
     {
+      id: 'appearance',
+      group: t('repocommands.group-view'),
+      label: t('appearance.open'),
+      icon: Palette,
+      shortcut: 'mod+,',
+      run: o.onAppearance,
+    },
+    {
       id: 'theme',
       group: t('repocommands.group-view'),
       label: t('repocommands.change-theme'),
@@ -332,10 +342,16 @@ export function useRepoCommands(o: Options) {
       page: {
         placeholder: t('repocommands.pick-a-theme'),
         items: () => {
-          const now = readTheme()
-          return [
+          const now = getAppearance().theme
+          const all = [
             { id: 'system', label: t('toolbar.match-system'), dark: null },
             ...THEMES,
+          ]
+          // The current one first: the list starts there, and what it
+          // starts on is previewed.
+          return [
+            ...all.filter((th) => th.id === now),
+            ...all.filter((th) => th.id !== now),
           ].map((th) => ({
             id: `theme:${th.id}`,
             group: t('repocommands.group-themes'),
@@ -349,7 +365,8 @@ export function useRepoCommands(o: Options) {
                     ? t('repocommands.dark')
                     : t('repocommands.light'),
             icon: Palette,
-            run: () => setTheme(th.id),
+            preview: () => previewTheme(th.id),
+            run: () => setAppearance({ theme: th.id }),
           }))
         },
       },

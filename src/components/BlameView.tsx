@@ -16,6 +16,7 @@ import { setDiffPref, useDiffPrefs } from '../lib/diffPrefs'
 import { basename, dirname } from '../lib/paths'
 import { readFlag, writeFlag } from '../lib/prefs'
 import { relativeTime } from '../lib/time'
+import { codeRow, useAppearance } from '../lib/appearance'
 import { useVirtualRows } from '../lib/virtual'
 import { useContextMenu, type MenuItem } from './ContextMenu'
 import { Toggle } from './FileHeader'
@@ -44,8 +45,6 @@ interface Props {
   onClose: () => void
 }
 
-/** Matches `h-5` on the rows. */
-const ROW_HEIGHT = 20
 const FOLLOW_MOVES = 'blame.followMoves'
 
 const short = (hash: string) => hash.slice(0, 7)
@@ -113,18 +112,17 @@ export default function BlameView({
   const blame = loaded?.step === step ? loaded.blame : null
   const groups = useMemo(() => (blame ? groupLines(blame) : []), [blame])
   const width = useMemo(() => (blame ? longestLine(blame) : 0), [blame])
+  const rowHeight = codeRow(useAppearance().codeSize)
   const rows = useVirtualRows<HTMLDivElement>(
     blame?.lines.length ?? 0,
-    ROW_HEIGHT,
+    rowHeight,
   )
 
   const shown = loaded?.step
   useEffect(() => {
     const el = scroller.current
     if (!el || !shown) return
-    el.scrollTop = shown.line
-      ? shown.line * ROW_HEIGHT - el.clientHeight / 2
-      : 0
+    el.scrollTop = shown.line ? shown.line * rowHeight - el.clientHeight / 2 : 0
   }, [shown])
 
   /** Moves on, remembering the line to come back to. */
@@ -235,7 +233,7 @@ export default function BlameView({
         <div ref={scroller} className="min-h-0 flex-1 overflow-auto">
           <div
             ref={rows.ref}
-            className="font-mono text-xs"
+            className="code-text"
             style={{
               // Only some rows exist at a time, so they can't size this.
               minWidth: `calc(26rem + ${width}ch)`,
@@ -252,7 +250,7 @@ export default function BlameView({
                 <div
                   key={i}
                   onContextMenu={(e) => open(e, menuFor(i))}
-                  className={`group flex h-5 leading-5 ${shade}`}
+                  className={`group flex h-(--code-row) ${shade}`}
                 >
                   <div
                     className={`sticky left-0 z-[1] flex w-[22rem] shrink-0 items-center gap-2 border-r border-line px-2 ${shade} ${
@@ -298,7 +296,7 @@ export default function BlameView({
                       </>
                     )}
                   </div>
-                  <span className="w-14 shrink-0 pr-3 text-right text-muted select-none">
+                  <span className="w-[calc(5ch+1.25rem)] shrink-0 pr-3 text-right text-muted select-none">
                     {i + 1}
                   </span>
                   <span className="whitespace-pre select-text">

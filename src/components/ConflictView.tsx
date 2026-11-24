@@ -123,7 +123,7 @@ export default function ConflictView({
           <Loader2 className="size-5 animate-spin" />
         </div>
       ) : (
-        <div className="font-mono text-xs leading-5">
+        <div className="code-text">
           {parts.map((part, i) =>
             part.kind === 'text' ? (
               <Lines key={i} lines={part.lines} className="text-muted" />

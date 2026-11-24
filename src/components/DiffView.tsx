@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { confirm } from '@tauri-apps/plugin-dialog'
 import type { LineAction } from '../lib/git'
+import { codeRow, useAppearance } from '../lib/appearance'
 import { useVirtualRows } from '../lib/virtual'
 import {
   parseDiff,
@@ -21,9 +22,6 @@ const BINARY = /^Binary files/m
 /** Longer diffs only render the rows on screen. Short ones render fully, so
  *  selecting and copying a whole diff keeps working where it's practical. */
 const VIRTUAL_FROM = 1000
-/** Matches `leading-5` on the table; hunk buttons fit inside it. */
-const ROW_HEIGHT = 20
-
 /** Width of the longest line in characters, tabs counted as 8 like the
  *  browser's default tab-size. */
 function longestLine(lines: Line[]) {
@@ -87,7 +85,12 @@ export default function DiffView({ diff, actions: rawActions }: Props) {
   const [anchor, setAnchor] = useState<number | null>(null)
   const rowCount = pairs ? pairs.length : lines.length
   const virtual = rowCount >= VIRTUAL_FROM
-  const rows = useVirtualRows<HTMLTableElement>(rowCount, ROW_HEIGHT, virtual)
+  const { codeSize } = useAppearance()
+  const rows = useVirtualRows<HTMLTableElement>(
+    rowCount,
+    codeRow(codeSize),
+    virtual,
+  )
   // Only some rows exist at a time, so they can't size the table's width;
   // reserve room for the longest line up front instead. Side by side, both
   // halves get that room so long lines scroll instead of squeezing.
@@ -289,7 +292,7 @@ export default function DiffView({ diff, actions: rawActions }: Props) {
       <table
         ref={rows.ref}
         style={{ minWidth }}
-        className={`w-full border-collapse font-mono text-xs leading-5 select-text ${
+        className={`w-full border-collapse code-text select-text ${
           pairs ? 'table-fixed' : ''
         }`}
       >

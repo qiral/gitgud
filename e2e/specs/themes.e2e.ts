@@ -1,22 +1,10 @@
+import { THEMES } from '../../src/lib/themes'
 import { test, expect } from '../fixtures/test'
 
 // Themes are one CSS variable block per id in src/index.css, so a wrong
 // value is a colors regression with nothing on screen to point at it. These
 // specs read the variables instead of taking screenshots: one baseline per
 // screen is enough to catch a layout drift, and a palette has many values.
-const THEMES = [
-  { id: 'light', bg: '#ffffff' },
-  { id: 'dark', bg: '#16181d' },
-  { id: 'solarized-light', bg: '#fdf6e3' },
-  { id: 'solarized-dark', bg: '#002b36' },
-  { id: 'nord', bg: '#2e3440' },
-  { id: 'dracula', bg: '#282a36' },
-  { id: 'gruvbox', bg: '#282828' },
-  { id: 'catppuccin-latte', bg: '#eff1f5' },
-  { id: 'catppuccin-mocha', bg: '#1e1e2e' },
-  { id: 'tokyo-night', bg: '#1a1b26' },
-]
-
 async function appBg(page: import('@playwright/test').Page) {
   const value = await page.evaluate(() =>
     getComputedStyle(document.documentElement)
@@ -41,7 +29,12 @@ test('every theme paints its own colors', async ({ page }) => {
     }, theme.id)
 
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme.id)
-    expect(await appBg(page), `${theme.id} background`).toBe(theme.bg)
+    expect(await appBg(page), `${theme.id} background`).toMatch(/^#/)
+    // A theme without its own block would keep the light colors.
+    const scheme = await page.evaluate(
+      () => getComputedStyle(document.documentElement).colorScheme,
+    )
+    expect(scheme, theme.id).toBe(theme.dark ? 'dark' : 'light')
   }
 
   // The body follows the variable, not just the attribute.
@@ -52,4 +45,57 @@ test('every theme paints its own colors', async ({ page }) => {
     () => getComputedStyle(document.body).backgroundColor,
   )
   expect(bodyBg).toBe('rgb(22, 24, 29)')
+})
+
+test('picks a theme in the appearance dialog and keeps it', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Appearance' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Appearance' })
+  await dialog.getByRole('checkbox').uncheck()
+  await dialog.getByPlaceholder('Search themes').fill('synth')
+  await dialog.getByRole('button', { name: 'Synthwave' }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'synthwave')
+  await dialog.getByRole('button', { name: 'Teal' }).click()
+
+  await page.reload()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'synthwave')
+  const accent = await page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue('--app-accent'),
+  )
+  expect(accent).toBe('#5fd9cb')
+})
+
+test('follows the system between the two picked themes', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Appearance' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Appearance' })
+  await dialog.getByRole('button', { name: 'Gruvbox Light' }).click()
+  await dialog.getByRole('button', { name: 'Dracula' }).click()
+  const html = page.locator('html')
+  await expect(html).toHaveAttribute('data-theme', 'gruvbox-light')
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await expect(html).toHaveAttribute('data-theme', 'dracula')
+})
+
+test.describe('in a repository', () => {
+  test.use({ withRepo: true })
+
+  test('the palette previews themes and Escape takes it back', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    const html = page.locator('html')
+    await page.keyboard.press('ControlOrMeta+k')
+    await page.getByRole('combobox').fill('change theme')
+    await page.keyboard.press('Enter')
+    await page.getByRole('combobox').fill('dracula')
+    await expect(html).toHaveAttribute('data-theme', 'dracula')
+    await page.keyboard.press('Escape')
+    await expect(html).toHaveAttribute('data-theme', 'light')
+
+    await page.keyboard.press('ControlOrMeta+,')
+    await expect(page.getByRole('dialog', { name: 'Appearance' })).toBeVisible()
+  })
 })

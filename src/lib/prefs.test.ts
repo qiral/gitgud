@@ -33,23 +33,6 @@ it('starts over when the stored list is corrupt', () => {
   expect(readRecents()).toEqual([{ path: '/a', name: 'a' }])
 })
 
-describe('themes', () => {
-  it('falls back to system for unknown names', async () => {
-    const { readTheme, setTheme } = await import('./prefs')
-    localStorage.setItem('gitgud.theme', 'neon-pink')
-    expect(readTheme()).toBe('system')
-    setTheme('nord')
-    expect(readTheme()).toBe('nord')
-    expect(document.documentElement.dataset.theme).toBe('nord')
-  })
-
-  it('resolves system to light or dark', async () => {
-    const { applyTheme } = await import('./prefs')
-    applyTheme('system')
-    expect(['light', 'dark']).toContain(document.documentElement.dataset.theme)
-  })
-})
-
 describe('panel widths', () => {
   it('remembers widths and flags', async () => {
     const { readWidth, writeWidth, readFlag, writeFlag } =

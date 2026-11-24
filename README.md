@@ -54,7 +54,7 @@ Pick a commit to browse its changed files one by one, right-click anything to co
 - Create a pull request for the current branch from the toolbar (`Ctrl+R`): pick the base branch, start from the commits or let Copilot write the title and description, and save it as a draft. Branches pushed to a fork go to the parent repository. Once it's open, the toolbar links to it
 - With a GitHub Copilot plan, once signed in with GitHub: generate commit and stash messages, review staged changes before committing, explain commits, stashes, changes and failed git commands, get a suggested merge for each conflict block, name a new branch from a description, draft release notes since a tag or between two commits, summarize what a branch would bring in before merging, and write one message for squashed commits. Each Copilot action can be turned off from the Copilot menu in the toolbar. GitGud runs the [Copilot CLI](https://github.com/github/copilot-cli) you already have, or downloads it once into its own folder, with its own settings so your Copilot MCP servers and plugins aren't loaded. It sends only the diff or conflict you asked about, so organization content exclusions don't apply to it
 - Tells you when a new version is out and updates itself after you click (AppImage, Windows and macOS); an Update button stays in the toolbar until you do, and "Check for updates" sits in the account menu and on the start screen
-- Themes: Light, Dark, Solarized, Catppuccin, Nord, Dracula, Gruvbox and Tokyo Night, or follow your system
+- 40 themes with live previews (`Ctrl+,`), including Catppuccin, Gruvbox, Rosé Pine, Tokyo Night, GitHub, Everforest and high contrast ones; pick one, or a light and a dark one to follow your system. Change the accent color, use blue and orange diffs if red and green look alike to you, and set the font and size of code
 - Speaks English, Türkçe, Azərbaycanca, Deutsch, Français, Italiano, Español, 日本語, 简体中文 and 한국어: it starts in your system's language and the 文A menu in the toolbar switches without a restart
 - Drag panel edges to resize them (double-click to reset), collapse the history graph to a single line, or hide just the branch lines you don't care about
 - Recent repositories on the start screen and in the Repository menu
@@ -78,6 +78,7 @@ Use `Cmd` instead of `Ctrl` on macOS.
 | `Ctrl+F` | Search history |
 | `Ctrl+O` / `Ctrl+Shift+O` | Open / Clone a repository |
 | `Ctrl+Enter` | Commit (in the message box) |
+| `Ctrl+,` | Appearance |
 | `F1` | List all shortcuts |
 
 ## Screenshots
@@ -98,7 +99,7 @@ Use `Cmd` instead of `Ctrl` on macOS.
 
 ![Stashes in the light theme](docs/screenshots/stashes-light.png)
 
-**Pick a theme**, or let GitGud follow your system between Light and Dark.
+**Pick a theme**, or let GitGud follow your system between a light and a dark one.
 
 ![The theme menu over Catppuccin Latte](docs/screenshots/themes.png)
 

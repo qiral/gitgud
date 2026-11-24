@@ -6,9 +6,16 @@ interface Props {
   onClose: () => void
   children: React.ReactNode
   wide?: boolean
+  size?: 'xl'
 }
 
-export default function Dialog({ title, onClose, children, wide }: Props) {
+export default function Dialog({
+  title,
+  onClose,
+  children,
+  wide,
+  size,
+}: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
@@ -24,7 +31,7 @@ export default function Dialog({ title, onClose, children, wide }: Props) {
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`${wide ? 'w-[32rem]' : 'w-96'} max-w-[calc(100vw-2rem)] rounded-lg border border-line bg-panel shadow-xl`}
+        className={`${size === 'xl' ? 'w-[58rem]' : wide ? 'w-[32rem]' : 'w-96'} max-w-[calc(100vw-2rem)] rounded-lg border border-line bg-panel shadow-xl`}
       >
         <div className="flex items-center justify-between border-b border-line px-4 py-3">
           <h2 className="font-semibold">{title}</h2>

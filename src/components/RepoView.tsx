@@ -80,6 +80,7 @@ interface Props {
   recents: RepoInfo[]
   onOpenRecent: (path: string) => void
   onClone: () => void
+  onAppearance: () => void
 }
 
 export default function RepoView({
@@ -90,6 +91,7 @@ export default function RepoView({
   recents,
   onOpenRecent,
   onClone,
+  onAppearance,
 }: Props) {
   const { t: tx } = useTranslation()
   const [tab, setTab] = useState<Tab>('changes')
@@ -433,6 +435,7 @@ export default function RepoView({
     onOpenOther,
     onOpenRecent,
     onClone,
+    onAppearance,
     onStash: () => setDialog('stash'),
     onSignIn: openSignIn,
     onSignOut: signOut,
@@ -492,6 +495,7 @@ export default function RepoView({
         onManageRemotes={() => setDialog('remotes')}
         sync={sync}
         onPalette={palette.openPalette}
+        onAppearance={onAppearance}
         pullRequest={pullRequests.button}
         act={act}
         onSummarizeBranch={
