@@ -202,7 +202,7 @@ function ConflictBlock({
   const { t } = useTranslation()
   return (
     <div className="my-2 overflow-hidden border-y border-line">
-      <div className="flex items-center gap-2 bg-panel px-3 py-1.5 font-sans">
+      <div className="flex flex-wrap items-center gap-2 bg-panel px-3 py-1.5 font-sans">
         <span className="flex-1 font-medium">{t('conflictview.conflict')}</span>
         <Button onClick={() => onChoose('ours')}>
           {t('conflictview.use-ours')}
@@ -293,7 +293,9 @@ function Lines({
   className?: string
 }) {
   return (
-    <pre className={`px-3 whitespace-pre select-text ${className}`}>
+    <pre
+      className={`overflow-x-auto px-3 whitespace-pre select-text ${className}`}
+    >
       {lines.map((l) => l.replace(/\r?\n$/, '')).join('\n')}
     </pre>
   )
