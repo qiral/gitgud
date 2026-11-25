@@ -6,15 +6,59 @@ import { errorMessage } from './git'
 import { absolutePath, basename } from './paths'
 import { t } from '../i18n'
 
-export async function copyText(text: string) {
+function fallbackCopy(text: string): boolean {
+  const el = document.createElement('textarea')
+  el.value = text
+  el.setAttribute('readonly', '')
+  el.style.position = 'fixed'
+  el.style.top = '0'
+  el.style.left = '-9999px'
+  el.style.opacity = '0'
+  document.body.appendChild(el)
+  const prev = document.activeElement as HTMLElement | null
+  el.select()
+  let ok = false
   try {
-    await navigator.clipboard.writeText(text)
-  } catch (e) {
-    await message(t('copy.could-not-copy', { error: errorMessage(e) }), {
-      title: t('copy.copy-failed'),
-      kind: 'error',
-    })
+    ok = document.execCommand('copy')
+  } catch {
+    ok = false
+  } finally {
+    el.remove()
+    prev?.focus?.()
   }
+  return ok
+}
+
+export async function copyText(
+  text: string,
+  options?: { quiet?: boolean },
+): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+  } catch (e) {
+    if (fallbackCopy(text)) return true
+    if (!options?.quiet) {
+      await message(t('copy.could-not-copy', { error: errorMessage(e) }), {
+        title: t('copy.copy-failed'),
+        kind: 'error',
+      })
+    }
+    return false
+  }
+  if (fallbackCopy(text)) return true
+  if (!options?.quiet) {
+    await message(
+      t('copy.could-not-copy', { error: 'Clipboard unavailable' }),
+      {
+        title: t('copy.copy-failed'),
+        kind: 'error',
+      },
+    )
+  }
+  return false
 }
 
 async function reveal(path: string) {
