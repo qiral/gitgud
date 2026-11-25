@@ -77,7 +77,7 @@ function Menu({ x, y, items, onClose }: Open & { onClose: () => void }) {
       tabIndex={-1}
       style={pos}
       onContextMenu={(e) => e.preventDefault()}
-      className="fixed z-50 min-w-48 rounded-md border border-line bg-panel py-1 text-sm shadow-lg outline-none"
+      className="fixed z-50 max-h-[calc(100vh-8px)] max-w-[calc(100vw-8px)] min-w-48 overflow-y-auto rounded-md border border-line bg-panel py-1 text-sm shadow-lg outline-none"
     >
       {items.map((item, i) =>
         item === 'separator' ? (
