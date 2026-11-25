@@ -28,3 +28,20 @@ test('a pull request is created from the toolbar', async ({ page }) => {
     page.getByRole('button', { name: /Pull request\s*#42 draft/ }),
   ).toBeVisible()
 })
+
+test('an open pull request is checked out from the list', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: /Repository\s*demo/ }).click()
+  await page.getByRole('button', { name: 'Pull requests…' }).click()
+  const dialog = page.getByRole('dialog', {
+    name: 'Pull requests of qiral/demo',
+  })
+  await expect(dialog.getByText('ada:remember-me → main')).toBeVisible()
+  await expect(dialog.getByRole('img', { name: 'Checks passed' })).toBeVisible()
+  await expect(dialog.getByText('Approved')).toBeVisible()
+  await dialog.getByRole('button', { name: 'Check out' }).click()
+  await expect(dialog).toBeHidden()
+  await expect(
+    page.getByRole('button', { name: /Current branch\s*pr\/7/ }),
+  ).toBeVisible()
+})

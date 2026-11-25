@@ -13,12 +13,14 @@ import {
   errorMessage,
   github,
   type Comparison,
+  type PullDetails,
   type PullRequest,
   type PullTarget,
   type RepoInfo,
   type Status,
 } from '../lib/git'
 import Dialog from './Dialog'
+import PullRequestsDialog, { ChecksIcon } from './PullRequestsDialog'
 import type { Command } from './CommandPalette'
 import { useTranslation } from '../i18n'
 import { useCopilotPrefs } from '../lib/copilotPrefs'
@@ -62,6 +64,8 @@ interface Options {
   status: Status | null
   signedIn: boolean
   onSignIn: () => void
+  busy: boolean
+  act: (label: string, action: () => Promise<unknown>) => Promise<boolean>
   /** Pushes the current branch; resolves to false if that failed. */
   push: () => Promise<boolean>
   /** Runs a Copilot request; see useCopilot. */
@@ -76,6 +80,8 @@ export function usePullRequests(o: Options) {
   const { t } = useTranslation()
   const [target, setTarget] = useState<PullTarget | null>(null)
   const [creating, setCreating] = useState(false)
+  const [listing, setListing] = useState(false)
+  const [details, setDetails] = useState<PullDetails | null>(null)
   const checked = useRef(0)
   const branch = o.status?.branch ?? null
   const upstream = o.status?.upstream ?? null
@@ -101,6 +107,37 @@ export function usePullRequests(o: Options) {
   }, [load])
 
   const open = target?.existing?.state === 'open' ? target.existing : null
+  const baseRepo = target?.baseRepo
+  const number = open?.number
+
+  // Its checks and reviews, looked up again along with the target, and while
+  // checks are running.
+  useEffect(() => {
+    if (!baseRepo || !number) {
+      setDetails(null)
+      return
+    }
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout>
+    const look = () =>
+      github
+        .pull(baseRepo, number)
+        .then((d) => {
+          if (cancelled) return
+          setDetails(d)
+          if (d.checks === 'pending') timer = setTimeout(look, RECHECK_MS)
+        })
+        // Then the button just says less.
+        .catch(() => !cancelled && setDetails(null))
+    look()
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [baseRepo, number, target])
+  // Until the new one's are there, those of another branch's are no use.
+  const now = details && details.number === number ? details : null
+
   // A branch can't be merged into itself.
   const canCreate =
     target !== null &&
@@ -135,6 +172,14 @@ export function usePullRequests(o: Options) {
           run: () => (o.signedIn ? setCreating(true) : o.onSignIn()),
         },
     {
+      id: 'pullRequests',
+      group: t('repocommands.group-remote'),
+      label: t('pulls.command'),
+      keywords: 'pr review checkout fork',
+      icon: GitPullRequest,
+      run: () => setListing(true),
+    },
+    {
       id: 'openOnGitHub',
       group: t('repocommands.group-remote'),
       label: t('pullrequests.open-branch-on-github'),
@@ -155,7 +200,19 @@ export function usePullRequests(o: Options) {
           ? t('pullrequests.number-draft', { number: open.number })
           : `#${open.number}`
       }
-      title={open.title}
+      title={[
+        open.title,
+        now?.checks && t(`pulls.checks-${now.checks}`),
+        now?.review && t(`pulls.review-${now.review}`),
+      ]
+        .filter(Boolean)
+        .join('\n')}
+      detail={
+        now?.review && now.review !== 'required'
+          ? t(`pulls.review-${now.review}`)
+          : undefined
+      }
+      checks={now?.checks}
       icon={open.draft ? GitPullRequestDraft : GitPullRequest}
       onClick={() => openUrl(open.url)}
     />
@@ -168,32 +225,55 @@ export function usePullRequests(o: Options) {
     />
   ) : null
 
-  const dialog = creating && target && (
-    <CreatePullRequestDialog
+  const dialog = listing ? (
+    <PullRequestsDialog
       repo={o.repo}
-      target={target}
-      unpushed={o.status?.ahead ?? 0}
-      push={o.push}
-      ask={o.ask}
-      onClose={() => setCreating(false)}
-      onCreated={(pr) => {
-        setCreating(false)
-        setTarget({ ...target, existing: pr })
-        openUrl(pr.url)
-      }}
+      busy={o.busy}
+      onSignIn={
+        o.signedIn
+          ? null
+          : () => {
+              setListing(false)
+              o.onSignIn()
+            }
+      }
+      act={o.act}
+      onClose={() => setListing(false)}
     />
+  ) : (
+    creating &&
+    target && (
+      <CreatePullRequestDialog
+        repo={o.repo}
+        target={target}
+        unpushed={o.status?.ahead ?? 0}
+        push={o.push}
+        ask={o.ask}
+        onClose={() => setCreating(false)}
+        onCreated={(pr) => {
+          setCreating(false)
+          setTarget({ ...target, existing: pr })
+          openUrl(pr.url)
+        }}
+      />
+    )
   )
 
-  return { target, button, commands, dialog, reload: load }
+  return { button, commands, dialog, openList: () => setListing(true) }
 }
 
 function PullRequestButton({
   label,
   title,
+  detail,
+  checks,
   icon: Icon,
   onClick,
 }: {
   label: string
+  /** After the label, e.g. that it's approved. */
+  detail?: string
+  checks?: PullDetails['checks']
   title: string
   icon: typeof GitPullRequest
   onClick: () => void
@@ -210,7 +290,13 @@ function PullRequestButton({
         <span className="text-xs text-muted">
           {t('pullrequests.pull-request')}
         </span>
-        <span className="truncate font-medium">{label}</span>
+        <span className="flex items-center gap-1.5 font-medium">
+          <span className="truncate">
+            {label}
+            {detail && ` · ${detail}`}
+          </span>
+          {checks && <ChecksIcon checks={checks} />}
+        </span>
       </span>
     </button>
   )
