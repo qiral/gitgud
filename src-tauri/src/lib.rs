@@ -16,6 +16,8 @@ mod rebase;
 mod remotes;
 mod signing;
 mod submodules;
+#[cfg(target_os = "linux")]
+mod theme;
 mod undo;
 mod worktrees;
 
@@ -42,6 +44,24 @@ use worktrees::{RemoveOutcome, Worktree};
 
 // Commands are marked `async` so git runs on a worker thread instead of
 // blocking the UI thread.
+
+fn theme_name(theme: tauri::Theme) -> &'static str {
+    match theme {
+        tauri::Theme::Dark => "dark",
+        _ => "light",
+    }
+}
+
+/// The operating system's current color scheme ("dark" or "light"), or None
+/// if it cannot be determined natively.
+#[tauri::command(async)]
+fn system_theme(window: tauri::Window) -> Option<&'static str> {
+    #[cfg(target_os = "linux")]
+    if let Some(detected) = theme::detect_linux(appimage::clean_env) {
+        return Some(detected);
+    }
+    window.theme().ok().map(theme_name)
+}
 
 /// Repository passed on the command line, e.g. `gitgud ~/code/project`.
 #[tauri::command]
@@ -868,6 +888,22 @@ pub fn run() {
             github::set_app(app.handle().clone());
             Ok(())
         })
+        .on_window_event(|window, event| match event {
+            #[cfg(not(target_os = "linux"))]
+            tauri::WindowEvent::ThemeChanged(theme) => {
+                let _ = window.emit("system-theme-changed", theme_name(*theme));
+            }
+            #[cfg(target_os = "linux")]
+            tauri::WindowEvent::ThemeChanged(_) | tauri::WindowEvent::Focused(true) => {
+                let win = window.clone();
+                std::thread::spawn(move || {
+                    if let Some(detected) = theme::detect_linux(appimage::clean_env) {
+                        let _ = win.emit("system-theme-changed", detected);
+                    }
+                });
+            }
+            _ => {}
+        })
         .manage(CloneCancel::default())
         .manage(Copilot::default())
         .manage(UndoLog::default())
@@ -877,6 +913,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
             initial_repo,
+            system_theme,
             open_url,
             open_repo,
             status,

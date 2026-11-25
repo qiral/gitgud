@@ -312,6 +312,8 @@ function installTauriMock({
     // src/lib/git.ts
     initial_repo: () => null,
     github_account: () => null,
+    // src/lib/appearance.ts: null lets Playwright's emulateMedia drive matchMedia
+    system_theme: () => null,
     // src/lib/updates.tsx: this app's version and "is there a release"
     'plugin:app|version': () => '0.0.0-e2e',
     'plugin:updater|check': () => null,

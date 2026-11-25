@@ -1,10 +1,17 @@
-import { expect, it } from 'vitest'
+import { afterEach, expect, it } from 'vitest'
+import { mockIPC } from '@tauri-apps/api/mocks'
 import {
+  _resetNativeSystemThemeForTests,
   getAppearance,
   previewTheme,
   readAppearance,
   setAppearance,
+  syncSystemTheme,
 } from './appearance'
+
+afterEach(() => {
+  _resetNativeSystemThemeForTests()
+})
 
 const root = document.documentElement
 
@@ -65,4 +72,24 @@ it('previews a theme without keeping it', () => {
   expect(readAppearance().theme).toBe('nord')
   undo()
   expect(root.dataset.theme).toBe('nord')
+})
+
+it('uses native system_theme over stale matchMedia for dark and light modes', async () => {
+  let native: 'dark' | 'light' = 'dark'
+  mockIPC((cmd) => {
+    if (cmd === 'system_theme') return native
+  })
+  setAppearance({
+    theme: 'system',
+    lightTheme: 'gruvbox-light',
+    darkTheme: 'nord',
+  })
+  await syncSystemTheme()
+  expect(root.dataset.theme).toBe('nord')
+  expect(root.hasAttribute('data-dark')).toBe(true)
+
+  native = 'light'
+  await syncSystemTheme()
+  expect(root.dataset.theme).toBe('gruvbox-light')
+  expect(root.hasAttribute('data-dark')).toBe(false)
 })

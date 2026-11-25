@@ -2,6 +2,8 @@
 // localStorage and applied to <html>, where src/themes.css picks it up.
 
 import { useSyncExternalStore } from 'react'
+import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { read, write } from './prefs'
 import { THEMES, type ThemeInfo } from './themes'
@@ -87,10 +89,17 @@ const fontFamily = (name: string) => {
 
 const systemDark = window.matchMedia('(prefers-color-scheme: dark)')
 
+/** Authoritative OS dark/light state from the Rust backend (fixes Linux
+ *  WebKitGTK ignoring KDE/GNOME/portal dark mode and prevents `setTheme` from
+ *  poisoning `matchMedia`). Null defers to `window.matchMedia`. */
+let nativeSystemDark: boolean | null = null
+
+const isSystemDark = () => nativeSystemDark ?? systemDark.matches
+
 export function resolveTheme(a: Appearance): ThemeInfo {
   const id =
     a.theme === 'system'
-      ? systemDark.matches
+      ? isSystemDark()
         ? a.darkTheme
         : a.lightTheme
       : a.theme
@@ -119,15 +128,66 @@ function paint(a: Appearance) {
 let current = readAppearance()
 const listeners = new Set<() => void>()
 
+function updateNativeSystemDark(value: unknown) {
+  const next = value === 'dark' ? true : value === 'light' ? false : null
+  if (next === null || next === nativeSystemDark) return
+  nativeSystemDark = next
+  if (current.theme !== 'system') return
+  applyAppearance()
+  listeners.forEach((l) => l())
+}
+
+/** Queries the backend for the real OS color scheme (bypasses WebKitGTK's
+ *  broken `prefers-color-scheme` and `setTheme` self-poisoning). */
+export async function syncSystemTheme() {
+  try {
+    updateNativeSystemDark(
+      await invoke<'dark' | 'light' | null>('system_theme'),
+    )
+  } catch {
+    // Not in Tauri or command unavailable: keep matchMedia fallback.
+  }
+}
+
+let systemThemeInitialized = false
+
+/** Starts listening for OS dark/light mode changes from the native shell. */
+export function initSystemTheme() {
+  if (systemThemeInitialized) return
+  systemThemeInitialized = true
+  void syncSystemTheme()
+  listen<'dark' | 'light'>('system-theme-changed', (event) => {
+    // Ignore events triggered by our own manual setTheme('dark'|'light') calls.
+    if (current.theme !== 'system') return
+    updateNativeSystemDark(event.payload)
+  }).catch(() => {})
+  window.addEventListener('focus', () => {
+    if (current.theme === 'system') void syncSystemTheme()
+  })
+}
+
 /** Sets the colors on <html> and the native title bar. */
 export function applyAppearance() {
   const info = paint(current)
   // Not available outside Tauri (e.g. in a plain browser during development).
   try {
+    const nativeTarget =
+      current.theme === 'system'
+        ? nativeSystemDark === null
+          ? null
+          : nativeSystemDark
+            ? 'dark'
+            : 'light'
+        : info.dark
+          ? 'dark'
+          : 'light'
     getCurrentWindow()
-      .setTheme(
-        current.theme === 'system' ? null : info.dark ? 'dark' : 'light',
-      )
+      .setTheme(nativeTarget)
+      .then(() => {
+        if (current.theme === 'system' && nativeSystemDark === null) {
+          void syncSystemTheme()
+        }
+      })
       .catch(() => {})
   } catch {
     // Same as above.
@@ -135,11 +195,14 @@ export function applyAppearance() {
 }
 
 export function setAppearance(change: Partial<Appearance>) {
+  const switchedToSystem =
+    change.theme === 'system' && current.theme !== 'system'
   current = { ...current, ...change }
   const { theme, ...rest } = current
   write(THEME_KEY, theme)
   write(APPEARANCE_KEY, JSON.stringify(rest))
   applyAppearance()
+  if (switchedToSystem) void syncSystemTheme()
   listeners.forEach((l) => l())
 }
 
@@ -153,10 +216,15 @@ export function previewTheme(theme: string) {
 }
 
 systemDark.addEventListener('change', () => {
-  if (current.theme !== 'system') return
+  if (current.theme !== 'system' || nativeSystemDark !== null) return
   applyAppearance()
   listeners.forEach((l) => l())
 })
+
+/** Resets cached native system theme (for unit tests). */
+export function _resetNativeSystemThemeForTests() {
+  nativeSystemDark = null
+}
 
 function subscribe(listener: () => void) {
   listeners.add(listener)
