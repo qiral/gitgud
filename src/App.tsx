@@ -172,73 +172,77 @@ export default function App() {
     'flex items-center gap-2 rounded-md px-4 py-2 font-medium hover:opacity-90'
 
   return (
-    <main className="flex h-full flex-col items-center justify-center gap-6 overflow-auto p-8 text-center">
-      <img src={logoMark} alt="" className="size-24" draggable={false} />
-      <div>
-        <h1 className="text-2xl font-semibold">{t('app.gitgud')}</h1>
-        <p className="mt-1 text-muted">
-          {t('app.open-a-git-repository-to-get-started')}
-        </p>
-      </div>
-      <div className="flex gap-3">
-        <button
-          onClick={pickRepo}
-          className={`${button} bg-accent text-on-accent`}
-        >
-          <FolderOpen className="size-4" />
-          {t('app.open-repository')}
-        </button>
-        <button
-          onClick={() => setCloning(true)}
-          className={`${button} border border-line hover:bg-hover`}
-        >
-          <Download className="size-4" />
-          {t('app.clone-repository')}
-        </button>
-      </div>
-      {error && <p className="max-w-md text-removed">{error}</p>}
-      {recents.length > 0 && (
-        <div className="w-full max-w-md text-left">
-          <h2 className="mb-1 px-1 text-xs font-medium text-muted">
-            {t('app.recent-repositories')}
-          </h2>
-          <ul className="overflow-hidden rounded-md border border-line">
-            {recents.map((r) => (
-              <li
-                key={r.path}
-                className="group flex items-center border-b border-line last:border-b-0 hover:bg-hover"
-              >
-                <button
-                  onClick={() => openPath(r.path)}
-                  title={r.path}
-                  className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-left"
-                >
-                  <FolderGit2 className="size-4 shrink-0 text-muted" />
-                  <span className="min-w-0">
-                    <span className="block truncate font-medium">{r.name}</span>
-                    <span className="block truncate text-xs text-muted">
-                      {r.path}
-                    </span>
-                  </span>
-                </button>
-                <button
-                  onClick={() => setRecents(removeRecent(r.path))}
-                  title={t('app.remove-from-list')}
-                  className="mr-2 rounded p-1 text-muted opacity-0 group-hover:opacity-100 hover:bg-panel hover:text-fg focus:opacity-100"
-                >
-                  <X className="size-4" />
-                </button>
-              </li>
-            ))}
-          </ul>
+    <main className="flex h-full flex-col items-center overflow-auto p-8 text-center">
+      <div className="my-auto flex w-full flex-col items-center gap-6">
+        <img src={logoMark} alt="" className="size-24" draggable={false} />
+        <div>
+          <h1 className="text-2xl font-semibold">{t('app.gitgud')}</h1>
+          <p className="mt-1 text-muted">
+            {t('app.open-a-git-repository-to-get-started')}
+          </p>
         </div>
-      )}
-      <VersionLine />
+        <div className="flex flex-wrap justify-center gap-3">
+          <button
+            onClick={pickRepo}
+            className={`${button} bg-accent text-on-accent`}
+          >
+            <FolderOpen className="size-4" />
+            {t('app.open-repository')}
+          </button>
+          <button
+            onClick={() => setCloning(true)}
+            className={`${button} border border-line hover:bg-hover`}
+          >
+            <Download className="size-4" />
+            {t('app.clone-repository')}
+          </button>
+        </div>
+        {error && <p className="max-w-md text-removed">{error}</p>}
+        {recents.length > 0 && (
+          <div className="w-full max-w-md text-left">
+            <h2 className="mb-1 px-1 text-xs font-medium text-muted">
+              {t('app.recent-repositories')}
+            </h2>
+            <ul className="overflow-hidden rounded-md border border-line">
+              {recents.map((r) => (
+                <li
+                  key={r.path}
+                  className="group flex items-center border-b border-line last:border-b-0 hover:bg-hover"
+                >
+                  <button
+                    onClick={() => openPath(r.path)}
+                    title={r.path}
+                    className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-left"
+                  >
+                    <FolderGit2 className="size-4 shrink-0 text-muted" />
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">
+                        {r.name}
+                      </span>
+                      <span className="block truncate text-xs text-muted">
+                        {r.path}
+                      </span>
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setRecents(removeRecent(r.path))}
+                    title={t('app.remove-from-list')}
+                    className="mr-2 rounded p-1 text-muted opacity-0 group-hover:opacity-100 hover:bg-panel hover:text-fg focus:opacity-100"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <VersionLine />
+      </div>
       <button
         onClick={() => setAppearance(true)}
         title={t('appearance.title')}
         aria-label={t('appearance.title')}
-        className="fixed top-4 right-4 rounded-md p-2 text-muted hover:bg-hover hover:text-fg"
+        className="fixed top-4 right-4 rounded-md bg-bg/80 p-2 text-muted backdrop-blur-xs hover:bg-hover hover:text-fg"
       >
         <Palette className="size-4" />
       </button>

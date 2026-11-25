@@ -43,7 +43,12 @@ export function ChecksIcon({ checks }: { checks: PullDetails['checks'] }) {
   const { icon: Icon, color } = CHECKS[checks]
   const label = t(`pulls.checks-${checks}`)
   return (
-    <span role="img" aria-label={label} title={label} className={color}>
+    <span
+      role="img"
+      aria-label={label}
+      title={label}
+      className={`shrink-0 ${color}`}
+    >
       <Icon className="size-3.5" />
     </span>
   )
@@ -186,14 +191,14 @@ export default function PullRequestsDialog({
                       onClick={() => openUrl(p.url)}
                       title={t('pulls.open-on-github')}
                       aria-label={t('pulls.open-on-github')}
-                      className="rounded p-1 text-muted hover:bg-hover hover:text-fg"
+                      className="shrink-0 rounded p-1 text-muted hover:bg-hover hover:text-fg"
                     >
                       <ExternalLink className="size-4" />
                     </button>
                     <button
                       onClick={() => checkOut(p)}
                       disabled={busy}
-                      className="flex items-center gap-1.5 rounded border border-line px-2 py-1 text-xs hover:bg-hover disabled:opacity-40"
+                      className="flex shrink-0 items-center gap-1.5 rounded border border-line px-2 py-1 text-xs whitespace-nowrap hover:bg-hover disabled:opacity-40"
                     >
                       {checkingOut === p.number ? (
                         <Loader2 className="size-3.5 animate-spin" />
