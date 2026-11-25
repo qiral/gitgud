@@ -67,6 +67,29 @@ test('picks a theme in the appearance dialog and keeps it', async ({
   expect(accent).toBe('#5fd9cb')
 })
 
+test('the options stay clear of the scrollbar', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Appearance' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Appearance' })
+  const column = dialog.locator('.overflow-y-auto').last()
+  // The innermost right edge the scrollbar can reach.
+  const edge = await column.evaluate(
+    (el) => el.getBoundingClientRect().left + el.clientLeft + el.clientWidth,
+  )
+  for (const control of [
+    dialog.getByRole('button', { name: 'Larger' }),
+    dialog.getByRole('checkbox', { name: 'Syntax highlighting' }),
+    dialog.getByRole('textbox', { name: 'Font' }),
+  ]) {
+    const box = (await control.boundingBox())!
+    expect(box.x + box.width).toBeLessThanOrEqual(edge - 10)
+  }
+  await dialog.getByText('Syntax highlighting').click()
+  await expect(
+    dialog.getByRole('checkbox', { name: 'Syntax highlighting' }),
+  ).not.toBeChecked()
+})
+
 test('follows the system between the two picked themes', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Appearance' }).click()

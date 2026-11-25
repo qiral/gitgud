@@ -70,7 +70,6 @@ export default function PublishDialog({ repo, onClose, onPublished }: Props) {
             type="checkbox"
             checked={isPrivate}
             onChange={(e) => setIsPrivate(e.target.checked)}
-            className="accent-accent"
           />
           {t('publishdialog.keep-this-repository-private')}
         </label>
