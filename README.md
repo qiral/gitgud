@@ -10,6 +10,10 @@
 </p>
 
 <p align="center">
+  <a href="https://qiral.github.io/gitgud/">Website</a>
+</p>
+
+<p align="center">
   <a href="https://github.com/qiral/gitgud/actions/workflows/ci.yml"><img src="https://github.com/qiral/gitgud/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/qiral/gitgud/releases/latest"><img src="https://img.shields.io/github/v/release/qiral/gitgud" alt="Latest release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/qiral/gitgud" alt="MIT license"></a>
