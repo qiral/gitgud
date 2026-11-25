@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
   diffLines,
+  expandDiff,
   parseDiff,
   splitDiff,
   splitRows,
   unquotePath,
   wordDiff,
   wordHighlights,
+  type Expanded,
 } from './diff'
 
 // The same new-file diff as NEW_FILE in src-tauri/src/patch.rs. The backend
@@ -248,5 +250,88 @@ describe('splitRows', () => {
       ['end', 'end'],
     ])
     expect(shape).toContain('hunk')
+  })
+})
+
+describe('expandDiff', () => {
+  const FILE = Array.from({ length: 20 }, (_, i) => `l${i + 1}`)
+  FILE[4] = 'FIVE'
+  FILE.splice(14, 0, 'new')
+  const text = FILE.join('\n') + '\n'
+  const lines = parseDiff(
+    [
+      'diff --git a/f b/f',
+      '--- a/f',
+      '+++ b/f',
+      '@@ -4,3 +4,3 @@',
+      ' l4',
+      '-l5',
+      '+FIVE',
+      ' l6',
+      '@@ -14,2 +14,3 @@',
+      ' l14',
+      '+new',
+      ' l15',
+      '',
+    ].join('\n'),
+  )
+  const shown = (file: string | null, expanded: Expanded) =>
+    expandDiff(lines, file, expanded)
+      .filter((l) => l.kind !== 'meta')
+      .map((l) =>
+        l.kind === 'hunk'
+          ? `@${l.gap!.id}${l.gap!.canDown ? ' down' : ''}${l.gap!.canUp ? ' up' : ''}`
+          : `${l.oldNo ?? ''}:${l.newNo ?? ''} ${l.text}`,
+      )
+  const FIRST = ['4:4 l4', '5: l5', ':5 FIVE', '6:6 l6']
+  const SECOND = ['14:14 l14', ':15 new', '15:16 l15']
+
+  it('offers what is hidden before the file is loaded', () => {
+    expect(shown(null, {})).toEqual([
+      '@0 up',
+      ...FIRST,
+      '@1 down up',
+      ...SECOND,
+      '@2 down',
+    ])
+  })
+
+  it('shows lines from either end of a gap', () => {
+    expect(shown(text, { 1: { down: 2, up: 1 } })).toEqual([
+      '@0 up',
+      ...FIRST,
+      '7:7 l7',
+      '8:8 l8',
+      '@1 down up',
+      '13:13 l13',
+      ...SECOND,
+      '@2 down',
+    ])
+  })
+
+  it('stops at the ends of the gap and of the file', () => {
+    const all = shown(text, {
+      0: { down: 0, up: 20 },
+      1: { down: 4, up: 20 },
+      2: { down: 20, up: 0 },
+    })
+    expect(all.filter((l) => l.startsWith('@'))).toEqual(['@0', '@1'])
+    expect(all.filter((l) => !l.startsWith('@'))).toHaveLength(22)
+    expect(all[all.length - 1]).toBe('20:21 l20')
+    const keys = expandDiff(lines, text, { 1: { down: 4, up: 20 } }).map(
+      (l) => l.index,
+    )
+    expect(new Set(keys).size).toBe(keys.length)
+  })
+
+  it('leaves the diff alone when the file is another one', () => {
+    expect(expandDiff(lines, 'other\n', {})).toBe(lines)
+  })
+
+  it('has nothing to show around a new file', () => {
+    const added = parseDiff(
+      'diff --git a/f b/f\nnew file mode 100644\n--- /dev/null\n+++ b/f\n@@ -0,0 +1 @@\n+a\n',
+    )
+    expect(expandDiff(added, null, {})).toBe(added)
   })
 })

@@ -3,6 +3,7 @@ mod blame;
 mod cache;
 mod compare;
 mod conflict;
+mod content;
 mod copilot;
 pub mod git;
 mod github;
@@ -147,6 +148,16 @@ fn diff(
         untracked,
         ignore_whitespace,
     )
+}
+
+#[tauri::command(async)]
+fn file_text(repo: String, path: String, at: String) -> Result<Option<String>> {
+    content::text(Path::new(&repo), &path, &at)
+}
+
+#[tauri::command(async)]
+fn file_image(repo: String, path: String, at: String) -> Result<Option<String>> {
+    content::image(Path::new(&repo), &path, &at)
 }
 
 #[tauri::command(async)]
@@ -831,6 +842,8 @@ pub fn run() {
             amend,
             last_commit,
             diff,
+            file_text,
+            file_image,
             branches,
             switch_branch,
             create_branch,

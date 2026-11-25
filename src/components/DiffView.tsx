@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { confirm } from '@tauri-apps/plugin-dialog'
+import { ArrowDownFromLine, ArrowUpFromLine } from 'lucide-react'
 import type { LineAction } from '../lib/git'
 import { codeRow, useAppearance } from '../lib/appearance'
 import { useVirtualRows } from '../lib/virtual'
 import { diffTokens, paint, useTokens, SYNTAX, type Token } from '../lib/syntax'
 import {
+  expandDiff,
   parseDiff,
   splitRows,
   wordHighlights,
+  type Expanded,
   type Line,
   type LineKind,
   type Segment,
@@ -23,6 +26,8 @@ const BINARY = /^Binary files/m
 /** Longer diffs only render the rows on screen. Short ones render fully, so
  *  selecting and copying a whole diff keeps working where it's practical. */
 const VIRTUAL_FROM = 1000
+/** Hidden lines shown with one click. */
+const EXPAND_STEP = 20
 /** Width of the longest line in characters, tabs counted as 8 like the
  *  browser's default tab-size. */
 function longestLine(lines: Line[]) {
@@ -65,6 +70,9 @@ interface Props {
   diff: string
   /** Names the language for syntax highlighting. */
   path?: string
+  /** Loads the file as it is after the change, to show hidden lines from it;
+   *  null when it can't be shown. Unset to not offer that. */
+  loadFile?: () => Promise<string | null>
   /** Enables selecting lines and hunks of a working tree or staged diff. */
   actions?: {
     staged: boolean
@@ -72,10 +80,33 @@ interface Props {
   }
 }
 
-export default function DiffView({ diff, path, actions: rawActions }: Props) {
+export default function DiffView({
+  diff,
+  path,
+  loadFile,
+  actions: rawActions,
+}: Props) {
   const { t, tp } = useTranslation()
   const { split, ignoreWhitespace } = useDiffPrefs()
-  const lines = useMemo(() => parseDiff(diff), [diff])
+  const parsed = useMemo(() => parseDiff(diff), [diff])
+  // Belongs to one diff; another one starts with everything hidden again.
+  const [opened, setOpened] = useState<{
+    diff: string
+    /** Undefined until loaded, null if it can't be shown. */
+    file?: string | null
+    expanded: Expanded
+  }>({ diff, expanded: {} })
+  const { file, expanded } =
+    opened.diff === diff
+      ? opened
+      : { file: undefined, expanded: {} as Expanded }
+  const lines = useMemo(
+    () =>
+      loadFile && file !== null
+        ? expandDiff(parsed, file ?? null, expanded)
+        : parsed,
+    [parsed, file, expanded, !loadFile],
+  )
   const words = useMemo(() => wordHighlights(lines), [lines])
   const pairs = useMemo(() => (split ? splitRows(lines) : null), [lines, split])
   const binary = BINARY.test(diff)
@@ -122,6 +153,23 @@ export default function DiffView({ diff, path, actions: rawActions }: Props) {
         No textual changes (binary file or mode change).
       </p>
     )
+
+  async function expand(id: number, side: 'up' | 'down') {
+    if (!loadFile) return
+    const text = file === undefined ? await loadFile().catch(() => null) : file
+    setOpened((o) => {
+      const before = o.diff === diff ? o.expanded : {}
+      const at = before[id] ?? { up: 0, down: 0 }
+      return {
+        diff,
+        file: text,
+        expanded: {
+          ...before,
+          [id]: { ...at, [side]: at[side] + EXPAND_STEP },
+        },
+      }
+    })
+  }
 
   function toggle(line: Line, shift: boolean) {
     const next = new Set(selected)
@@ -201,9 +249,34 @@ export default function DiffView({ diff, path, actions: rawActions }: Props) {
   const fullRow = (line: Line, span: number) => (
     <tr key={line.index} className={`group ${ROW[line.kind]}`}>
       {/* Skip the line numbers and sign so the text lines up with the code. */}
-      <td colSpan={span === 4 ? 3 : 2} />
+      <td
+        colSpan={span === 4 ? 3 : 2}
+        className="relative text-right font-sans select-none"
+      >
+        {/* Absolute, so the row stays as high as the others. */}
+        {line.gap && (line.gap.canDown || line.gap.canUp) && (
+          <span className="absolute inset-y-0 right-1 flex items-center">
+            {line.gap.canDown && (
+              <ExpandButton
+                title={t('diffview.expand-down')}
+                onClick={() => expand(line.gap!.id, 'down')}
+              >
+                <ArrowDownFromLine className="size-3.5" />
+              </ExpandButton>
+            )}
+            {line.gap.canUp && (
+              <ExpandButton
+                title={t('diffview.expand-up')}
+                onClick={() => expand(line.gap!.id, 'up')}
+              >
+                <ArrowUpFromLine className="size-3.5" />
+              </ExpandButton>
+            )}
+          </span>
+        )}
+      </td>
       <td colSpan={span === 4 ? 1 : span - 2} className="pr-4 whitespace-pre">
-        {line.kind === 'hunk' && actions ? (
+        {line.kind === 'hunk' && line.text && actions ? (
           <div className="flex items-center gap-2">
             <span className="min-w-0 flex-1 truncate">{line.text}</span>
             <span className="invisible flex gap-1 font-sans group-hover:visible">
@@ -381,6 +454,27 @@ function Code({
         </span>
       ))}
     </>
+  )
+}
+
+function ExpandButton({
+  title,
+  onClick,
+  children,
+}: {
+  title: string
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      title={title}
+      aria-label={title}
+      onClick={onClick}
+      className="rounded px-1.5 text-muted hover:bg-hover hover:text-fg"
+    >
+      {children}
+    </button>
   )
 }
 

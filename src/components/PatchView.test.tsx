@@ -20,9 +20,11 @@ index 0000000..3333333
 +hello b
 `
 
+const SIDES = { before: 'abc^', after: 'abc' }
+
 describe('PatchView', () => {
   it('lists the files and shows the one clicked', () => {
-    render(<PatchView repo="/r" patch={PATCH} header={null} />)
+    render(<PatchView repo="/r" patch={PATCH} sides={SIDES} header={null} />)
     expect(screen.getByText('2 changed files')).toBeTruthy()
     expect(screen.getByText('new a')).toBeTruthy()
     expect(screen.queryByText('hello b')).toBeNull()
@@ -38,7 +40,9 @@ describe('PatchView', () => {
       value: { writeText },
       configurable: true,
     })
-    render(<PatchView repo="/home/me/r" patch={PATCH} header={null} />)
+    render(
+      <PatchView repo="/home/me/r" patch={PATCH} sides={SIDES} header={null} />,
+    )
 
     fireEvent.contextMenu(screen.getAllByText('a.ts')[0])
     fireEvent.click(screen.getByText('Copy relative path'))
@@ -58,6 +62,7 @@ describe('PatchView', () => {
       <PatchView
         repo="/r"
         patch={PATCH}
+        sides={SIDES}
         header={null}
         onExplainFile={onExplainFile}
       />,

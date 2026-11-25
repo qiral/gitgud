@@ -24,3 +24,7 @@ export function absolutePath(repo: string, path: string) {
   const root = repo.replace(/[\\/]+$/, '')
   return root + sep + (windows ? path.replace(/\//g, '\\') : path)
 }
+
+/** Pictures the app can show; see src-tauri/src/content.rs. */
+export const isImage = (path: string) =>
+  /\.(png|jpe?g|gif|webp|avif|bmp|ico|svg)$/i.test(path)

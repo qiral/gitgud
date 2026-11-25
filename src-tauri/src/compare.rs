@@ -12,6 +12,8 @@ const MAX_COMMITS: u32 = 500;
 pub struct Differences {
     pub base_hash: String,
     pub head_hash: String,
+    /// Where `diff` starts: the base, or the commit the two split at.
+    pub from_hash: String,
     /// Whether the two share any history.
     pub related: bool,
     /// Commits only `head` has, newest first.
@@ -71,6 +73,7 @@ pub fn compare(
         behind: commits(&head, &base)?,
         behind_count,
         diff: run(repo, &args)?,
+        from_hash: from.clone(),
         base_hash: base,
         head_hash: head,
     })

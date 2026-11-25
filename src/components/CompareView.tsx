@@ -233,6 +233,7 @@ export default function CompareView({
           <PatchView
             repo={repo}
             patch={d.diff}
+            sides={{ before: d.fromHash, after: d.headHash }}
             header={null}
             empty={t('compare.no-differences')}
             onFileHistory={onFileHistory}
