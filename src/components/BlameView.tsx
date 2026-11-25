@@ -243,13 +243,16 @@ export default function BlameView({
       ) : blame.lines.length === 0 ? (
         <p className="p-6 text-muted">{t('blameview.empty')}</p>
       ) : (
-        <div ref={scroller} className="min-h-0 flex-1 overflow-auto">
+        <div
+          ref={scroller}
+          className="min-h-0 flex-1 overflow-auto [--blame-gutter:clamp(10rem,26vw,22rem)]"
+        >
           <div
             ref={rows.ref}
             className="code-text"
             style={{
               // Only some rows exist at a time, so they can't size this.
-              minWidth: `calc(26rem + ${width}ch)`,
+              minWidth: `calc(var(--blame-gutter) + 4rem + ${width}ch)`,
               paddingTop: rows.top,
               paddingBottom: rows.bottom,
             }}
@@ -266,7 +269,7 @@ export default function BlameView({
                   className={`group flex h-(--code-row) ${shade}`}
                 >
                   <div
-                    className={`sticky left-0 z-[1] flex w-[22rem] shrink-0 items-center gap-2 border-r border-line px-2 ${shade} ${
+                    className={`sticky left-0 z-[1] flex w-(--blame-gutter) shrink-0 items-center gap-2 border-r border-line px-2 ${shade} ${
                       first && i > 0 ? 'border-t border-t-line' : ''
                     }`}
                   >

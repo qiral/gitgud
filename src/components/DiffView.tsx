@@ -127,10 +127,15 @@ export default function DiffView({
     virtual,
   )
   // Only some rows exist at a time, so they can't size the table's width;
-  // reserve room for the longest line up front instead. Side by side, both
-  // halves get that room so long lines scroll instead of squeezing.
+  // reserve room for the longest line up front instead. In split mode,
+  // non-virtual diffs stay within the pane and wrap long lines so the right
+  // half is never pushed off-screen; virtual split diffs cap the expansion.
   const minWidth = useMemo(() => {
-    if (split) return `calc(8.5rem + ${2 * longestLine(lines) + 4}ch)`
+    if (split) {
+      return virtual
+        ? `calc(8.5rem + ${2 * Math.min(longestLine(lines), 120) + 4}ch)`
+        : undefined
+    }
     return virtual ? `calc(8.25rem + ${longestLine(lines)}ch)` : undefined
   }, [lines, virtual, split])
 
@@ -216,7 +221,7 @@ export default function DiffView({
     return (
       <td
         onClick={(e) => selectable && toggle(line, e.shiftKey)}
-        className={`w-12 pr-2 text-right text-muted/70 select-none ${edge} ${
+        className={`w-12 pr-2 text-right align-top text-muted/70 select-none ${edge} ${
           selectable ? 'cursor-pointer' : ''
         } ${isSelected ? 'bg-accent/30' : ''}`}
         title={selectable ? t('diffview.select-hint') : ''}
@@ -279,7 +284,7 @@ export default function DiffView({
         {line.kind === 'hunk' && line.text && actions ? (
           <div className="flex items-center gap-2">
             <span className="min-w-0 flex-1 truncate">{line.text}</span>
-            <span className="invisible flex gap-1 font-sans group-hover:visible">
+            <span className="invisible sticky right-2 z-[1] flex shrink-0 gap-1 bg-panel/95 pl-2 font-sans group-focus-within:visible group-hover:visible">
               <ActionButton
                 primary
                 onClick={() => apply(hunkLines(line.hunk), primary)}
@@ -325,12 +330,16 @@ export default function DiffView({
           `${ROW[line.kind]} ${side === 'new' ? 'border-l border-line' : ''}`,
         )}
         <td
-          className={`w-5 text-center select-none ${ROW[line.kind]} ${SIGN_COLOR[line.kind] ?? ''}`}
+          className={`w-5 text-center align-top select-none ${ROW[line.kind]} ${SIGN_COLOR[line.kind] ?? ''}`}
         >
           {SIGN[line.kind]}
         </td>
         <td
-          className={`overflow-hidden pr-4 whitespace-pre ${ROW[line.kind]} ${
+          className={`overflow-hidden pr-4 align-top ${
+            virtual
+              ? 'whitespace-pre'
+              : 'whitespace-pre-wrap [overflow-wrap:anywhere]'
+          } ${ROW[line.kind]} ${
             isSelected ? 'outline-1 -outline-offset-1 outline-accent' : ''
           }`}
         >

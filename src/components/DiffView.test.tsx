@@ -178,4 +178,25 @@ describe('DiffView options', () => {
     render(<DiffView diff="" />)
     expect(screen.getByText('Only whitespace changed.')).toBeTruthy()
   })
+
+  it('keeps split diffs inside the pane and wraps long lines', () => {
+    setDiffPref('split', true)
+    const long = 'x'.repeat(300)
+    const { container } = render(
+      <DiffView
+        diff={`diff --git a/f b/f\n--- a/f\n+++ b/f\n@@ -1 +1 @@\n-${long}\n+${long}!\n`}
+      />,
+    )
+    const table = container.querySelector('table')!
+    expect(table.style.minWidth).toBe('')
+    const codeCell = screen.getAllByText(long)[0].closest('td')!
+    expect(codeCell.className).toContain('whitespace-pre-wrap')
+  })
+
+  it('keeps hunk action buttons sticky so they stay reachable on wide diffs', () => {
+    setup()
+    const stageHunk = screen.getAllByText('Stage hunk')[0]
+    expect(stageHunk.parentElement!.className).toContain('sticky')
+    expect(stageHunk.parentElement!.className).toContain('right-2')
+  })
 })

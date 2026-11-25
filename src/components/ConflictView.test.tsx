@@ -141,3 +141,14 @@ it("doesn't show one file's suggestion on another", async () => {
   rerender(<ConflictView {...props} file={{ ...file, path: 'b.rs' }} />)
   await waitFor(() => expect(screen.queryByText('merged();')).toBeNull())
 })
+
+it('scrolls long conflict lines horizontally and wraps block actions', async () => {
+  mockIPC((cmd) => {
+    if (cmd === 'conflict_parts') return PARTS
+  })
+  render(<ConflictView repo={repo} file={file} version={1} act={act} />)
+  const pre = (await screen.findByText('a();')).closest('pre')!
+  expect(pre.className).toContain('overflow-x-auto')
+  const header = screen.getByText('Conflict').parentElement!
+  expect(header.className).toContain('flex-wrap')
+})

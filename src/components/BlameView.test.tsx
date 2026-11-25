@@ -89,3 +89,10 @@ it('shows why a file cannot be blamed', async () => {
   )
   expect(await screen.findByText('a.ts is a binary file')).toBeTruthy()
 })
+
+it('uses a responsive sticky gutter width instead of a fixed 22rem', async () => {
+  setup()
+  const hashBtn = await screen.findByText('1111111')
+  const gutter = hashBtn.closest('.sticky')!
+  expect(gutter.className).toContain('w-(--blame-gutter)')
+})
