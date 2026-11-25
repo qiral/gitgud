@@ -102,3 +102,28 @@ it('drafts release notes since a commit, or between two', () => {
   )
   expect(onReleaseNotes).toHaveBeenLastCalledWith(tagged, all[1])
 })
+
+it('collapses extra ref badges into a +N pill so commit subjects stay visible', () => {
+  const crowded = {
+    ...all[0],
+    refs: [
+      { name: 'HEAD', kind: 'head' as const },
+      { name: 'main', kind: 'branch' as const },
+      { name: 'origin/main', kind: 'remote' as const },
+      { name: 'v1.0.0', kind: 'tag' as const },
+    ],
+  }
+  render(
+    <HistoryPanel
+      repoPath="/r"
+      commits={[crowded]}
+      selection={null}
+      onSelect={() => {}}
+    />,
+  )
+  expect(screen.getByText('HEAD')).toBeTruthy()
+  expect(screen.getByText('main')).toBeTruthy()
+  const overflow = screen.getByText('+2')
+  expect(overflow.getAttribute('title')).toBe('origin/main, v1.0.0')
+  expect(screen.getByText('first')).toBeTruthy()
+})

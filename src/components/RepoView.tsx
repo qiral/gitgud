@@ -73,7 +73,7 @@ const EMPTY_HINT = (t: Translate): Record<Tab, string> => ({
 function Count({ n }: { n: number }) {
   if (n === 0) return null
   return (
-    <span className="ml-1.5 rounded-full bg-hover px-1.5 text-xs">{n}</span>
+    <span className="shrink-0 rounded-full bg-hover px-1.5 text-xs">{n}</span>
   )
 }
 
@@ -651,18 +651,19 @@ export default function RepoView({
           className="relative flex shrink-0 flex-col border-r border-line bg-panel"
         >
           {sidebar.handle}
-          <div className="flex border-b border-line">
+          <div className="flex min-w-0 border-b border-line">
             {(['changes', 'history', 'stashes'] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => showTab(t)}
-                className={`flex-1 py-2 font-medium ${
+                title={tx(`repoview.tab-${t}`)}
+                className={`flex min-w-0 flex-1 items-center justify-center gap-1 px-1.5 py-2 font-medium ${
                   tab === t
                     ? 'border-b-2 border-accent text-fg'
                     : 'text-muted hover:text-fg'
                 }`}
               >
-                {tx(`repoview.tab-${t}`)}
+                <span className="truncate">{tx(`repoview.tab-${t}`)}</span>
                 {t === 'changes' && <Count n={status?.files.length ?? 0} />}
                 {t === 'stashes' && <Count n={stashes.length} />}
               </button>

@@ -12,8 +12,8 @@ interface Props {
 export default function ErrorBar({ error, onDismiss, onExplain }: Props) {
   const { t } = useTranslation()
   return (
-    <div className="flex items-start gap-3 border-t border-line bg-removed-bg px-4 py-2 text-removed">
-      <pre className="flex-1 font-mono text-xs whitespace-pre-wrap select-text">
+    <div className="flex max-h-36 shrink-0 items-start gap-3 border-t border-line bg-removed-bg px-4 py-2 text-removed">
+      <pre className="max-h-32 min-w-0 flex-1 overflow-y-auto font-mono text-xs break-words whitespace-pre-wrap select-text">
         {error}
       </pre>
       {onExplain && (
