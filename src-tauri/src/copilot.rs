@@ -333,11 +333,14 @@ fn client_options(bin: PathBuf, app_data: &Path, path_var: &OsStr) -> Result<Cli
     // Otherwise the CLI looks for a `gh` login in the system keychain.
     options.use_logged_in_user = Some(false);
     options.working_directory = work_dir(app_data)?;
-    // The same PATH it was found with, so an npm install can find `node`.
-    options.env = vec![
-        ("COPILOT_AUTO_UPDATE".into(), "false".into()),
-        ("PATH".into(), path_var.into()),
-    ];
+    // The same PATH it was found with, minus any AppImage mount entries that
+    // would break a system Node or CLI binary.
+    options.env = vec![("COPILOT_AUTO_UPDATE".into(), "false".into())];
+    options.env.extend(
+        crate::appimage::clean_env_overrides(path_var)
+            .into_iter()
+            .map(|(k, v)| (k.into(), v.into())),
+    );
     options.disable_client_telemetry = true;
     Ok(options)
 }

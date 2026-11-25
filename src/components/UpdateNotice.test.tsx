@@ -1,5 +1,6 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { mockIPC } from '@tauri-apps/api/mocks'
 import UpdateNotice from './UpdateNotice'
 import { UpdatesProvider, useUpdates } from '../lib/updates'
 
@@ -115,4 +116,28 @@ it('opens the card again on a manual check after it was dismissed', async () => 
   expect(screen.queryByText(/is available/)).toBeNull()
   fireEvent.click(screen.getByText('check now'))
   expect(await screen.findByText(/is available/)).toBeTruthy()
+})
+
+it('offers manual download instead of self-update on non-AppImage Linux installs', async () => {
+  const opened: unknown[] = []
+  mockIPC((cmd, args) => {
+    if (cmd === 'can_self_update') return false
+    if (cmd === 'open_url') {
+      opened.push(args)
+      return null
+    }
+  })
+  const update = fakeUpdate(async () => {})
+  updater.check.mockResolvedValue(update)
+  renderNotice()
+
+  const manual = await screen.findByText('Download it manually')
+  expect(screen.queryByText('Update and restart')).toBeNull()
+  fireEvent.click(manual)
+  await waitFor(() =>
+    expect(opened).toContainEqual({
+      url: 'https://github.com/qiral/gitgud/releases/tag/v0.6.0',
+    }),
+  )
+  expect(update.downloadAndInstall).not.toHaveBeenCalled()
 })

@@ -10,6 +10,7 @@ import {
   check as checkForUpdate,
   type Update,
 } from '@tauri-apps/plugin-updater'
+import { invoke } from '@tauri-apps/api/core'
 import { getVersion } from '@tauri-apps/api/app'
 import { errorMessage } from './git'
 
@@ -23,6 +24,8 @@ interface Updates {
   update: Update | null
   /** This app's version, e.g. "0.6.1". */
   version: string | null
+  /** False on Linux package installs (.rpm/.deb) that cannot self-update. */
+  canSelfUpdate: boolean
   status: Status
   error: string | null
   /** Whether the "new version" card is showing. */
@@ -56,6 +59,7 @@ export function UpdatesProvider({
 }) {
   const [update, setUpdate] = useState<Update | null>(null)
   const [version, setVersion] = useState<string | null>(null)
+  const [canSelfUpdate, setCanSelfUpdate] = useState(true)
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState<string | null>(null)
   const [cardOpen, setCardOpen] = useState(false)
@@ -64,6 +68,11 @@ export function UpdatesProvider({
   useEffect(() => {
     getVersion()
       .then(setVersion)
+      .catch(() => {})
+    invoke<boolean>('can_self_update')
+      .then((ok) => {
+        if (typeof ok === 'boolean') setCanSelfUpdate(ok)
+      })
       .catch(() => {})
   }, [])
 
@@ -105,6 +114,7 @@ export function UpdatesProvider({
       value={{
         update,
         version,
+        canSelfUpdate,
         status,
         error,
         cardOpen,

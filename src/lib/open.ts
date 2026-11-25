@@ -11,3 +11,9 @@ export async function openUrl(url: string) {
     await message(errorMessage(e), { kind: 'error' })
   }
 }
+
+/** Shows a file or folder in the system file manager, stripping the AppImage
+ *  environment on Linux so the file manager isn't launched with bundled libs. */
+export async function revealItem(path: string) {
+  await invoke('reveal_item', { path })
+}

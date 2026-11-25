@@ -14,7 +14,8 @@ const RELEASES = 'https://github.com/qiral/gitgud/releases'
  */
 export default function UpdateNotice() {
   const { t } = useTranslation()
-  const { update, version, status, error, cardOpen, closeCard } = useUpdates()
+  const { update, version, canSelfUpdate, status, error, cardOpen, closeCard } =
+    useUpdates()
   // null while idle, 0-100 while downloading.
   const [percent, setPercent] = useState<number | null>(null)
   const [installError, setInstallError] = useState<string | null>(null)
@@ -126,16 +127,25 @@ export default function UpdateNotice() {
             </button>
           </p>
         )}
-        <button
-          onClick={install}
-          disabled={installing}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded bg-accent py-1.5 font-medium text-on-accent hover:opacity-90 disabled:opacity-60"
-        >
-          {installing && <Loader2 className="size-4 animate-spin" />}
-          {installing
-            ? t('updatenotice.downloading', { percent })
-            : t('updatenotice.update-and-restart')}
-        </button>
+        {canSelfUpdate ? (
+          <button
+            onClick={install}
+            disabled={installing}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded bg-accent py-1.5 font-medium text-on-accent hover:opacity-90 disabled:opacity-60"
+          >
+            {installing && <Loader2 className="size-4 animate-spin" />}
+            {installing
+              ? t('updatenotice.downloading', { percent })
+              : t('updatenotice.update-and-restart')}
+          </button>
+        ) : (
+          <button
+            onClick={() => openUrl(releasePage)}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded bg-accent py-1.5 font-medium text-on-accent hover:opacity-90"
+          >
+            {t('updatenotice.download-it-manually')}
+          </button>
+        )}
       </div>
     </Card>
   )

@@ -95,7 +95,9 @@ fn command(repo: &Path, args: &[&str]) -> Result<Command> {
 
     // Signing asks for a passphrase in a window, or fails; never in the
     // terminal the app happened to be started from.
-    if let Some(&("commit" | "merge" | "cherry-pick" | "revert" | "rebase")) = args.first() {
+    if let Some(&("commit" | "merge" | "cherry-pick" | "revert" | "rebase" | "pull" | "tag")) =
+        args.first()
+    {
         cmd.env("SSH_ASKPASS_REQUIRE", "force");
     }
 

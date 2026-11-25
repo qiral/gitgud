@@ -49,6 +49,20 @@ fn initial_repo() -> Option<String> {
     std::env::args().nth(1)
 }
 
+/// Whether this installation can replace itself in place. On Linux, only an
+/// AppImage can; `.rpm` and `.deb` packages are managed outside the app.
+#[tauri::command]
+fn can_self_update() -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        std::env::var_os("APPIMAGE").is_some()
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        true
+    }
+}
+
 /// Opens a web page in the default browser.
 #[tauri::command(async)]
 fn open_url(url: String) -> Result<()> {
@@ -61,6 +75,17 @@ fn open_url(url: String) -> Result<()> {
             .map_err(|e| GitError::Failed(format!("Couldn't open the browser: {e}")));
     }
     tauri_plugin_opener::open_url(url, None::<&str>).map_err(|e| GitError::Failed(e.to_string()))
+}
+
+/// Shows a file or folder in the system file manager.
+#[tauri::command(async)]
+fn reveal_item(path: String) -> Result<()> {
+    #[cfg(target_os = "linux")]
+    if std::env::var_os("APPDIR").is_some() {
+        return appimage::reveal_item(Path::new(&path))
+            .map_err(|e| GitError::Failed(format!("Couldn't show file: {e}")));
+    }
+    tauri_plugin_opener::reveal_item_in_dir(path).map_err(|e| GitError::Failed(e.to_string()))
 }
 
 #[tauri::command(async)]
@@ -877,7 +902,9 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
             initial_repo,
+            can_self_update,
             open_url,
+            reveal_item,
             open_repo,
             status,
             stage,

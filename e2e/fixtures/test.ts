@@ -313,6 +313,8 @@ function installTauriMock({
     initial_repo: () => null,
     github_account: () => null,
     // src/lib/updates.tsx: this app's version and "is there a release"
+    can_self_update: () => true,
+    reveal_item: () => null,
     'plugin:app|version': () => '0.0.0-e2e',
     'plugin:updater|check': () => null,
     // @tauri-apps/api/path, for the clone dialog's default folder

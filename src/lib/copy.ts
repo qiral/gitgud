@@ -1,8 +1,8 @@
 import { message } from '@tauri-apps/plugin-dialog'
-import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { Copy, FileText, FolderOpen, History, UserPen } from 'lucide-react'
 import type { MenuItem } from '../components/ContextMenu'
 import { errorMessage } from './git'
+import { revealItem } from './open'
 import { absolutePath, basename } from './paths'
 import { t } from '../i18n'
 
@@ -19,7 +19,7 @@ export async function copyText(text: string) {
 
 async function reveal(path: string) {
   try {
-    await revealItemInDir(path)
+    await revealItem(path)
   } catch (e) {
     await message(errorMessage(e), {
       title: t('copy.could-not-show-file'),

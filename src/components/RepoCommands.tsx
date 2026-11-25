@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { confirm } from '@tauri-apps/plugin-dialog'
-import { revealItemInDir } from '@tauri-apps/plugin-opener'
+import { revealItem } from '../lib/open'
 import {
   Archive,
   ArrowDown,
@@ -162,7 +162,7 @@ export function useRepoCommands(o: Options) {
       group: t('repocommands.group-repository'),
       label: t('repocommands.show-repository-in-folder'),
       icon: FolderOpen,
-      run: () => revealItemInDir(o.repo.path).catch(() => {}),
+      run: () => revealItem(o.repo.path).catch(() => {}),
     },
     {
       id: 'copyPath',
