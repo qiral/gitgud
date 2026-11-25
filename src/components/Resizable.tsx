@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { readWidth, writeWidth } from '../lib/prefs'
 import { useTranslation } from '../i18n'
 
@@ -12,33 +12,69 @@ interface Options {
   initial: number
   min: number
   max: number
+  /** Room to reserve for sibling panes; defaults to KEEP_FOR_REST. */
+  keepForRest?: number
 }
 
 /**
- * A panel width the user can drag. Returns the width to apply and a handle
- * to render inside the panel, which must be `relative`. Double-clicking the
- * handle goes back to the initial width.
+ * A panel width the user can drag. Returns the width to apply, a handle
+ * to render inside the panel (which must be `relative`), and an optional
+ * `containerRef` to clamp against the parent split container instead of
+ * `window.innerWidth`. Double-clicking the handle goes back to the initial
+ * width.
  */
-export function useResizable({ key, initial, min, max }: Options) {
+export function useResizable({
+  key,
+  initial,
+  min,
+  max,
+  keepForRest = KEEP_FOR_REST,
+}: Options) {
+  const [container, setContainer] = useState<HTMLElement | null>(null)
+  const containerRef = useCallback((el: HTMLElement | null) => {
+    setContainer(el)
+  }, [])
+  const preferred = useRef(readWidth(key, initial))
+
   const clamp = useCallback(
-    (w: number) =>
-      Math.round(
-        Math.max(min, Math.min(w, max, window.innerWidth - KEEP_FOR_REST)),
-      ),
-    [min, max],
+    (w: number) => {
+      const avail =
+        container && container.clientWidth > 0
+          ? container.clientWidth
+          : window.innerWidth
+      return Math.round(Math.max(min, Math.min(w, max, avail - keepForRest)))
+    },
+    [min, max, keepForRest, container],
   )
-  const [width, setWidth] = useState(() => clamp(readWidth(key, initial)))
+  const [width, setWidth] = useState(() => clamp(preferred.current))
 
   // Different panels (e.g. the Changes and History sidebars) share a spot
   // but keep their own widths.
-  useEffect(
-    () => setWidth(clamp(readWidth(key, initial))),
-    [key, initial, clamp],
-  )
+  useEffect(() => {
+    preferred.current = readWidth(key, initial)
+    setWidth(clamp(preferred.current))
+  }, [key, initial, clamp])
+
+  // Re-clamp when the window or parent container shrinks/grows, preserving
+  // the user's preferred width when room returns.
+  useEffect(() => {
+    const sync = () => setWidth(clamp(preferred.current))
+    window.addEventListener('resize', sync)
+    let observer: ResizeObserver | undefined
+    if (container && typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(sync)
+      observer.observe(container)
+    }
+    return () => {
+      window.removeEventListener('resize', sync)
+      observer?.disconnect()
+    }
+  }, [clamp, container])
 
   const change = useCallback(
     (w: number, save: boolean) => {
       const next = clamp(w)
+      preferred.current = next
       setWidth(next)
       if (save) writeWidth(key, next)
     },
@@ -52,7 +88,7 @@ export function useResizable({ key, initial, min, max }: Options) {
       onReset={() => change(initial, true)}
     />
   )
-  return { width, handle }
+  return { width, handle, containerRef }
 }
 
 function ResizeHandle({

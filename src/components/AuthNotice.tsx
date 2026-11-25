@@ -13,7 +13,7 @@ export default function AuthNotice({ message, onSignIn, onDismiss }: Props) {
   return (
     <div
       role="status"
-      className="fixed bottom-4 left-4 z-30 flex w-80 items-start gap-3 rounded-lg border border-line bg-panel p-4 shadow-xl"
+      className="fixed bottom-4 left-4 z-30 flex w-80 max-w-[calc(100vw-2rem)] items-start gap-3 rounded-lg border border-line bg-panel p-4 shadow-xl"
     >
       <AlertTriangle className="mt-0.5 size-4 shrink-0 text-modified" />
       <div className="min-w-0 flex-1 space-y-2">

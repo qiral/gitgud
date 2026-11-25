@@ -54,6 +54,7 @@ export default function PatchView({
     initial: 288,
     min: 160,
     max: 700,
+    keepForRest: 240,
   })
 
   // Another commit has other files; start again from the first one.
@@ -95,7 +96,7 @@ export default function PatchView({
           )}
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1">
+        <div ref={list.containerRef} className="flex min-h-0 flex-1">
           <div
             style={{ width: list.width }}
             className="relative flex shrink-0 flex-col border-r border-line"

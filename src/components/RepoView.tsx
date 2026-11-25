@@ -511,7 +511,7 @@ export default function RepoView({
   })
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col overflow-hidden">
       {palette.ui}
       {pullRequests.dialog}
       {commitActions.dialogs}

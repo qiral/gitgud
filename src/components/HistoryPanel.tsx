@@ -367,7 +367,7 @@ export default function HistoryPanel({
       ) : (
         <>
           {!flat && (
-            <div className="flex shrink-0 items-center gap-1 border-b border-line px-1 py-0.5 text-xs text-muted">
+            <div className="flex shrink-0 flex-wrap items-center gap-1 border-b border-line px-1 py-0.5 text-xs text-muted">
               <button
                 onClick={toggleGraph}
                 title={
@@ -376,7 +376,7 @@ export default function HistoryPanel({
                     : t('historypanel.hide-lines')
                 }
                 aria-expanded={!collapsed}
-                className="flex items-center gap-1.5 rounded px-1.5 py-0.5 hover:bg-hover hover:text-fg"
+                className="flex shrink-0 items-center gap-1.5 rounded px-1.5 py-0.5 hover:bg-hover hover:text-fg"
               >
                 {collapsed ? (
                   <Plus className="size-3.5" />

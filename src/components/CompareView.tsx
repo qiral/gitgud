@@ -164,7 +164,7 @@ export default function CompareView({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="shrink-0 border-b border-line px-4 pt-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {select(t('compare.base'), base, (s) => onChange({ base: s, head }))}
           <ArrowLeft className="size-4 shrink-0 text-muted" aria-hidden />
           {select(t('compare.head'), head, (s) => onChange({ base, head: s }))}
@@ -172,7 +172,7 @@ export default function CompareView({
             onClick={() => onChange({ base: head, head: base })}
             title={t('compare.swap')}
             aria-label={t('compare.swap')}
-            className="rounded p-1.5 text-muted hover:bg-hover hover:text-fg"
+            className="shrink-0 rounded p-1.5 text-muted hover:bg-hover hover:text-fg"
           >
             <ArrowLeftRight className="size-4" />
           </button>
@@ -192,12 +192,12 @@ export default function CompareView({
             onClick={onClose}
             title={t('compare.close')}
             aria-label={t('compare.close')}
-            className="rounded p-1.5 text-muted hover:bg-hover hover:text-fg"
+            className="shrink-0 rounded p-1.5 text-muted hover:bg-hover hover:text-fg"
           >
             <X className="size-4" />
           </button>
         </div>
-        <div className="mt-2 flex h-8 gap-4 text-xs">
+        <div className="mt-2 flex min-h-8 flex-wrap items-center gap-x-4 gap-y-1 text-xs">
           {tabs.map((x) => (
             <button
               key={x.id}
