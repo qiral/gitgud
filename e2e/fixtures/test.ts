@@ -50,6 +50,27 @@ function installTauriMock({
     graph: { lane: 0, color: 0, width: 1, segments: [] },
   }
   let dirty = withChanges
+  const submodules = withRepo
+    ? [
+        {
+          path: 'libs/zlib',
+          recorded: 'fedcba9'.padEnd(40, '0'),
+          checkedOut: null as string | null,
+          state: 'missing',
+        },
+      ]
+    : []
+  const worktrees = [
+    {
+      path: repo.path,
+      branch: 'main',
+      head: commit.hash,
+      main: true,
+      current: true,
+      locked: false,
+      missing: false,
+    },
+  ]
   let undoable: { id: number; kind: string } | null = null
   const branchNames = ['main', 'feature/login', 'fix/typo']
 
@@ -87,6 +108,8 @@ function installTauriMock({
         name,
         current: name === current,
         upstream: `origin/${name}`,
+        worktree:
+          worktrees.find((w) => !w.current && w.branch === name)?.path ?? null,
       })),
     log: () => [commit],
     show_commit: () =>
@@ -187,6 +210,25 @@ function installTauriMock({
     ],
     signatures: () => ({}),
     file_text: () => null,
+    submodules: () => submodules,
+    update_submodules: () => {
+      for (const s of submodules) {
+        s.checkedOut = s.recorded
+        s.state = 'current'
+      }
+      return null
+    },
+    worktrees: () => worktrees,
+    add_worktree: (args) => {
+      worktrees.push({
+        ...worktrees[0],
+        path: String(args.path),
+        branch: String(args.branch),
+        main: false,
+        current: false,
+      })
+      return args.path
+    },
     diff: () => '',
     discard: () => {
       dirty = false

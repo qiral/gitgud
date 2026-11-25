@@ -135,6 +135,7 @@ const messages: Messages = {
   'clonedialog.sign-in-to-github': 'Se connecter à GitHub',
   'clonedialog.sign-in-to-see-your-github-repositories':
     'Connectez-vous pour voir vos dépôts GitHub.',
+  'clonedialog.submodules': 'Télécharger aussi les sous-modules',
   'clonedialog.will-be-cloned-to': 'Sera cloné dans',
   'commandpalette.back': 'Retour',
   'commandpalette.command-palette': 'Palette de commandes',
@@ -549,6 +550,21 @@ const messages: Messages = {
   'stashpanel.pop-apply-and-delete': 'Pop (appliquer et supprimer)',
   'stashpanel.stash-your-changes-from-the-changes-tab-to-set-them-aside-for-later':
     "Mettez vos modifications dans le stash depuis l'onglet Modifications pour les garder de côté.",
+  'submodules.badge': 'sous-module',
+  'submodules.changed-why': 'Ce dépôt demande plutôt {hash}.',
+  'submodules.dirty':
+    'Il contient des modifications non commitées. Ouvrez-le pour les commiter.',
+  'submodules.missing': 'non téléchargé',
+  'submodules.missing-why': 'Pas encore téléchargé. Ce dépôt demande {hash}.',
+  'submodules.new-commit': 'Un autre commit est récupéré',
+  'submodules.open': 'Ouvrir le sous-module',
+  'submodules.open-one': 'Ouvrir {path}',
+  'submodules.title': 'Sous-modules',
+  'submodules.update': 'Mettre à jour le sous-module',
+  'submodules.update-all': 'Mettre à jour les sous-modules',
+  'submodules.update-body':
+    'La mise à jour récupère le commit enregistré par ce dépôt, à la place du commit actuel. Les commits faits sans branche dans un sous-module peuvent ensuite être difficiles à retrouver.',
+  'submodules.update-one': 'Mettre à jour {path}',
   'suggestiondiff.accept': 'Accepter',
   'suggestiondiff.reject': 'Refuser',
   'syncactions.publish-to': 'Publier {branch} vers',
@@ -652,6 +668,23 @@ const messages: Messages = {
   'updatenotice.update-and-restart': 'Mettre à jour et redémarrer',
   'updatenotice.what-s-new': 'Nouveautés',
   'updatenotice.you-re-up-to-date': 'Vous êtes à jour',
+  'worktrees.add': 'Ajouter un worktree',
+  'worktrees.branch': 'Branche',
+  'worktrees.checked-out-in': 'Récupérée dans {path}',
+  'worktrees.command': 'Worktrees…',
+  'worktrees.dirty-body':
+    '{path} contient des fichiers non commités ou nouveaux, ou des sous-modules. Ils seront définitivement supprimés.',
+  'worktrees.folder': 'Dossier',
+  'worktrees.locked': 'Verrouillé',
+  'worktrees.missing': 'dossier introuvable',
+  'worktrees.new-branch': 'Nouvelle branche',
+  'worktrees.open': 'ouvert',
+  'worktrees.open-it': 'Ouvrir le worktree',
+  'worktrees.remove': 'Supprimer le worktree',
+  'worktrees.remove-anyway': 'Supprimer quand même',
+  'worktrees.remove-body':
+    'Supprimer le dossier {path} ? La branche est conservée.',
+  'worktrees.title': 'Worktrees',
 }
 
 export default messages

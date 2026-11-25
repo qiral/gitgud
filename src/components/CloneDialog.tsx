@@ -41,6 +41,7 @@ export default function CloneDialog({
   const [parent, setParent] = useState('')
   const [signingIn, setSigningIn] = useState(false)
   const [progress, setProgress] = useState<CloneProgress | null>(null)
+  const [submodules, setSubmodules] = useState(true)
   const [cloning, setCloning] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const cancelled = useRef(false)
@@ -80,7 +81,7 @@ export default function CloneDialog({
       setProgress(event.payload),
     )
     try {
-      const repo = await git.clone(url, parent, name.trim())
+      const repo = await git.clone(url, parent, name.trim(), submodules)
       try {
         localStorage.setItem(CLONE_DIR_KEY, parent)
       } catch {
@@ -225,6 +226,15 @@ export default function CloneDialog({
             />
           </label>
         </div>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={submodules}
+            disabled={cloning}
+            onChange={(e) => setSubmodules(e.target.checked)}
+          />
+          {tx('clonedialog.submodules')}
+        </label>
         {destination && (
           <p className="truncate text-xs text-muted" title={destination}>
             {tx('clonedialog.will-be-cloned-to')}{' '}

@@ -127,6 +127,7 @@ const messages: Messages = {
   'clonedialog.sign-in-to-github': 'GitHub에 로그인',
   'clonedialog.sign-in-to-see-your-github-repositories':
     '로그인하면 GitHub 저장소를 볼 수 있습니다.',
+  'clonedialog.submodules': '서브모듈도 다운로드',
   'clonedialog.will-be-cloned-to': '복제 위치:',
   'commandpalette.back': '뒤로',
   'commandpalette.command-palette': '명령 팔레트',
@@ -519,6 +520,21 @@ const messages: Messages = {
   'stashpanel.pop-apply-and-delete': '팝 (적용 후 삭제)',
   'stashpanel.stash-your-changes-from-the-changes-tab-to-set-them-aside-for-later':
     '변경 사항 탭에서 변경 사항을 스태시하면 나중을 위해 치워 둘 수 있습니다.',
+  'submodules.badge': '서브모듈',
+  'submodules.changed-why': '이 저장소는 대신 {hash}을(를) 요구합니다.',
+  'submodules.dirty': '커밋되지 않은 변경 사항이 있습니다. 열어서 커밋하세요.',
+  'submodules.missing': '다운로드 안 됨',
+  'submodules.missing-why':
+    '아직 다운로드하지 않았습니다. 이 저장소는 {hash}을(를) 요구합니다.',
+  'submodules.new-commit': '다른 커밋이 체크아웃됨',
+  'submodules.open': '서브모듈 열기',
+  'submodules.open-one': '{path} 열기',
+  'submodules.title': '서브모듈',
+  'submodules.update': '서브모듈 업데이트',
+  'submodules.update-all': '서브모듈 업데이트',
+  'submodules.update-body':
+    '업데이트하면 현재 커밋 대신 이 저장소에 기록된 커밋을 체크아웃합니다. 브랜치 없이 서브모듈에서 만든 커밋은 나중에 찾기 어려울 수 있습니다.',
+  'submodules.update-one': '{path} 업데이트',
   'suggestiondiff.accept': '수락',
   'suggestiondiff.reject': '거부',
   'syncactions.publish-to': '{branch}을(를) 게시할 곳',
@@ -619,6 +635,22 @@ const messages: Messages = {
   'updatenotice.update-and-restart': '업데이트 후 다시 시작',
   'updatenotice.what-s-new': '새로운 기능',
   'updatenotice.you-re-up-to-date': '최신 버전입니다',
+  'worktrees.add': '워크트리 추가',
+  'worktrees.branch': '브랜치',
+  'worktrees.checked-out-in': '{path}에 체크아웃됨',
+  'worktrees.command': '워크트리…',
+  'worktrees.dirty-body':
+    '{path}에 커밋되지 않았거나 새로운 파일 또는 서브모듈이 있습니다. 제거하면 영구히 삭제됩니다.',
+  'worktrees.folder': '폴더',
+  'worktrees.locked': '잠김',
+  'worktrees.missing': '폴더가 없음',
+  'worktrees.new-branch': '새 브랜치',
+  'worktrees.open': '열려 있음',
+  'worktrees.open-it': '워크트리 열기',
+  'worktrees.remove': '워크트리 제거',
+  'worktrees.remove-anyway': '그래도 제거',
+  'worktrees.remove-body': '{path} 폴더를 삭제할까요? 브랜치는 유지됩니다.',
+  'worktrees.title': '워크트리',
 }
 
 export default messages

@@ -136,6 +136,7 @@ const messages: Messages = {
   'clonedialog.sign-in-to-github': 'Sign in to GitHub',
   'clonedialog.sign-in-to-see-your-github-repositories':
     'Sign in to see your GitHub repositories.',
+  'clonedialog.submodules': 'Download submodules too',
   'clonedialog.will-be-cloned-to': 'Will be cloned to',
   'commandpalette.back': 'Back',
   'commandpalette.command-palette': 'Command palette',
@@ -545,6 +546,21 @@ const messages: Messages = {
   'stashpanel.pop-apply-and-delete': 'Pop (apply and delete)',
   'stashpanel.stash-your-changes-from-the-changes-tab-to-set-them-aside-for-later':
     'Stash your changes from the Changes tab to set them aside for later.',
+  'submodules.badge': 'submodule',
+  'submodules.changed-why': 'This repository asks for {hash} instead.',
+  'submodules.dirty': 'It has uncommitted changes. Open it to commit them.',
+  'submodules.missing': 'not downloaded',
+  'submodules.missing-why':
+    'Not downloaded yet. This repository asks for {hash}.',
+  'submodules.new-commit': 'Another commit is checked out',
+  'submodules.open': 'Open submodule',
+  'submodules.open-one': 'Open {path}',
+  'submodules.title': 'Submodules',
+  'submodules.update': 'Update submodule',
+  'submodules.update-all': 'Update submodules',
+  'submodules.update-body':
+    'Updating checks out the commit this repository has recorded, instead of the one checked out now. Commits made in a submodule without a branch can be hard to find afterwards.',
+  'submodules.update-one': 'Update {path}',
   'suggestiondiff.accept': 'Accept',
   'suggestiondiff.reject': 'Reject',
   'syncactions.publish-to': 'Publish {branch} to',
@@ -647,6 +663,22 @@ const messages: Messages = {
   'updatenotice.update-and-restart': 'Update and restart',
   'updatenotice.what-s-new': "What's new",
   'updatenotice.you-re-up-to-date': "You're up to date",
+  'worktrees.add': 'Add worktree',
+  'worktrees.branch': 'Branch',
+  'worktrees.checked-out-in': 'Checked out in {path}',
+  'worktrees.command': 'Worktrees…',
+  'worktrees.dirty-body':
+    '{path} has uncommitted or new files, or submodules. Removing it deletes them for good.',
+  'worktrees.folder': 'Folder',
+  'worktrees.locked': 'Locked',
+  'worktrees.missing': 'folder is gone',
+  'worktrees.new-branch': 'New branch',
+  'worktrees.open': 'open',
+  'worktrees.open-it': 'Open worktree',
+  'worktrees.remove': 'Remove worktree',
+  'worktrees.remove-anyway': 'Remove anyway',
+  'worktrees.remove-body': 'Delete the folder {path}? Its branch is kept.',
+  'worktrees.title': 'Worktrees',
 }
 
 export default messages

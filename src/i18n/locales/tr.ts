@@ -132,6 +132,7 @@ const messages: Messages = {
   'clonedialog.sign-in-to-github': "GitHub'a giriş yap",
   'clonedialog.sign-in-to-see-your-github-repositories':
     'GitHub depolarınızı görmek için giriş yapın.',
+  'clonedialog.submodules': 'Submodule’leri de indir',
   'clonedialog.will-be-cloned-to': 'Klonlanacağı yer:',
   'commandpalette.back': 'Geri',
   'commandpalette.command-palette': 'Komut paleti',
@@ -536,6 +537,22 @@ const messages: Messages = {
   'stashpanel.pop-apply-and-delete': 'Pop (uygula ve sil)',
   'stashpanel.stash-your-changes-from-the-changes-tab-to-set-them-aside-for-later':
     "Değişikliklerinizi sonraya bırakmak için Değişiklikler sekmesinden stash'leyin.",
+  'submodules.badge': 'submodule',
+  'submodules.changed-why': 'Bu depo bunun yerine {hash} commitini istiyor.',
+  'submodules.dirty':
+    'Commitlenmemiş değişiklikler var. Commitlemek için submodule’ü aç.',
+  'submodules.missing': 'indirilmedi',
+  'submodules.missing-why':
+    'Henüz indirilmedi. Bu depo {hash} commitini istiyor.',
+  'submodules.new-commit': 'Başka bir commit’e geçilmiş',
+  'submodules.open': 'Submodule’ü aç',
+  'submodules.open-one': '{path} aç',
+  'submodules.title': 'Submodule’ler',
+  'submodules.update': 'Submodule’ü güncelle',
+  'submodules.update-all': 'Submodule’leri güncelle',
+  'submodules.update-body':
+    'Güncelleme, şu anki commit yerine bu deponun kayıtlı commitine geçer. Bir submodule içinde branch olmadan yapılan commitleri sonradan bulmak zor olabilir.',
+  'submodules.update-one': '{path} güncelle',
   'suggestiondiff.accept': 'Kabul et',
   'suggestiondiff.reject': 'Reddet',
   'syncactions.publish-to': '{branch} şuraya yayımlansın',
@@ -638,6 +655,22 @@ const messages: Messages = {
   'updatenotice.update-and-restart': 'Güncelle ve yeniden başlat',
   'updatenotice.what-s-new': 'Yenilikler',
   'updatenotice.you-re-up-to-date': 'Güncelsiniz',
+  'worktrees.add': 'Worktree ekle',
+  'worktrees.branch': 'Branch',
+  'worktrees.checked-out-in': '{path} klasöründe açık',
+  'worktrees.command': 'Worktree’ler…',
+  'worktrees.dirty-body':
+    '{path} içinde commitlenmemiş ya da yeni dosyalar veya submodule’ler var. Kaldırırsan kalıcı olarak silinirler.',
+  'worktrees.folder': 'Klasör',
+  'worktrees.locked': 'Kilitli',
+  'worktrees.missing': 'klasör yok',
+  'worktrees.new-branch': 'Yeni branch',
+  'worktrees.open': 'açık',
+  'worktrees.open-it': 'Worktree’yi aç',
+  'worktrees.remove': 'Worktree’yi kaldır',
+  'worktrees.remove-anyway': 'Yine de kaldır',
+  'worktrees.remove-body': '{path} klasörü silinsin mi? Branch korunur.',
+  'worktrees.title': 'Worktree’ler',
 }
 
 export default messages

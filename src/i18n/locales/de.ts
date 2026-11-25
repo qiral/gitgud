@@ -134,6 +134,7 @@ const messages: Messages = {
   'clonedialog.sign-in-to-github': 'Bei GitHub anmelden',
   'clonedialog.sign-in-to-see-your-github-repositories':
     'Melde dich an, um deine GitHub-Repositories zu sehen.',
+  'clonedialog.submodules': 'Submodule ebenfalls herunterladen',
   'clonedialog.will-be-cloned-to': 'Wird geklont nach',
   'commandpalette.back': 'Zurück',
   'commandpalette.command-palette': 'Befehlspalette',
@@ -548,6 +549,22 @@ const messages: Messages = {
   'stashpanel.pop-apply-and-delete': 'Pop (anwenden und löschen)',
   'stashpanel.stash-your-changes-from-the-changes-tab-to-set-them-aside-for-later':
     'Stashe deine Änderungen im Tab „Änderungen“, um sie für später beiseitezulegen.',
+  'submodules.badge': 'Submodul',
+  'submodules.changed-why': 'Dieses Repository verlangt stattdessen {hash}.',
+  'submodules.dirty':
+    'Es enthält nicht committete Änderungen. Öffne es, um sie zu committen.',
+  'submodules.missing': 'nicht heruntergeladen',
+  'submodules.missing-why':
+    'Noch nicht heruntergeladen. Dieses Repository verlangt {hash}.',
+  'submodules.new-commit': 'Ein anderer Commit ist ausgecheckt',
+  'submodules.open': 'Submodul öffnen',
+  'submodules.open-one': '{path} öffnen',
+  'submodules.title': 'Submodule',
+  'submodules.update': 'Submodul aktualisieren',
+  'submodules.update-all': 'Submodule aktualisieren',
+  'submodules.update-body':
+    'Beim Aktualisieren wird statt des aktuellen der in diesem Repository festgehaltene Commit ausgecheckt. Commits, die in einem Submodul ohne Branch gemacht wurden, sind danach womöglich schwer zu finden.',
+  'submodules.update-one': '{path} aktualisieren',
   'suggestiondiff.accept': 'Übernehmen',
   'suggestiondiff.reject': 'Ablehnen',
   'syncactions.publish-to': '{branch} veröffentlichen auf',
@@ -651,6 +668,22 @@ const messages: Messages = {
   'updatenotice.update-and-restart': 'Aktualisieren und neu starten',
   'updatenotice.what-s-new': 'Neuigkeiten',
   'updatenotice.you-re-up-to-date': 'Du bist auf dem neuesten Stand',
+  'worktrees.add': 'Worktree hinzufügen',
+  'worktrees.branch': 'Branch',
+  'worktrees.checked-out-in': 'Ausgecheckt in {path}',
+  'worktrees.command': 'Worktrees…',
+  'worktrees.dirty-body':
+    '{path} enthält nicht committete oder neue Dateien oder Submodule. Beim Entfernen werden sie endgültig gelöscht.',
+  'worktrees.folder': 'Ordner',
+  'worktrees.locked': 'Gesperrt',
+  'worktrees.missing': 'Ordner fehlt',
+  'worktrees.new-branch': 'Neuer Branch',
+  'worktrees.open': 'geöffnet',
+  'worktrees.open-it': 'Worktree öffnen',
+  'worktrees.remove': 'Worktree entfernen',
+  'worktrees.remove-anyway': 'Trotzdem entfernen',
+  'worktrees.remove-body': 'Ordner {path} löschen? Der Branch bleibt erhalten.',
+  'worktrees.title': 'Worktrees',
 }
 
 export default messages

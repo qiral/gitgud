@@ -106,8 +106,11 @@ export function expandDiff(
     }
   })
   if (
-    lines.some(
-      (l) => l.kind === 'meta' && /^(new|deleted) file mode/.test(l.text),
+    lines.some((l) =>
+      l.kind === 'meta'
+        ? /^(new|deleted) file mode/.test(l.text)
+        : // A submodule's commit isn't a file.
+          l.kind !== 'hunk' && l.text.startsWith('Subproject commit '),
     )
   )
     return lines

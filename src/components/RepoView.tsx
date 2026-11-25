@@ -16,6 +16,7 @@ import {
   type RepoInfo,
   type Stash,
   type Status,
+  type Submodule,
   type Undoable,
 } from '../lib/git'
 import { splitDiff } from '../lib/diff'
@@ -40,6 +41,7 @@ import RebaseDialog from './RebaseDialog'
 import SignInDialog from './SignInDialog'
 import HostsDialog from './HostsDialog'
 import SigningDialog from './SigningDialog'
+import WorktreesDialog from './WorktreesDialog'
 import ReflogDialog from './ReflogDialog'
 import UndoToast from './UndoToast'
 import RemotesDialog from './RemotesDialog'
@@ -108,6 +110,7 @@ export default function RepoView({
   const [remotes, setRemotes] = useState<Remote[]>([])
   const [undoable, setUndoable] = useState<Undoable | null>(null)
   const [remoteBranches, setRemoteBranches] = useState<string[]>([])
+  const [submodules, setSubmodules] = useState<Submodule[]>([])
   const [stashes, setStashes] = useState<Stash[]>([])
   const [dialog, setDialog] = useState<
     | 'signIn'
@@ -117,6 +120,7 @@ export default function RepoView({
     | 'remotes'
     | 'reflog'
     | 'signing'
+    | 'worktrees'
     | null
   >(null)
   const [rebaseFrom, setRebaseFrom] = useState<Commit | null>(null)
@@ -142,7 +146,7 @@ export default function RepoView({
 
   const refresh = useCallback(async () => {
     try {
-      const [s, b, c, st, r, rb, u] = await Promise.all([
+      const [s, b, c, st, r, rb, u, sm] = await Promise.all([
         git.status(repo.path),
         git.branches(repo.path),
         git.log(repo.path, logLimit),
@@ -150,6 +154,7 @@ export default function RepoView({
         git.remotes(repo.path),
         git.remoteBranches(repo.path),
         git.undoAvailable(repo.path),
+        git.submodules(repo.path),
       ])
       setStatus(s)
       setBranches(b)
@@ -158,6 +163,7 @@ export default function RepoView({
       setRemotes(r)
       setRemoteBranches(rb)
       setUndoable(u)
+      setSubmodules(sm)
     } catch (e) {
       setError(errorMessage(e))
     }
@@ -477,6 +483,8 @@ export default function RepoView({
     onSignOut: signOut,
     onManageHosts: () => setDialog('hosts'),
     onManageRemotes: () => setDialog('remotes'),
+    onWorktrees: () => setDialog('worktrees'),
+    submodules,
     onSigning: () => setDialog('signing'),
     undoable,
     onUndo: undo,
@@ -535,6 +543,7 @@ export default function RepoView({
         onAppearance={onAppearance}
         onCompare={(name) => compareWithCurrent(branchSide(name))}
         pullRequest={pullRequests.button}
+        onWorktrees={() => setDialog('worktrees')}
         onPullRequests={pullRequests.openList}
         act={act}
         onSummarizeBranch={
@@ -572,6 +581,15 @@ export default function RepoView({
           onRecover={(hash) =>
             act('stash', () => git.recoverStash(repo.path, hash))
           }
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog === 'worktrees' && (
+        <WorktreesDialog
+          repo={repo}
+          branches={branches}
+          onOpen={onOpenRecent}
+          onChanged={refresh}
           onClose={() => setDialog(null)}
         />
       )}
@@ -655,6 +673,8 @@ export default function RepoView({
             repo={repo}
             hidden={tab !== 'changes' || (!status && !error)}
             files={status?.files ?? []}
+            submodules={submodules}
+            onOpenRepo={onOpenRecent}
             merging={status?.merging ?? null}
             operation={status?.operation ?? null}
             rebasing={status?.rebasing ?? null}
