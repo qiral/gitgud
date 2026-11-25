@@ -9,9 +9,13 @@ export interface Line {
   hunk: number
   oldNo?: number
   newNo?: number
+  /** On a hunk header: the hidden lines around it, see expandDiff. */
+  gap?: { id: number; canUp: boolean; canDown: boolean }
 }
 
 const HUNK = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/
+/** The same with the line counts. */
+const HUNK_SIZES = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/
 
 /** Turns unified diff text into lines with old/new line numbers. */
 export function parseDiff(diff: string): Line[] {
@@ -59,6 +63,118 @@ export function parseDiff(diff: string): Line[] {
 
   while (lines.length && lines[lines.length - 1].text === '') lines.pop()
   return lines
+}
+
+/** How many hidden lines to show of the gap before each hunk (the last gap
+ *  comes after all hunks): `down` from its top, `up` from its bottom. */
+export type Expanded = Record<number, { down: number; up: number }>
+
+/** The new side's lines a diff's hunks claim, to compare with the file. */
+function matchesFile(lines: Line[], file: string[]) {
+  return lines.every(
+    (l) =>
+      l.newNo === undefined ||
+      file[l.newNo - 1]?.replace(/\r$/, '') === l.text.replace(/\r$/, ''),
+  )
+}
+
+/**
+ * Adds unchanged lines from the file between a diff's hunks, as many as
+ * `expanded` asks for. `file` is the new side's text, null until it's loaded.
+ * Hunk headers, and one more after the last hunk, say what is still hidden.
+ * Files that were added or deleted have nothing hidden and come back as is,
+ * and so does a diff that isn't of that file anymore.
+ */
+export function expandDiff(
+  lines: Line[],
+  file: string | null,
+  expanded: Expanded,
+): Line[] {
+  const hunks = lines.filter((l) => l.kind === 'hunk')
+  const sizes = hunks.map((h) => HUNK_SIZES.exec(h.text))
+  if (hunks.length === 0 || sizes.some((m) => !m)) return lines
+  const ranges = sizes.map((m) => {
+    const [oldStart, oldCount, newStart, newCount] = m!
+      .slice(1)
+      .map((n) => (n === undefined ? 1 : Number(n)))
+    // An empty side names the line before it.
+    return {
+      oldStart: oldCount === 0 ? oldStart + 1 : oldStart,
+      newStart: newCount === 0 ? newStart + 1 : newStart,
+      oldCount,
+      newCount,
+    }
+  })
+  if (
+    lines.some(
+      (l) => l.kind === 'meta' && /^(new|deleted) file mode/.test(l.text),
+    )
+  )
+    return lines
+
+  let text: string[] | null = null
+  if (file !== null) {
+    text = file.split('\n')
+    if (text[text.length - 1] === '') text.pop()
+    if (!matchesFile(lines, text)) return lines
+  }
+
+  const out: Line[] = []
+  /** Lines `from` up to `to` of the new side, none of them in the diff. */
+  const show = (from: number, to: number, offset: number, hunk: number) => {
+    for (let n = from; n < to; n++)
+      out.push({
+        kind: 'context',
+        text: text![n - 1],
+        // Not part of the diff's text, so no index there.
+        index: -n,
+        hunk,
+        oldNo: n + offset,
+        newNo: n,
+      })
+  }
+  const gap = (
+    id: number,
+    from: number,
+    to: number | null,
+    offset: number,
+    header: Line,
+  ) => {
+    const size = to === null ? null : Math.max(0, to - from)
+    // Until the file is there, nobody knows how much comes after the end.
+    const want = text ? (expanded[id] ?? { down: 0, up: 0 }) : null
+    const down = Math.min(want?.down ?? 0, size ?? 0)
+    const up = Math.min(want?.up ?? 0, (size ?? 0) - down)
+    const left = size === null ? 1 : size - down - up
+    const last = id === hunks.length
+    show(from, from + down, offset, header.hunk - (last ? 0 : 1))
+    if (left > 0 || !last)
+      out.push({
+        ...header,
+        gap: { id, canDown: left > 0 && id > 0, canUp: left > 0 && !last },
+      })
+    if (to !== null) show(to - up, to, offset, header.hunk)
+  }
+
+  let next = 1
+  let offset = 0
+  let hunk = -1
+  for (const l of lines) {
+    if (l.kind === 'hunk') {
+      const r = ranges[++hunk]
+      offset = r.oldStart - r.newStart
+      gap(hunk, next, r.newStart, offset, l)
+      next = r.newStart + r.newCount
+      offset += r.oldCount - r.newCount
+    } else out.push(l)
+  }
+  gap(hunks.length, next, text ? text.length + 1 : null, offset, {
+    kind: 'hunk',
+    text: '',
+    index: -1e9,
+    hunk: hunks.length - 1,
+  })
+  return out
 }
 
 export type FileStatus = 'added' | 'deleted' | 'modified' | 'renamed' | 'copied'

@@ -128,6 +128,8 @@ export type UndoKind =
 export interface Differences {
   baseHash: string
   headHash: string
+  /** Where the diff starts: the base, or the commit the two split at. */
+  fromHash: string
   /** Whether the two share any history. */
   related: boolean
   /** Commits only the head has, newest first; long lists are cut. */
@@ -437,6 +439,13 @@ export const git = {
       untracked,
       ignoreWhitespace,
     }),
+  /** A file's text at "worktree", "index" or a commit; null when it isn't
+   *  there or isn't text. */
+  fileText: (repo: string, path: string, at: string) =>
+    invoke<string | null>('file_text', { repo, path, at }),
+  /** A picture as a data: URL; null when it isn't there. */
+  fileImage: (repo: string, path: string, at: string) =>
+    invoke<string | null>('file_image', { repo, path, at }),
   branches: (repo: string) => invoke<Branch[]>('branches', { repo }),
   switchBranch: (repo: string, name: string) =>
     invoke<void>('switch_branch', { repo, name }),

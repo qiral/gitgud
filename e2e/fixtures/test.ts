@@ -104,6 +104,7 @@ function installTauriMock({
     compare: (args) => ({
       baseHash: commit.parents[0],
       headHash: commit.hash,
+      fromHash: commit.parents[0],
       related: true,
       ahead: [commit],
       aheadCount: 1,
@@ -185,6 +186,7 @@ function installTauriMock({
       },
     ],
     signatures: () => ({}),
+    file_text: () => null,
     diff: () => '',
     discard: () => {
       dirty = false

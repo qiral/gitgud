@@ -24,7 +24,7 @@ import ChangesPanel from './ChangesPanel'
 import HistoryPanel, { type HistoryFilter } from './HistoryPanel'
 import StashPanel from './StashPanel'
 import StashDialog from './StashDialog'
-import DiffView from './DiffView'
+import FileDiffView from './FileDiffView'
 import PatchView from './PatchView'
 import FileHeader from './FileHeader'
 import { CommitHeader, StashHeader } from './CommitHeader'
@@ -801,6 +801,10 @@ export default function RepoView({
             <PatchView
               repo={repo.path}
               patch={diff}
+              sides={{
+                before: `${selection.commit.hash}^`,
+                after: selection.commit.hash,
+              }}
               focusPath={
                 historyFilter?.kind === 'file' ? historyFilter.path : undefined
               }
@@ -829,6 +833,10 @@ export default function RepoView({
             <PatchView
               repo={repo.path}
               patch={diff}
+              sides={{
+                before: `stash@{${selection.stash.index}}^`,
+                after: `stash@{${selection.stash.index}}`,
+              }}
               onExplainFile={
                 copilotOn.explain
                   ? (path, fileDiff) => explain(path, async () => fileDiff)
@@ -871,9 +879,20 @@ export default function RepoView({
                 }
               />
               <div className="min-h-0 flex-1 overflow-auto">
-                <DiffView
+                <FileDiffView
+                  repo={repo.path}
                   diff={diff}
                   path={selection.file.path}
+                  oldPath={
+                    selection.staged
+                      ? (selection.file.origPath ?? undefined)
+                      : undefined
+                  }
+                  sides={
+                    selection.staged
+                      ? { before: 'HEAD', after: 'index' }
+                      : { before: 'index', after: 'worktree' }
+                  }
                   actions={
                     !selection.file.conflicted
                       ? {

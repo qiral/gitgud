@@ -43,6 +43,30 @@ function setup(staged = false) {
   return onApply
 }
 
+it('shows hidden lines from the file', async () => {
+  const file = ['one', 'TWO', 'three', 'four', 'five', 'six', 'seven']
+  file.push('eight', 'nine', 'ten', 'ten and a half', 'eleven', 'twelve')
+  const loadFile = vi.fn().mockResolvedValue(file.join('\n') + '\n')
+  const onApply = vi.fn().mockResolvedValue(true)
+  render(
+    <DiffView
+      diff={DIFF}
+      loadFile={loadFile}
+      actions={{ staged: false, onApply }}
+    />,
+  )
+  fireEvent.click(screen.getAllByTitle('Show more lines below')[1])
+  expect(await screen.findByText('twelve')).toBeTruthy()
+  fireEvent.click(screen.getAllByTitle('Show more lines below')[0])
+  expect(await screen.findByText('nine')).toBeTruthy()
+  expect(loadFile).toHaveBeenCalledTimes(1)
+  // All shown, and lines still stage by their place in the diff.
+  expect(screen.queryByTitle(/Show more lines/)).toBeNull()
+  clickLine('ten and a half')
+  fireEvent.click(screen.getByText('Stage lines'))
+  await waitFor(() => expect(onApply).toHaveBeenCalledWith([11], 'stage'))
+})
+
 describe('DiffView', () => {
   it('stages the selected lines by their index in the diff text', async () => {
     const onApply = setup()

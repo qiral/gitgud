@@ -3,7 +3,7 @@ import { splitDiff } from '../lib/diff'
 import { fileMenuItems } from '../lib/copy'
 import { basename, dirname } from '../lib/paths'
 import { useContextMenu } from './ContextMenu'
-import DiffView from './DiffView'
+import FileDiffView, { type Sides } from './FileDiffView'
 import FileHeader, { LineCounts, STATUS_STYLE } from './FileHeader'
 import { useResizable } from './Resizable'
 import { setDiffPref, useDiffPrefs } from '../lib/diffPrefs'
@@ -13,6 +13,8 @@ interface Props {
   repo: string
   /** A patch touching any number of files, e.g. from `git show`. */
   patch: string
+  /** The versions the patch is between. */
+  sides: Sides
   /** Shown above the file list, e.g. the commit's message and author. */
   header: React.ReactNode
   /** Selects this file first when the patch has it, e.g. in file history. */
@@ -33,6 +35,7 @@ interface Props {
 export default function PatchView({
   repo,
   patch,
+  sides,
   header,
   focusPath,
   empty,
@@ -163,7 +166,13 @@ export default function PatchView({
               }
             />
             <div ref={diffPane} className="min-h-0 flex-1 overflow-auto">
-              <DiffView diff={file.diff} path={file.path} />
+              <FileDiffView
+                repo={repo}
+                diff={file.diff}
+                path={file.path}
+                oldPath={file.oldPath}
+                sides={sides}
+              />
             </div>
           </div>
         </div>
