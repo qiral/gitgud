@@ -367,7 +367,7 @@ export default function HistoryPanel({
       ) : (
         <>
           {!flat && (
-            <div className="flex shrink-0 items-center gap-1 border-b border-line px-1 py-0.5 text-xs text-muted">
+            <div className="flex shrink-0 flex-wrap items-center gap-1 border-b border-line px-1 py-0.5 text-xs text-muted">
               <button
                 onClick={toggleGraph}
                 title={
@@ -376,7 +376,7 @@ export default function HistoryPanel({
                     : t('historypanel.hide-lines')
                 }
                 aria-expanded={!collapsed}
-                className="flex items-center gap-1.5 rounded px-1.5 py-0.5 hover:bg-hover hover:text-fg"
+                className="flex shrink-0 items-center gap-1.5 rounded px-1.5 py-0.5 hover:bg-hover hover:text-fg"
               >
                 {collapsed ? (
                   <Plus className="size-3.5" />
@@ -456,18 +456,32 @@ export default function HistoryPanel({
                       onHide={canHide(c) ? () => hideLineOf(c) : undefined}
                     />
                   )}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      {c.refs.map((r) => (
+                  <div className="min-w-0 flex-1 overflow-hidden">
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      {c.refs.slice(0, 2).map((r) => (
                         <RefBadge key={`${r.kind}:${r.name}`} label={r} />
                       ))}
-                      <span className="truncate font-medium" title={c.subject}>
+                      {c.refs.length > 2 && (
+                        <span
+                          title={c.refs
+                            .slice(2)
+                            .map((r) => r.name)
+                            .join(', ')}
+                          className="shrink-0 rounded border border-line px-1 text-[11px] leading-4 text-muted"
+                        >
+                          +{c.refs.length - 2}
+                        </span>
+                      )}
+                      <span
+                        className="min-w-0 flex-1 truncate font-medium"
+                        title={c.subject}
+                      >
                         {c.subject}
                       </span>
                     </div>
-                    <div className="mt-0.5 flex gap-2 text-xs text-muted">
-                      <span className="truncate">{c.author}</span>
-                      <span>·</span>
+                    <div className="mt-0.5 flex min-w-0 items-center gap-2 text-xs text-muted">
+                      <span className="min-w-0 truncate">{c.author}</span>
+                      <span className="shrink-0">·</span>
                       <span className="shrink-0">{relativeTime(c.time)}</span>
                       <span className="ml-auto" />
                       {signature && <SignatureBadge signature={signature} />}
@@ -481,10 +495,12 @@ export default function HistoryPanel({
                           title={t(
                             'historypanel.edit-history-from-this-commit-reorder-squash-reword-or-drop',
                           )}
-                          className="hidden shrink-0 items-center gap-1 rounded px-1 text-muted group-hover:flex hover:bg-line hover:text-fg"
+                          className="hidden max-w-28 shrink-0 items-center gap-1 truncate rounded px-1 text-muted group-hover:flex hover:bg-line hover:text-fg"
                         >
-                          <PencilLine className="size-3" />
-                          {t('historypanel.edit-from-here')}
+                          <PencilLine className="size-3 shrink-0" />
+                          <span className="truncate">
+                            {t('historypanel.edit-from-here')}
+                          </span>
                         </button>
                       )}
                     </div>
@@ -706,7 +722,7 @@ function RefBadge({ label }: { label: RefLabel }) {
           ? t('historypanel.tag-title', { name: label.name })
           : label.name
       }
-      className={`max-w-32 shrink-0 truncate rounded px-1.5 text-[11px] leading-4 font-medium ${BADGE[label.kind]}`}
+      className={`max-w-24 shrink-0 truncate rounded px-1.5 text-[11px] leading-4 font-medium ${BADGE[label.kind]}`}
     >
       {label.name}
     </span>

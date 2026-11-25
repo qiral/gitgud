@@ -97,7 +97,7 @@ export default function ImageDiff({
       {mode === 'swipe' ? (
         <Swipe before={before} after={after} />
       ) : (
-        <div className="grid grid-cols-2 items-start gap-4">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] items-start gap-4">
           <Picture
             key={before}
             src={before}

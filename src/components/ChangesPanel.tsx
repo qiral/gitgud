@@ -407,7 +407,7 @@ export default function ChangesPanel({
       </div>
       {menu}
 
-      <div className="border-t border-line p-3">
+      <div className="shrink-0 border-t border-line p-3">
         <div className="relative">
           <textarea
             value={message}
@@ -485,12 +485,12 @@ export default function ChangesPanel({
             {t('changespanel.amend-last-commit')}
           </label>
         )}
-        <div className="mt-2 flex gap-2">
+        <div className="mt-2 flex min-w-0 gap-2">
           <button
             onClick={commit}
             disabled={busy || !canCommit || suggested !== null}
             title={t('changespanel.ctrl-enter')}
-            className="flex-1 rounded bg-accent py-1.5 font-medium text-on-accent hover:opacity-90 disabled:opacity-40"
+            className="min-w-0 flex-1 truncate rounded bg-accent px-2 py-1.5 font-medium text-on-accent hover:opacity-90 disabled:opacity-40"
           >
             {rebasing
               ? t('changespanel.continue-rebase')
@@ -515,7 +515,7 @@ export default function ChangesPanel({
               }
               title={t('changespanel.review-with-copilot')}
               aria-label={t('changespanel.review-with-copilot')}
-              className="flex items-center rounded border border-line px-2 hover:bg-hover disabled:opacity-40"
+              className="flex shrink-0 items-center rounded border border-line px-2 hover:bg-hover disabled:opacity-40"
             >
               <ScanSearch className="size-4" />
             </button>
@@ -529,9 +529,9 @@ export default function ChangesPanel({
               rebasing !== null
             }
             title={t('changespanel.stash-all-changes')}
-            className="flex items-center gap-1.5 rounded border border-line px-3 hover:bg-hover disabled:opacity-40"
+            className="flex shrink-0 items-center gap-1.5 rounded border border-line px-2.5 whitespace-nowrap hover:bg-hover disabled:opacity-40"
           >
-            <Archive className="size-4" />
+            <Archive className="size-4 shrink-0" />
             {t('changespanel.stash')}
           </button>
         </div>
@@ -569,14 +569,14 @@ function FileList({
   if (files.length === 0) return null
   return (
     <section>
-      <div className="flex items-center justify-between px-3 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted uppercase">
-        <span>
+      <div className="flex items-center justify-between gap-2 px-3 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted uppercase">
+        <span className="min-w-0 truncate">
           {title} ({files.length})
         </span>
         {onBulk && (
           <button
             onClick={onBulk}
-            className="font-normal tracking-normal normal-case hover:text-fg"
+            className="shrink-0 font-normal tracking-normal whitespace-nowrap normal-case hover:text-fg"
           >
             {bulkLabel}
           </button>
@@ -669,7 +669,7 @@ function RowButton({
         e.stopPropagation()
         onClick()
       }}
-      className="invisible rounded p-0.5 text-muted group-hover:visible hover:bg-line hover:text-fg"
+      className="invisible shrink-0 rounded p-0.5 text-muted group-focus-within:visible group-hover:visible hover:bg-line hover:text-fg"
     >
       {children}
     </button>
@@ -691,7 +691,9 @@ function StatusBadge({ file, staged }: { file: FileChange; staged: boolean }) {
     ? ['!', 'text-removed']
     : (LABELS[staged ? file.index : file.worktree] ?? ['?', 'text-muted'])
   return (
-    <span className={`w-3 text-center font-mono text-xs font-bold ${color}`}>
+    <span
+      className={`w-3 shrink-0 text-center font-mono text-xs font-bold ${color}`}
+    >
       {letter}
     </span>
   )

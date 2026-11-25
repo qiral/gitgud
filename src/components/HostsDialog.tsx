@@ -85,7 +85,7 @@ export default function HostsDialog({ onClose }: Props) {
             <Loader2 className="size-4 animate-spin" />
           </div>
         ) : list.length > 0 ? (
-          <ul className="overflow-hidden rounded-md border border-line">
+          <ul className="max-h-56 overflow-y-auto rounded-md border border-line">
             {list.map((h) => (
               <li
                 key={h.url}
@@ -117,8 +117,8 @@ export default function HostsDialog({ onClose }: Props) {
         )}
 
         <form onSubmit={add} className="space-y-3">
-          <div className="flex gap-2">
-            <label className="block flex-1">
+          <div className="flex flex-wrap gap-2 sm:flex-nowrap">
+            <label className="block min-w-0 flex-1">
               <span className="mb-1 block text-muted">
                 {t('hostsdialog.server-address')}
               </span>

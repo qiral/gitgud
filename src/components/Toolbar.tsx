@@ -134,7 +134,7 @@ export default function Toolbar({
         onOpenRecent={onOpenRecent}
       />
 
-      <div className="flex-1" />
+      <div className="min-w-0 flex-1" />
 
       <ToolbarButton
         onClick={sync.fetch}
@@ -196,7 +196,7 @@ export default function Toolbar({
           keys: shortcutKeys('mod+k').join('+'),
         })}
         aria-label={tx('toolbar.command-palette')}
-        className="flex items-center border-r border-line px-3 text-muted hover:bg-hover hover:text-fg"
+        className="flex shrink-0 items-center border-r border-line px-2.5 text-muted hover:bg-hover hover:text-fg lg:px-3"
       >
         <Command className="size-4" />
       </button>
@@ -204,7 +204,7 @@ export default function Toolbar({
         onClick={onAppearance}
         title={`${tx('appearance.title')} (${shortcutKeys('mod+,').join('+')})`}
         aria-label={tx('appearance.title')}
-        className="flex items-center border-r border-line px-3 text-muted hover:bg-hover hover:text-fg"
+        className="flex shrink-0 items-center border-r border-line px-2.5 text-muted hover:bg-hover hover:text-fg lg:px-3"
       >
         <Palette className="size-4" />
       </button>
@@ -261,21 +261,25 @@ function ToolbarButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      title={title}
-      className={`flex min-w-36 items-center gap-3 border-r border-line px-4 text-left disabled:opacity-50 disabled:hover:bg-transparent ${
-        emphasis ? 'bg-accent/[0.07] hover:bg-accent/15' : 'hover:bg-hover'
+      title={title ?? value}
+      className={`flex min-w-0 shrink items-center gap-2 border-r border-line px-2.5 text-left disabled:opacity-50 disabled:hover:bg-transparent lg:gap-3 lg:px-3.5 xl:min-w-36 xl:px-4 ${
+        emphasis
+          ? 'max-w-52 bg-accent/[0.07] hover:bg-accent/15 lg:max-w-60'
+          : 'hover:bg-hover'
       }`}
     >
-      <span className={emphasis ? 'text-accent' : 'text-muted'}>{icon}</span>
+      <span className={`shrink-0 ${emphasis ? 'text-accent' : 'text-muted'}`}>
+        {icon}
+      </span>
       <span className="flex min-w-0 flex-1 flex-col leading-tight">
-        <span className="text-xs text-muted">{label}</span>
+        <span className="truncate text-xs text-muted">{label}</span>
         <span
           className={`truncate ${emphasis ? 'font-semibold text-fg' : 'font-medium'}`}
         >
           {value}
         </span>
       </span>
-      {trailing}
+      {trailing && <span className="shrink-0">{trailing}</span>}
     </button>
   )
 }
@@ -320,7 +324,7 @@ function RepoMenu({
   )
 
   return (
-    <div ref={ref} className="relative flex">
+    <div ref={ref} className="relative flex min-w-0 shrink">
       <ToolbarButton
         onClick={() => setOpen((o) => !o)}
         label={tx('toolbar.repository')}
@@ -331,7 +335,7 @@ function RepoMenu({
         trailing={<ChevronDown className="size-4 text-muted" />}
       />
       {open && (
-        <div className="absolute top-full left-0 z-10 mt-1 w-72 overflow-hidden rounded-md border border-line bg-panel shadow-lg">
+        <div className="absolute top-full left-0 z-10 mt-1 max-h-[70vh] w-72 overflow-y-auto rounded-md border border-line bg-panel shadow-lg">
           {others.length > 0 && (
             <div className="border-b border-line py-1">
               <div className="px-3 py-1 text-xs text-muted">
@@ -393,9 +397,9 @@ function UpdateButton() {
     <button
       onClick={openCard}
       title={tx('toolbar.update-available', { version: update.version })}
-      className="flex items-center gap-2 border-r border-line bg-accent/10 px-3 font-medium text-accent hover:bg-accent/20"
+      className="flex shrink-0 items-center gap-2 border-r border-line bg-accent/10 px-2.5 font-medium whitespace-nowrap text-accent hover:bg-accent/20 lg:px-3"
     >
-      <CircleArrowUp className="size-4" />
+      <CircleArrowUp className="size-4 shrink-0" />
       {tx('toolbar.update')}
     </button>
   )
@@ -415,12 +419,12 @@ function LanguageMenu() {
     'flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-hover'
 
   return (
-    <div ref={ref} className="relative flex border-r border-line">
+    <div ref={ref} className="relative flex shrink-0 border-r border-line">
       <button
         onClick={() => setOpen((o) => !o)}
         title={tx('toolbar.language')}
         aria-label={tx('toolbar.language')}
-        className="flex items-center px-3 text-muted hover:bg-hover hover:text-fg"
+        className="flex items-center px-2.5 text-muted hover:bg-hover hover:text-fg lg:px-3"
       >
         <Languages className="size-4" />
       </button>
@@ -471,19 +475,19 @@ export function CopilotMenu() {
   useClickOutside(ref, open, () => setOpen(false))
 
   return (
-    <div ref={ref} className="relative flex border-r border-line">
+    <div ref={ref} className="relative flex shrink-0 border-r border-line">
       <button
         onClick={() => setOpen((o) => !o)}
         title={tx('copilotmenu.copilot')}
         aria-label={tx('copilotmenu.copilot')}
-        className="flex items-center px-3 text-muted hover:bg-hover hover:text-fg"
+        className="flex items-center px-2.5 text-muted hover:bg-hover hover:text-fg lg:px-3"
       >
         <Sparkles className="size-4" />
       </button>
       {open && (
         <div
           role="menu"
-          className="absolute top-full right-1 z-10 mt-1 w-64 rounded-md border border-line bg-panel py-1 shadow-lg"
+          className="absolute top-full right-1 z-10 mt-1 max-h-[70vh] w-64 overflow-y-auto rounded-md border border-line bg-panel py-1 shadow-lg"
         >
           <div className="px-3 py-1 text-xs text-muted">
             {tx('copilotmenu.copilot')}
@@ -526,12 +530,12 @@ function AccountMenu({
   }
 
   return (
-    <div ref={ref} className="relative flex">
+    <div ref={ref} className="relative flex shrink-0">
       {account ? (
         <button
           onClick={() => setOpen((o) => !o)}
           title={account.login}
-          className="flex items-center px-3 hover:bg-hover"
+          className="flex items-center px-2.5 hover:bg-hover lg:px-3"
         >
           <img
             src={account.avatarUrl}
@@ -542,15 +546,15 @@ function AccountMenu({
       ) : (
         <button
           onClick={() => setOpen((o) => !o)}
-          className="flex items-center gap-2 px-4 hover:bg-hover"
+          className="flex items-center gap-2 px-3 whitespace-nowrap hover:bg-hover lg:px-4"
         >
-          <GithubIcon className="size-4" />
+          <GithubIcon className="size-4 shrink-0" />
           {tx('toolbar.sign-in')}
-          <ChevronDown className="size-3 text-muted" />
+          <ChevronDown className="size-3 shrink-0 text-muted" />
         </button>
       )}
       {open && (
-        <div className="absolute top-full right-1 z-10 mt-1 w-56 overflow-hidden rounded-md border border-line bg-panel shadow-lg">
+        <div className="absolute top-full right-1 z-10 mt-1 max-h-[70vh] w-56 overflow-y-auto rounded-md border border-line bg-panel shadow-lg">
           {account ? (
             <div className="border-b border-line px-3 py-2">
               <div className="truncate font-medium">
@@ -811,7 +815,7 @@ export function BranchMenu({
   }
 
   return (
-    <div ref={ref} className="relative flex">
+    <div ref={ref} className="relative flex min-w-0 shrink">
       <ToolbarButton
         onClick={() => setOpen((o) => !o)}
         label={tx('toolbar.current-branch')}
@@ -821,7 +825,7 @@ export function BranchMenu({
         trailing={<ChevronDown className="size-4 text-muted" />}
       />
       {open && (
-        <div className="absolute top-full left-0 z-10 mt-1 w-80 overflow-hidden rounded-md border border-line bg-panel shadow-lg">
+        <div className="absolute top-full left-0 z-10 mt-1 w-80 max-w-[calc(100vw-1rem)] overflow-hidden rounded-md border border-line bg-panel shadow-lg">
           <form
             onSubmit={create}
             className="flex gap-1 border-b border-line p-2"
@@ -841,7 +845,7 @@ export function BranchMenu({
               <Plus className="size-4" />
             </button>
           </form>
-          <ul className="max-h-80 overflow-auto py-1">
+          <ul className="max-h-[min(20rem,calc(100vh-8rem))] overflow-auto py-1">
             {shown.length === 0 && (
               <li className="px-3 py-1.5 text-muted">
                 {tx('toolbar.no-branch-matches', { name: newName.trim() })}

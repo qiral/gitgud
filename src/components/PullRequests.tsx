@@ -283,14 +283,14 @@ function PullRequestButton({
     <button
       onClick={onClick}
       title={title}
-      className="flex min-w-32 items-center gap-3 border-r border-line px-4 text-left hover:bg-hover"
+      className="flex min-w-0 shrink items-center gap-2 border-r border-line px-2.5 text-left hover:bg-hover lg:gap-3 lg:px-3.5 xl:min-w-32 xl:px-4"
     >
-      <Icon className="size-4 text-muted" />
+      <Icon className="size-4 shrink-0 text-muted" />
       <span className="flex min-w-0 flex-1 flex-col leading-tight">
-        <span className="text-xs text-muted">
+        <span className="truncate text-xs text-muted">
           {t('pullrequests.pull-request')}
         </span>
-        <span className="flex items-center gap-1.5 font-medium">
+        <span className="flex min-w-0 items-center gap-1.5 font-medium">
           <span className="truncate">
             {label}
             {detail && ` · ${detail}`}

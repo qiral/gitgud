@@ -28,8 +28,7 @@ export default function CopyButton({
       title={copied ? t('copybutton.copied') : title}
       onClick={async (e) => {
         e.stopPropagation()
-        await copyText(text)
-        setCopied(true)
+        if (await copyText(text)) setCopied(true)
       }}
       className="flex shrink-0 items-center gap-1 rounded px-1 py-0.5 text-muted hover:bg-hover hover:text-fg"
     >

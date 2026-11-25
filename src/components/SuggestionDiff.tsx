@@ -31,18 +31,20 @@ export default function SuggestionDiff({
   const { t } = useTranslation()
   return (
     <div className="overflow-hidden rounded border border-line">
-      <div className="flex items-center gap-2 bg-panel px-2 py-1 font-sans text-xs">
-        <span className="flex-1 font-semibold text-muted">{label}</span>
+      <div className="flex flex-wrap items-center gap-2 bg-panel px-2 py-1 font-sans text-xs">
+        <span className="min-w-0 flex-1 truncate font-semibold text-muted">
+          {label}
+        </span>
         <button
           onClick={onAccept}
-          className="flex items-center gap-1 rounded bg-accent px-2 py-0.5 font-medium text-on-accent hover:opacity-90"
+          className="flex shrink-0 items-center gap-1 rounded bg-accent px-2 py-0.5 font-medium text-on-accent hover:opacity-90"
         >
           <Check className="size-3.5" />
           {t('suggestiondiff.accept')}
         </button>
         <button
           onClick={onReject}
-          className="flex items-center gap-1 rounded border border-line px-2 py-0.5 hover:bg-hover"
+          className="flex shrink-0 items-center gap-1 rounded border border-line px-2 py-0.5 hover:bg-hover"
         >
           <X className="size-3.5" />
           {t('suggestiondiff.reject')}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { openUrl } from '../lib/open'
+import { copyText } from '../lib/copy'
 import { ExternalLink, Loader2 } from 'lucide-react'
 import { errorMessage, github, type Account, type DeviceCode } from '../lib/git'
 import Dialog from './Dialog'
@@ -63,11 +64,8 @@ export default function SignInDialog({ onClose, onSignedIn }: Props) {
 
   async function openGitHub() {
     if (!code) return
-    try {
-      await navigator.clipboard.writeText(code.userCode)
-    } catch {
-      // The code is on screen; copying is only a convenience.
-    }
+    // The code is on screen; copying is only a convenience.
+    await copyText(code.userCode, { quiet: true })
     await openUrl(code.verificationUri)
   }
 

@@ -107,9 +107,10 @@ body {
   background-color: var(--app-muted);
 }
 
-/* Native checkboxes don't follow the theme on Linux. */
+/* Native form controls don't follow the theme on Linux (WebKitGTK). */
 @layer base {
-  input[type='checkbox'] {
+  input[type='checkbox'],
+  input[type='radio'] {
     appearance: none;
     display: inline-grid;
     place-content: center;
@@ -118,11 +119,19 @@ body {
     height: 16px;
     margin: 0;
     border: 1px solid var(--app-muted);
-    border-radius: 4px;
     background: var(--app-bg);
   }
 
-  input[type='checkbox']:checked {
+  input[type='checkbox'] {
+    border-radius: 4px;
+  }
+
+  input[type='radio'] {
+    border-radius: 9999px;
+  }
+
+  input[type='checkbox']:checked,
+  input[type='radio']:checked {
     border-color: var(--app-accent);
     background: var(--app-accent);
   }
@@ -135,12 +144,33 @@ body {
     clip-path: polygon(14% 44%, 0 60%, 40% 96%, 100% 18%, 84% 6%, 38% 66%);
   }
 
-  input[type='checkbox']:focus-visible {
+  input[type='radio']:checked::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background: var(--app-on-accent);
+  }
+
+  input[type='checkbox']:focus-visible,
+  input[type='radio']:focus-visible {
     outline: 2px solid var(--app-accent);
     outline-offset: 2px;
   }
 
-  input[type='checkbox']:disabled {
+  input[type='checkbox']:disabled,
+  input[type='radio']:disabled {
     opacity: 0.4;
+  }
+
+  select {
+    background-color: var(--app-bg);
+    color: var(--app-fg);
+  }
+
+  option,
+  optgroup {
+    background-color: var(--app-panel);
+    color: var(--app-fg);
   }
 }

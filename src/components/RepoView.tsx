@@ -73,7 +73,7 @@ const EMPTY_HINT = (t: Translate): Record<Tab, string> => ({
 function Count({ n }: { n: number }) {
   if (n === 0) return null
   return (
-    <span className="ml-1.5 rounded-full bg-hover px-1.5 text-xs">{n}</span>
+    <span className="shrink-0 rounded-full bg-hover px-1.5 text-xs">{n}</span>
   )
 }
 
@@ -113,7 +113,6 @@ export default function RepoView({
   const [submodules, setSubmodules] = useState<Submodule[]>([])
   const [stashes, setStashes] = useState<Stash[]>([])
   const [dialog, setDialog] = useState<
-    | 'signIn'
     | 'hosts'
     | 'publish'
     | 'stash'
@@ -123,6 +122,7 @@ export default function RepoView({
     | 'worktrees'
     | null
   >(null)
+  const [signingIn, setSigningIn] = useState(false)
   const [rebaseFrom, setRebaseFrom] = useState<Commit | null>(null)
   const [selection, setSelection] = useState<Selection | null>(null)
   /** Covers the right-hand pane until something else is picked. */
@@ -381,7 +381,7 @@ export default function RepoView({
     [refresh],
   )
 
-  const openSignIn = useCallback(() => setDialog('signIn'), [])
+  const openSignIn = useCallback(() => setSigningIn(true), [])
   const ai = useCopilot(setError, account !== null, openSignIn)
   const copilotOn = useCopilotPrefs()
   const suggestBranchName = copilotOn.branchName
@@ -435,7 +435,7 @@ export default function RepoView({
       onAccountChange(null)
     })
   const sync = useSync(repo, status, remotes, act, () =>
-    setDialog(account ? 'publish' : 'signIn'),
+    account ? setDialog('publish') : setSigningIn(true),
   )
   const showTab = (t: Tab) => {
     setTab(t)
@@ -511,18 +511,10 @@ export default function RepoView({
   })
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col overflow-hidden">
       {palette.ui}
       {pullRequests.dialog}
       {commitActions.dialogs}
-      {ai.dialog}
-      {answer && !ai.dialog && (
-        <ExplainDialog
-          title={answer.title}
-          explanation={answer.text}
-          onClose={() => setAnswer(null)}
-        />
-      )}
       <Toolbar
         repo={repo}
         status={status}
@@ -534,7 +526,7 @@ export default function RepoView({
         recents={recents}
         onOpenRecent={onOpenRecent}
         onClone={onClone}
-        onSignIn={() => setDialog('signIn')}
+        onSignIn={openSignIn}
         onSignOut={signOut}
         onManageHosts={() => setDialog('hosts')}
         onManageRemotes={() => setDialog('remotes')}
@@ -560,15 +552,6 @@ export default function RepoView({
         }
       />
 
-      {dialog === 'signIn' && (
-        <SignInDialog
-          onClose={() => setDialog(null)}
-          onSignedIn={(a) => {
-            onAccountChange(a)
-            setDialog(null)
-          }}
-        />
-      )}
       {dialog === 'hosts' && <HostsDialog onClose={() => setDialog(null)} />}
       <UndoToast undoable={undoable} disabled={busy !== null} onUndo={undo} />
       {dialog === 'reflog' && (
@@ -644,6 +627,23 @@ export default function RepoView({
           }}
         />
       )}
+      {answer && !ai.dialog && (
+        <ExplainDialog
+          title={answer.title}
+          explanation={answer.text}
+          onClose={() => setAnswer(null)}
+        />
+      )}
+      {ai.dialog}
+      {signingIn && (
+        <SignInDialog
+          onClose={() => setSigningIn(false)}
+          onSignedIn={(a) => {
+            onAccountChange(a)
+            setSigningIn(false)
+          }}
+        />
+      )}
 
       <div className="flex min-h-0 flex-1">
         <aside
@@ -651,18 +651,19 @@ export default function RepoView({
           className="relative flex shrink-0 flex-col border-r border-line bg-panel"
         >
           {sidebar.handle}
-          <div className="flex border-b border-line">
+          <div className="flex min-w-0 border-b border-line">
             {(['changes', 'history', 'stashes'] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => showTab(t)}
-                className={`flex-1 py-2 font-medium ${
+                title={tx(`repoview.tab-${t}`)}
+                className={`flex min-w-0 flex-1 items-center justify-center gap-1 px-1.5 py-2 font-medium ${
                   tab === t
                     ? 'border-b-2 border-accent text-fg'
                     : 'text-muted hover:text-fg'
                 }`}
               >
-                {tx(`repoview.tab-${t}`)}
+                <span className="truncate">{tx(`repoview.tab-${t}`)}</span>
                 {t === 'changes' && <Count n={status?.files.length ?? 0} />}
                 {t === 'stashes' && <Count n={stashes.length} />}
               </button>
