@@ -405,6 +405,17 @@
 
   .files { margin: 8px 0 0; font-size: 13px; line-height: 1.6; color: var(--ink); }
 
+  .files a {
+    display: block;
+    width: fit-content;
+    line-height: 24px;
+    text-decoration: none;
+    border-bottom: var(--border) solid transparent;
+    transition: border-color var(--ease);
+  }
+
+  .files a:hover { border-bottom-color: var(--signal); }
+
   .aside {
     margin: 24px 0 0;
     padding: 16px;
@@ -596,17 +607,22 @@
       <ul class="oslist">
         <li class="card">
           <h3>Linux</h3>
-          <p class="files">.AppImage &middot; .deb &middot; .rpm</p>
+          <p class="files"><a href="https://github.com/qiral/gitgud/releases/download/v0.14.0/GitGud_0.14.0_amd64.AppImage">.AppImage <span aria-hidden="true">&#8599;</span></a>
+            <a href="https://github.com/qiral/gitgud/releases/download/v0.14.0/GitGud_0.14.0_amd64.deb">.deb <span aria-hidden="true">&#8599;</span></a>
+            <a href="https://github.com/qiral/gitgud/releases/download/v0.14.0/GitGud-0.14.0-1.x86_64.rpm">.rpm <span aria-hidden="true">&#8599;</span></a></p>
         </li>
         <li class="card">
           <h3>Windows</h3>
-          <p class="files">.msi &middot; .exe</p>
+          <p class="files"><a href="https://github.com/qiral/gitgud/releases/download/v0.14.0/GitGud_0.14.0_x64_en-US.msi">.msi <span aria-hidden="true">&#8599;</span></a>
+            <a href="https://github.com/qiral/gitgud/releases/download/v0.14.0/GitGud_0.14.0_x64-setup.exe">.exe <span aria-hidden="true">&#8599;</span></a></p>
         </li>
         <li class="card">
           <h3>macOS</h3>
-          <p class="files">.dmg for Apple Silicon and Intel</p>
+          <p class="files"><a href="https://github.com/qiral/gitgud/releases/download/v0.14.0/GitGud_0.14.0_aarch64.dmg">.dmg Apple Silicon <span aria-hidden="true">&#8599;</span></a>
+            <a href="https://github.com/qiral/gitgud/releases/download/v0.14.0/GitGud_0.14.0_x64.dmg">.dmg Intel <span aria-hidden="true">&#8599;</span></a></p>
         </li>
       </ul>
+      <p class="caption">These are the v0.14.0 files. Anything newer is on the releases page.</p>
       <p class="aside">You need <strong>git</strong> installed. Builds are not code-signed yet, so Windows and macOS warn on first launch. The app updates itself after you click once (AppImage, Windows and macOS).</p>
     </section>
 
