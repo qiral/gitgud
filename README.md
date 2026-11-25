@@ -19,48 +19,94 @@ A fast, lightweight, open-source Git GUI for Linux, Windows and macOS.
 
 GitGud aims to be as approachable as GitHub Desktop while exposing more of Git's power: history, branches, stash, merges, conflict resolution and interactive rebase, without hiding what Git is doing.
 
-> **Status:** early development. Expect rough edges. [Download the latest release](https://github.com/qiral/gitgud/releases/latest).
+> **Status:** early development. Expect rough edges.
 
-![History with the commit graph and a commit's changed files](docs/screenshots/history.png)
+[**Download the latest release**](https://github.com/qiral/gitgud/releases/latest)
 
-Pick a commit to browse its changed files one by one, right-click anything to copy its path, name or hash, and hide branch lines you don't care about with the "−" on their dots.
+![History with the commit graph, signature badges and a commit's diff](docs/screenshots/history.png)
+
+[Features](#features) · [Keyboard shortcuts](#keyboard-shortcuts) · [Install](#install) · [Development](#development) · [Contributing](#contributing)
 
 ## Features
 
-- Open any local repository (or pass it on the command line: `gitgud ~/code/project`)
-- Clone from a URL or pick from your GitHub repositories, with live progress
-- See changed files, stage and unstage per file or all at once, and discard changes
-- Stage, unstage or discard individual lines and hunks right from the diff
-- Right-click an untracked file to add it, all files with its extension, or its folder to `.gitignore`
-- Merge branches and resolve conflicts block by block, or abort the merge
-- Edit history: reorder commits by dragging, squash, fixup, reword or drop them
-- Right-click a commit in History to cherry-pick or revert it, reset the current branch to it (soft, mixed or hard), or start a branch or tag there; tags can be pushed or deleted from the same menu
-- Inline diff viewer with line numbers
-- Commit (`Ctrl+Enter` in the message box), or amend the last commit to fix its message or add forgotten files
+### Commit exactly what you want
+
+Click line numbers in a diff to stage, unstage or discard single lines (Shift+click for a range), or take a whole hunk from its header. The arrows on a hunk header show more of the file around it.
+
+![Staging individual lines, with a changed submodule in the list](docs/screenshots/changes.png)
+
+- Amend the last commit, or commit with `Ctrl+Enter`
 - Stash changes (optionally with untracked files), then apply, pop, preview or delete stashes
-- Create, filter, switch, rename and delete branches (right-click a branch or use its "…" button; unmerged branches ask before they go)
-- History with a commit graph across all branches, remote branches and tags; pick a commit or stash to browse its changed files one by one
-- Search History by message, author or hash, and see the history of a single file (right-click it anywhere and pick "Show file history"), following renames
-- Blame a file on disk or at any commit (right-click it and pick "Blame"): see who last changed each line, jump to that commit in History, or keep walking back through parents; optionally ignore whitespace and follow moved lines
-- Compare two branches before you merge (`Ctrl+Shift+D`, or the branch menu) or two commits (`Ctrl`+click in History): the full diff, file by file, and the commits only one side has
-- Diffs and blame are syntax highlighted in your theme's colors, for 45+ languages
-- A repository with nothing to commit opens on History, one with changes on Changes
-- Undo right after a commit, amend, merge, cherry-pick, revert, history edit, reset (even a hard one), branch or stash deletion or discarded files and lines; nothing done since then gets overwritten
-- Browse the reflog of HEAD or a branch, and recover deleted stashes (`Ctrl+K`, "Reflog")
-- Copy file names, paths, commit hashes and messages from right-click menus or the copy buttons, and show a file in its folder
-- Fetch, pull and push, including publishing new branches; when your branch and its upstream have both moved on, pull asks whether to merge or rebase (or follows your `pull.rebase` setting)
-- Manage remotes from the Repository menu: add, rename, edit, fetch or remove them, and add a fork's parent as `upstream` in one click. Merge any remote branch (`Ctrl+Shift+M`), set a branch's upstream from its menu, and pick the remote when publishing a branch or pushing a tag
-- Sign in with GitHub (device flow, token kept in the OS keychain) to push over HTTPS
-- Sign in to GitLab, Gitea, Forgejo or any other HTTPS host with a personal access token; each token is only sent to its own host
-- Publish a local repository to GitHub in one step
-- Create a pull request for the current branch from the toolbar (`Ctrl+R`): pick the base branch, start from the commits or let Copilot write the title and description, and save it as a draft. Branches pushed to a fork go to the parent repository. Once it's open, the toolbar links to it
-- With a GitHub Copilot plan, once signed in with GitHub: generate commit and stash messages, review staged changes before committing, explain commits, stashes, changes and failed git commands, get a suggested merge for each conflict block, name a new branch from a description, draft release notes since a tag or between two commits, summarize what a branch would bring in before merging, and write one message for squashed commits. Each Copilot action can be turned off from the Copilot menu in the toolbar. GitGud runs the [Copilot CLI](https://github.com/github/copilot-cli) you already have, or downloads it once into its own folder, with its own settings so your Copilot MCP servers and plugins aren't loaded. It sends only the diff or conflict you asked about, so organization content exclusions don't apply to it
-- Tells you when a new version is out and updates itself after you click (AppImage, Windows and macOS); an Update button stays in the toolbar until you do, and "Check for updates" sits in the account menu and on the start screen
-- 40 themes with live previews (`Ctrl+,`), including Catppuccin, Gruvbox, Rosé Pine, Tokyo Night, GitHub, Everforest and high contrast ones; pick one, or a light and a dark one to follow your system. Change the accent color, use blue and orange diffs if red and green look alike to you, and set the font and size of code
-- Speaks English, Türkçe, Azərbaycanca, Deutsch, Français, Italiano, Español, 日本語, 简体中文 and 한국어: it starts in your system's language and the 文A menu in the toolbar switches without a restart
-- Drag panel edges to resize them (double-click to reset), collapse the history graph to a single line, or hide just the branch lines you don't care about
-- Recent repositories on the start screen and in the Repository menu
-- A command palette (`Ctrl+K`, `Cmd+K` on macOS) to search and run any action, and keyboard shortcuts for the common ones (press `F1` for the list)
+- Add an untracked file, its extension or its folder to `.gitignore` from its right-click menu
+- Sign commits with a GPG or SSH key ("Commit signing" in the command palette); History shows Verified, Unverified or Bad signature
+- Undo right after a commit, amend, merge, cherry-pick, revert, history edit, reset (even a hard one), branch or stash deletion or discarded changes; nothing done since then gets overwritten
+
+### Read diffs
+
+Unified or side by side, with changed words marked, whitespace ignored if you like, and syntax highlighting in your theme's colors for 45+ languages. Compare two branches (`Ctrl+Shift+D`) or two commits (`Ctrl`+click in History).
+
+![Comparing two branches side by side in a light theme](docs/screenshots/compare.png)
+
+Images are compared as images, side by side or with a swipe slider.
+
+![A changed image, before and after](docs/screenshots/images.png)
+
+### Find your way through history
+
+- Commit graph across all branches, remote branches and tags; collapse it to one line, or hide single branch lines with the "−" on their dots
+- Search by message, author or hash, and follow a single file's history across renames
+- Blame a file on disk or at any commit, jump to the commit behind a line, or keep walking back through parents
+- Cherry-pick, revert, reset (soft, mixed or hard), branch or tag from a commit's right-click menu
+- Browse the reflog and recover deleted stashes
+
+### Rewrite it
+
+Drag commits into a new order, squash, fixup, reword or drop them.
+
+![Editing history with interactive rebase](docs/screenshots/rebase.png)
+
+### Merge and resolve conflicts
+
+Resolve conflicts block by block (ours, theirs or both), or take one side for the whole file. Pull asks whether to merge or rebase when both sides moved on, or follows your `pull.rebase` setting.
+
+![Resolving a merge conflict](docs/screenshots/conflicts.png)
+
+### Pull requests
+
+Create one for the current branch (`Ctrl+R`), as a draft if you like; branches pushed to a fork go to the parent repository. The toolbar shows its checks and review. "Pull requests" in the repository menu lists the open ones and checks any of them out, forks included.
+
+![Open pull requests with their checks and reviews](docs/screenshots/pull-requests.png)
+
+### Branches, remotes, submodules, worktrees
+
+- Create, filter, switch, rename and delete branches; unmerged ones ask before they go
+- Add, rename, edit, fetch or remove remotes, add a fork's parent as `upstream` in one click, and set a branch's upstream
+- Submodules are listed under Changes with the commit they're on: update them, or open one as its own repository. Cloning can download them too
+- Add, open and remove worktrees; a branch checked out in another one says where
+- Clone from a URL or from your GitHub repositories, and publish a local repository to GitHub in one step
+
+### Accounts
+
+- Sign in with GitHub (device flow) to push over HTTPS
+- Sign in to GitLab, Gitea, Forgejo or any other HTTPS host with a personal access token
+- Tokens stay in the OS keychain, and each is only sent to its own host
+
+### GitHub Copilot, if you have it
+
+With a Copilot plan, GitGud can write commit, stash and squash messages, pull request descriptions, branch names and release notes, review staged changes, explain commits and git errors, summarize branches, and suggest merges for conflicts. Each action can be turned off from the Copilot menu.
+
+GitGud runs the [Copilot CLI](https://github.com/github/copilot-cli) you already have, or downloads it once into its own folder, with its own settings so your Copilot MCP servers and plugins aren't loaded. It sends only the diff or conflict you asked about, so organization content exclusions don't apply to it.
+
+### Make it yours
+
+40 themes with live previews (`Ctrl+,`), one for day and one for night if you follow your system. Change the accent color, the code font and its size, or use blue and orange diffs if red and green look alike to you.
+
+![The appearance window in Rosé Pine](docs/screenshots/themes.png)
+
+- English, Türkçe, Azərbaycanca, Deutsch, Français, Italiano, Español, 日本語, 简体中文 and 한국어, switched without a restart
+- A command palette (`Ctrl+K`) for every action
+- Resizable panels that remember their size
+- Tells you when a new version is out and updates itself after you click (AppImage, Windows and macOS)
 
 ### Keyboard shortcuts
 
@@ -84,27 +130,17 @@ Use `Cmd` instead of `Ctrl` on macOS.
 | `Ctrl+,` | Appearance |
 | `F1` | List all shortcuts |
 
-## Screenshots
+## Install
 
-**Stage exactly the lines you want.** Click line numbers in the diff (Shift+click for a range), or stage a whole hunk from its header.
+Get the [latest release](https://github.com/qiral/gitgud/releases/latest):
 
-![Staging individual lines](docs/screenshots/changes.png)
+| OS | Files |
+| --- | --- |
+| Linux | `.AppImage`, `.deb`, `.rpm` |
+| Windows | `.msi`, `.exe` |
+| macOS | `.dmg` for Apple Silicon and Intel |
 
-**Resolve merge conflicts** block by block (ours, theirs or both), or take one side for the whole file.
-
-![Resolving a merge conflict](docs/screenshots/conflicts.png)
-
-**Edit history** without the terminal: drag commits into a new order, squash or drop them, or fix a message.
-
-![Editing history with interactive rebase](docs/screenshots/rebase.png)
-
-**Stash work in progress** and preview it before bringing it back.
-
-![Stashes in the light theme](docs/screenshots/stashes-light.png)
-
-**Pick a theme**, or let GitGud follow your system between a light and a dark one.
-
-![The appearance window in Catppuccin Mocha](docs/screenshots/themes.png)
+You need `git` installed. Builds aren't code-signed yet, so Windows and macOS warn on first launch. Open a repository from the start screen, or pass it on the command line: `gitgud ~/code/project`.
 
 ## Tech stack
 
@@ -122,8 +158,8 @@ Prerequisites:
 - Tauri's system dependencies for your OS: see [tauri.app/start/prerequisites](https://tauri.app/start/prerequisites/)
 
 ```bash
-git clone https://github.com/Huseynteymurzade28/GitGud.git
-cd GitGud
+git clone https://github.com/qiral/gitgud.git
+cd gitgud
 npm install
 npm run tauri dev
 ```
@@ -156,6 +192,10 @@ src/                  React frontend
 src-tauri/
   src/git.rs          Git operations (runs the git CLI, parses its output)
   src/github.rs       GitHub sign-in, token storage and API calls
+  src/pulls.rs        GitHub pull requests
+  src/signing.rs      Commit signing and signature checks
+  src/submodules.rs   Submodules
+  src/worktrees.rs    Worktrees
   src/hosts.rs        Token sign-in for other hosts, and the git credentials env
   src/lib.rs          Tauri commands exposed to the frontend
 ```
