@@ -48,6 +48,7 @@ it('clones into the chosen folder and reports progress', async () => {
     url: 'https://github.com/me/my-app.git',
     parent: '/home/me/code',
     name: 'my-app',
+    submodules: true,
   })
 
   await emit('clone-progress', { phase: 'Receiving objects', percent: 42 })

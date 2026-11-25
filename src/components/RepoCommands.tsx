@@ -20,6 +20,7 @@ import {
   Keyboard,
   LogIn,
   LogOut,
+  Package,
   Palette,
   RefreshCw,
   Search,
@@ -32,6 +33,7 @@ import {
   type Branch,
   type RepoInfo,
   type Status,
+  type Submodule,
   type Undoable,
 } from '../lib/git'
 import { copyText } from '../lib/copy'
@@ -42,6 +44,7 @@ import { useUpdates } from '../lib/updates'
 import CommandPalette, { type Command } from './CommandPalette'
 import { branchSide, remoteSide, type CompareSide } from './CompareView'
 import ShortcutsDialog from './ShortcutsDialog'
+import { useUpdateSubmodules } from './SubmoduleList'
 import PromptDialog from './PromptDialog'
 import type { Sync } from './SyncActions'
 import { useTranslation } from '../i18n'
@@ -75,6 +78,8 @@ interface Options {
   onManageHosts: () => void
   onManageRemotes: () => void
   onSigning: () => void
+  onWorktrees: () => void
+  submodules: Submodule[]
   undoable: Undoable | null
   onUndo: (id: number) => void
   onReflog: () => void
@@ -91,6 +96,7 @@ export function useRepoCommands(o: Options) {
   const [palette, setPalette] = useState<Command | 'root' | null>(null)
   const [showKeys, setShowKeys] = useState(false)
   const [newBranch, setNewBranch] = useState(false)
+  const updateSubmodules = useUpdateSubmodules(o.repo, o.act)
   const updates = useUpdates()
   const current = o.status?.branch ?? null
   const others = o.branches.filter((b) => !b.current)
@@ -166,6 +172,27 @@ export function useRepoCommands(o: Options) {
       run: () => copyText(o.repo.path),
     },
     {
+      id: 'worktrees',
+      group: t('repocommands.group-repository'),
+      label: t('worktrees.command'),
+      keywords: 'folder checkout parallel',
+      icon: FolderGit2,
+      run: o.onWorktrees,
+    },
+    ...(o.submodules.length > 0
+      ? [
+          {
+            id: 'submodules',
+            group: t('repocommands.group-repository'),
+            label: t('submodules.update-all'),
+            keywords: 'submodule init recursive',
+            icon: Package,
+            disabled: o.busy,
+            run: () => updateSubmodules(o.submodules, null),
+          },
+        ]
+      : []),
+    {
       id: 'signing',
       group: t('repocommands.group-repository'),
       label: t('signing.command'),
@@ -240,10 +267,13 @@ export function useRepoCommands(o: Options) {
             id: `switch:${b.name}`,
             group: t('repocommands.group-branches'),
             label: b.name,
-            detail: b.upstream ?? undefined,
-            icon: GitBranch,
+            // Only one worktree can have a branch, so go to that one.
+            detail: b.worktree ?? b.upstream ?? undefined,
+            icon: b.worktree ? FolderGit2 : GitBranch,
             run: () =>
-              o.act('switch', () => git.switchBranch(o.repo.path, b.name)),
+              b.worktree
+                ? o.onOpenRecent(b.worktree)
+                : o.act('switch', () => git.switchBranch(o.repo.path, b.name)),
           })),
       },
     },

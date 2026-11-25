@@ -134,6 +134,7 @@ const messages: Messages = {
   'clonedialog.sign-in-to-github': 'Accedi a GitHub',
   'clonedialog.sign-in-to-see-your-github-repositories':
     'Accedi per vedere i tuoi repository GitHub.',
+  'clonedialog.submodules': 'Scarica anche i sottomoduli',
   'clonedialog.will-be-cloned-to': 'Verrà clonato in',
   'commandpalette.back': 'Indietro',
   'commandpalette.command-palette': 'Tavolozza comandi',
@@ -546,6 +547,22 @@ const messages: Messages = {
   'stashpanel.pop-apply-and-delete': 'Pop (applica ed elimina)',
   'stashpanel.stash-your-changes-from-the-changes-tab-to-set-them-aside-for-later':
     'Metti le modifiche nello stash dalla scheda Modifiche per tenerle da parte.',
+  'submodules.badge': 'sottomodulo',
+  'submodules.changed-why': 'Questo repository richiede invece {hash}.',
+  'submodules.dirty':
+    'Contiene modifiche non committate. Aprilo per committarle.',
+  'submodules.missing': 'non scaricato',
+  'submodules.missing-why':
+    'Non ancora scaricato. Questo repository richiede {hash}.',
+  'submodules.new-commit': 'È in uso un altro commit',
+  'submodules.open': 'Apri sottomodulo',
+  'submodules.open-one': 'Apri {path}',
+  'submodules.title': 'Sottomoduli',
+  'submodules.update': 'Aggiorna sottomodulo',
+  'submodules.update-all': 'Aggiorna sottomoduli',
+  'submodules.update-body':
+    'L’aggiornamento passa al commit registrato da questo repository, al posto di quello attuale. I commit fatti senza branch in un sottomodulo possono poi essere difficili da ritrovare.',
+  'submodules.update-one': 'Aggiorna {path}',
   'suggestiondiff.accept': 'Accetta',
   'suggestiondiff.reject': 'Rifiuta',
   'syncactions.publish-to': 'Pubblica {branch} su',
@@ -649,6 +666,23 @@ const messages: Messages = {
   'updatenotice.update-and-restart': 'Aggiorna e riavvia',
   'updatenotice.what-s-new': 'Novità',
   'updatenotice.you-re-up-to-date': 'Sei aggiornato',
+  'worktrees.add': 'Aggiungi worktree',
+  'worktrees.branch': 'Branch',
+  'worktrees.checked-out-in': 'In uso in {path}',
+  'worktrees.command': 'Worktree…',
+  'worktrees.dirty-body':
+    '{path} contiene file non committati o nuovi, oppure sottomoduli. Rimuovendolo verranno eliminati per sempre.',
+  'worktrees.folder': 'Cartella',
+  'worktrees.locked': 'Bloccato',
+  'worktrees.missing': 'cartella mancante',
+  'worktrees.new-branch': 'Nuovo branch',
+  'worktrees.open': 'aperto',
+  'worktrees.open-it': 'Apri worktree',
+  'worktrees.remove': 'Rimuovi worktree',
+  'worktrees.remove-anyway': 'Rimuovi comunque',
+  'worktrees.remove-body':
+    'Eliminare la cartella {path}? Il branch viene mantenuto.',
+  'worktrees.title': 'Worktree',
 }
 
 export default messages

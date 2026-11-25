@@ -125,6 +125,7 @@ const messages: Messages = {
   'clonedialog.sign-in-to-github': '登录 GitHub',
   'clonedialog.sign-in-to-see-your-github-repositories':
     '登录后即可查看你的 GitHub 仓库。',
+  'clonedialog.submodules': '同时下载子模块',
   'clonedialog.will-be-cloned-to': '将克隆到',
   'commandpalette.back': '返回',
   'commandpalette.command-palette': '命令面板',
@@ -499,6 +500,20 @@ const messages: Messages = {
   'stashpanel.pop-apply-and-delete': '弹出（应用并删除）',
   'stashpanel.stash-your-changes-from-the-changes-tab-to-set-them-aside-for-later':
     '在“更改”标签页中贮藏更改，留待以后使用。',
+  'submodules.badge': '子模块',
+  'submodules.changed-why': '此仓库需要的是 {hash}。',
+  'submodules.dirty': '其中有未提交的更改。请打开它进行提交。',
+  'submodules.missing': '未下载',
+  'submodules.missing-why': '尚未下载。此仓库需要 {hash}。',
+  'submodules.new-commit': '已检出其他提交',
+  'submodules.open': '打开子模块',
+  'submodules.open-one': '打开 {path}',
+  'submodules.title': '子模块',
+  'submodules.update': '更新子模块',
+  'submodules.update-all': '更新子模块',
+  'submodules.update-body':
+    '更新会检出此仓库记录的提交，而不是当前的提交。在子模块中未在分支上创建的提交之后可能很难找到。',
+  'submodules.update-one': '更新 {path}',
   'suggestiondiff.accept': '接受',
   'suggestiondiff.reject': '拒绝',
   'syncactions.publish-to': '将 {branch} 发布到',
@@ -597,6 +612,22 @@ const messages: Messages = {
   'updatenotice.update-and-restart': '更新并重启',
   'updatenotice.what-s-new': '新功能',
   'updatenotice.you-re-up-to-date': '已是最新版本',
+  'worktrees.add': '添加工作树',
+  'worktrees.branch': '分支',
+  'worktrees.checked-out-in': '已在 {path} 中检出',
+  'worktrees.command': '工作树…',
+  'worktrees.dirty-body':
+    '{path} 中有未提交的文件、新文件或子模块。移除后将永久删除。',
+  'worktrees.folder': '文件夹',
+  'worktrees.locked': '已锁定',
+  'worktrees.missing': '文件夹已不存在',
+  'worktrees.new-branch': '新分支',
+  'worktrees.open': '已打开',
+  'worktrees.open-it': '打开工作树',
+  'worktrees.remove': '移除工作树',
+  'worktrees.remove-anyway': '仍然移除',
+  'worktrees.remove-body': '删除文件夹 {path}？分支会保留。',
+  'worktrees.title': '工作树',
 }
 
 export default messages

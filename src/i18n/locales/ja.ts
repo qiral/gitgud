@@ -130,6 +130,7 @@ const messages: Messages = {
   'clonedialog.sign-in-to-github': 'GitHub にサインイン',
   'clonedialog.sign-in-to-see-your-github-repositories':
     'サインインすると GitHub のリポジトリが表示されます。',
+  'clonedialog.submodules': 'サブモジュールもダウンロード',
   'clonedialog.will-be-cloned-to': 'クローン先:',
   'commandpalette.back': '戻る',
   'commandpalette.command-palette': 'コマンドパレット',
@@ -523,6 +524,23 @@ const messages: Messages = {
   'stashpanel.pop-apply-and-delete': 'ポップ (適用して削除)',
   'stashpanel.stash-your-changes-from-the-changes-tab-to-set-them-aside-for-later':
     '変更タブから変更をスタッシュすると、後で使えるように退避できます。',
+  'submodules.badge': 'サブモジュール',
+  'submodules.changed-why':
+    'このリポジトリは代わりに {hash} を指定しています。',
+  'submodules.dirty':
+    'コミットされていない変更があります。開いてコミットしてください。',
+  'submodules.missing': '未ダウンロード',
+  'submodules.missing-why':
+    'まだダウンロードされていません。このリポジトリは {hash} を指定しています。',
+  'submodules.new-commit': '別のコミットがチェックアウトされています',
+  'submodules.open': 'サブモジュールを開く',
+  'submodules.open-one': '{path} を開く',
+  'submodules.title': 'サブモジュール',
+  'submodules.update': 'サブモジュールを更新',
+  'submodules.update-all': 'サブモジュールを更新',
+  'submodules.update-body':
+    '更新すると、現在のコミットではなく、このリポジトリに記録されたコミットがチェックアウトされます。ブランチなしでサブモジュールに作成したコミットは、後で見つけにくくなることがあります。',
+  'submodules.update-one': '{path} を更新',
   'suggestiondiff.accept': '適用',
   'suggestiondiff.reject': '却下',
   'syncactions.publish-to': '{branch} の公開先',
@@ -624,6 +642,23 @@ const messages: Messages = {
   'updatenotice.update-and-restart': 'アップデートして再起動',
   'updatenotice.what-s-new': '新機能',
   'updatenotice.you-re-up-to-date': '最新の状態です',
+  'worktrees.add': 'ワークツリーを追加',
+  'worktrees.branch': 'ブランチ',
+  'worktrees.checked-out-in': '{path} でチェックアウト済み',
+  'worktrees.command': 'ワークツリー…',
+  'worktrees.dirty-body':
+    '{path} にはコミットされていないファイルや新しいファイル、またはサブモジュールがあります。削除すると元に戻せません。',
+  'worktrees.folder': 'フォルダー',
+  'worktrees.locked': 'ロック中',
+  'worktrees.missing': 'フォルダーがありません',
+  'worktrees.new-branch': '新しいブランチ',
+  'worktrees.open': '開いています',
+  'worktrees.open-it': 'ワークツリーを開く',
+  'worktrees.remove': 'ワークツリーを削除',
+  'worktrees.remove-anyway': 'それでも削除',
+  'worktrees.remove-body':
+    'フォルダー {path} を削除しますか？ブランチは残ります。',
+  'worktrees.title': 'ワークツリー',
 }
 
 export default messages

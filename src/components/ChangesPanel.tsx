@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { confirm } from '@tauri-apps/plugin-dialog'
 import {
   Archive,
+  Download,
   EyeOff,
+  FolderOpen,
   GitMerge,
   Loader2,
   Minus,
@@ -21,10 +23,12 @@ import {
   type Operation,
   type RepoInfo,
   type Status,
+  type Submodule,
 } from '../lib/git'
 import { fileMenuItems } from '../lib/copy'
-import { basename, dirname, extension } from '../lib/paths'
+import { absolutePath, basename, dirname, extension } from '../lib/paths'
 import { useContextMenu, type MenuItem } from './ContextMenu'
+import SubmoduleList, { useUpdateSubmodules } from './SubmoduleList'
 import SuggestionDiff from './SuggestionDiff'
 import type { Selection } from './RepoView'
 import { useTranslation } from '../i18n'
@@ -34,6 +38,9 @@ interface Props {
   /** Kept mounted behind other tabs, so a typed message isn't lost. */
   hidden?: boolean
   files: FileChange[]
+  submodules?: Submodule[]
+  /** Opens a submodule as its own repository. */
+  onOpenRepo?: (path: string) => void
   /** Set while a merge, cherry-pick or revert is in progress, e.g.
    *  "Merge branch 'feature'". */
   merging: string | null
@@ -59,6 +66,8 @@ export default function ChangesPanel({
   repo,
   hidden = false,
   files,
+  submodules = [],
+  onOpenRepo,
   merging,
   operation = 'merge',
   rebasing,
@@ -97,6 +106,7 @@ export default function ChangesPanel({
     setMessage(amending.draft)
     setAmending(null)
   }, [hidden, amending])
+  const updateSubmodules = useUpdateSubmodules(repo, act)
   const { menu, open } = useContextMenu()
   const conflicts = files.filter((f) => f.conflicted)
   const staged = files.filter(isStaged)
@@ -257,7 +267,7 @@ export default function ChangesPanel({
               onClick: () => act('stage', () => git.stage(repo.path, [f.path])),
             },
       )
-      if (!inStaged && !f.untracked)
+      if (!inStaged && !f.untracked && !f.submodule)
         items.push({
           label: t('changespanel.discard-changes-2'),
           icon: Undo2,
@@ -265,6 +275,23 @@ export default function ChangesPanel({
           onClick: () => discard(f),
         })
       items.push('separator')
+    }
+    if (f.submodule) {
+      const sub = submodules.filter((s) => s.path === f.path)
+      if (onOpenRepo)
+        items.push({
+          label: t('submodules.open'),
+          icon: FolderOpen,
+          onClick: () => onOpenRepo(absolutePath(repo.path, f.path)),
+        })
+      items.push(
+        {
+          label: t('submodules.update'),
+          icon: Download,
+          onClick: () => updateSubmodules(sub, f.path),
+        },
+        'separator',
+      )
     }
     if (f.untracked) items.push(...ignoreItems(f.path), 'separator')
     const deleted = f.worktree === 'D' || f.index === 'D'
@@ -363,6 +390,15 @@ export default function ChangesPanel({
           onToggle={(f) => act('stage', () => git.stage(repo.path, [f.path]))}
           onDiscard={discard}
         />
+        {onOpenRepo && (
+          <SubmoduleList
+            repo={repo}
+            submodules={submodules}
+            busy={busy}
+            act={act}
+            onOpen={onOpenRepo}
+          />
+        )}
         {files.length === 0 && (
           <p className="p-6 text-center text-muted">
             {t('changespanel.no-local-changes')}
@@ -566,7 +602,8 @@ function FileList({
                 {dirname(f.path)}
               </span>
             </span>
-            {onDiscard && !f.untracked && !f.conflicted && (
+            {f.submodule && <SubmoduleBadge change={f.submodule} />}
+            {onDiscard && !f.untracked && !f.conflicted && !f.submodule && (
               <RowButton
                 title={t('changespanel.discard-changes')}
                 onClick={() => onDiscard(f)}
@@ -574,7 +611,8 @@ function FileList({
                 <Undo2 className="size-3.5" />
               </RowButton>
             )}
-            {onToggle && (
+            {/* Files in a submodule can't be staged from here. */}
+            {onToggle && (staged || !f.submodule || f.submodule.commit) && (
               <RowButton
                 title={
                   staged ? t('changespanel.unstage') : t('changespanel.stage')
@@ -592,6 +630,26 @@ function FileList({
         ))}
       </ul>
     </section>
+  )
+}
+
+function SubmoduleBadge({
+  change,
+}: {
+  change: NonNullable<FileChange['submodule']>
+}) {
+  const { t } = useTranslation()
+  const what = [
+    change.commit && t('submodules.new-commit'),
+    (change.modified || change.untracked) && t('submodules.dirty'),
+  ].filter(Boolean)
+  return (
+    <span
+      title={what.join('\n')}
+      className="shrink-0 rounded border border-line px-1 text-xs text-muted"
+    >
+      {t('submodules.badge')}
+    </span>
   )
 }
 

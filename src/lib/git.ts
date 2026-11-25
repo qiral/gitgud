@@ -15,6 +15,9 @@ export interface FileChange {
   worktree: string
   untracked: boolean
   conflicted: boolean
+  /** What changed about it, if it's a submodule: the commit, or files in it
+   *  that can only be committed there. */
+  submodule?: { commit: boolean; modified: boolean; untracked: boolean } | null
 }
 
 export interface Status {
@@ -51,6 +54,30 @@ export interface Branch {
   name: string
   current: boolean
   upstream: string | null
+  /** The other worktree it's checked out in. */
+  worktree?: string | null
+}
+
+export interface Submodule {
+  path: string
+  /** The commit the repository asks for. */
+  recorded: string
+  checkedOut: string | null
+  state: 'missing' | 'changed' | 'current'
+}
+
+export interface Worktree {
+  path: string
+  /** Null when detached. */
+  branch: string | null
+  head: string | null
+  /** The repository itself. */
+  main: boolean
+  /** The one that's open. */
+  current: boolean
+  locked: boolean
+  /** Its folder is gone. */
+  missing: boolean
 }
 
 export interface RefLabel {
@@ -602,8 +629,8 @@ export const git = {
   /** `remote` is where a branch without an upstream gets published. */
   push: (repo: string, remote: string | null = null) =>
     invoke<void>('push', { repo, remote }),
-  clone: (url: string, parent: string, name: string) =>
-    invoke<RepoInfo>('clone_repo', { url, parent, name }),
+  clone: (url: string, parent: string, name: string, submodules: boolean) =>
+    invoke<RepoInfo>('clone_repo', { url, parent, name, submodules }),
   /** Makes a running `clone` fail; it removes the half-cloned folder first. */
   cancelClone: () => invoke<void>('cancel_clone'),
   remotes: (repo: string) => invoke<Remote[]>('remotes', { repo }),
@@ -621,6 +648,17 @@ export const git = {
   /** Null clears the branch's upstream. */
   setUpstream: (repo: string, branch: string, upstream: string | null) =>
     invoke<void>('set_upstream', { repo, branch, upstream }),
+  submodules: (repo: string) => invoke<Submodule[]>('submodules', { repo }),
+  /** Checks out the recorded commits; null for all submodules. */
+  updateSubmodules: (repo: string, path: string | null) =>
+    invoke<void>('update_submodules', { repo, path }),
+  worktrees: (repo: string) => invoke<Worktree[]>('worktrees', { repo }),
+  /** With `create`, the branch is made first. Returns the folder. */
+  addWorktree: (repo: string, path: string, branch: string, create: boolean) =>
+    invoke<string>('add_worktree', { repo, path, branch, create }),
+  /** Without `force`, one with changes is kept and reported. */
+  removeWorktree: (repo: string, path: string, force = false) =>
+    invoke<{ dirty: boolean }>('remove_worktree', { repo, path, force }),
   signingSettings: (repo: string) =>
     invoke<SigningSettings>('signing_settings', { repo }),
   /** Changes this repository's config only. */

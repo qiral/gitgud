@@ -37,6 +37,7 @@ it('summarizes what another branch would bring in', () => {
         { name: 'feature/login', current: false, upstream: null },
       ]}
       remoteBranches={[]}
+      onOpenRecent={() => {}}
       act={async () => true}
       onSummarizeBranch={onSummarizeBranch}
     />,

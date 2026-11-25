@@ -135,6 +135,7 @@ const messages: Messages = {
   'clonedialog.sign-in-to-github': 'Iniciar sesión en GitHub',
   'clonedialog.sign-in-to-see-your-github-repositories':
     'Inicia sesión para ver tus repositorios de GitHub.',
+  'clonedialog.submodules': 'Descargar también los submódulos',
   'clonedialog.will-be-cloned-to': 'Se clonará en',
   'commandpalette.back': 'Atrás',
   'commandpalette.command-palette': 'Paleta de comandos',
@@ -547,6 +548,20 @@ const messages: Messages = {
   'stashpanel.pop-apply-and-delete': 'Pop (aplicar y eliminar)',
   'stashpanel.stash-your-changes-from-the-changes-tab-to-set-them-aside-for-later':
     'Guarda tus cambios en el stash desde la pestaña Cambios para apartarlos para más tarde.',
+  'submodules.badge': 'submódulo',
+  'submodules.changed-why': 'Este repositorio pide {hash} en su lugar.',
+  'submodules.dirty': 'Tiene cambios sin confirmar. Ábrelo para confirmarlos.',
+  'submodules.missing': 'sin descargar',
+  'submodules.missing-why': 'Aún sin descargar. Este repositorio pide {hash}.',
+  'submodules.new-commit': 'Hay otro commit en uso',
+  'submodules.open': 'Abrir submódulo',
+  'submodules.open-one': 'Abrir {path}',
+  'submodules.title': 'Submódulos',
+  'submodules.update': 'Actualizar submódulo',
+  'submodules.update-all': 'Actualizar submódulos',
+  'submodules.update-body':
+    'Al actualizar se usa el commit registrado por este repositorio en lugar del actual. Los commits hechos sin rama en un submódulo pueden ser difíciles de encontrar después.',
+  'submodules.update-one': 'Actualizar {path}',
   'suggestiondiff.accept': 'Aceptar',
   'suggestiondiff.reject': 'Rechazar',
   'syncactions.publish-to': 'Publicar {branch} en',
@@ -650,6 +665,22 @@ const messages: Messages = {
   'updatenotice.update-and-restart': 'Actualizar y reiniciar',
   'updatenotice.what-s-new': 'Novedades',
   'updatenotice.you-re-up-to-date': 'Estás al día',
+  'worktrees.add': 'Añadir worktree',
+  'worktrees.branch': 'Rama',
+  'worktrees.checked-out-in': 'En uso en {path}',
+  'worktrees.command': 'Worktrees…',
+  'worktrees.dirty-body':
+    '{path} tiene archivos sin confirmar o nuevos, o submódulos. Al eliminarlo se borran para siempre.',
+  'worktrees.folder': 'Carpeta',
+  'worktrees.locked': 'Bloqueado',
+  'worktrees.missing': 'falta la carpeta',
+  'worktrees.new-branch': 'Nueva rama',
+  'worktrees.open': 'abierto',
+  'worktrees.open-it': 'Abrir worktree',
+  'worktrees.remove': 'Eliminar worktree',
+  'worktrees.remove-anyway': 'Eliminar de todos modos',
+  'worktrees.remove-body': '¿Eliminar la carpeta {path}? La rama se conserva.',
+  'worktrees.title': 'Worktrees',
 }
 
 export default messages

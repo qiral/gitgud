@@ -132,6 +132,7 @@ const messages: Messages = {
   'clonedialog.sign-in-to-github': 'GitHub-a daxil ol',
   'clonedialog.sign-in-to-see-your-github-repositories':
     'GitHub repozitorilərinizi görmək üçün daxil olun.',
+  'clonedialog.submodules': 'Submodulları da endir',
   'clonedialog.will-be-cloned-to': 'Klonlanacağı yer:',
   'commandpalette.back': 'Geri',
   'commandpalette.command-palette': 'Əmr paleti',
@@ -537,6 +538,22 @@ const messages: Messages = {
   'stashpanel.pop-apply-and-delete': 'Pop (tətbiq et və sil)',
   'stashpanel.stash-your-changes-from-the-changes-tab-to-set-them-aside-for-later':
     'Dəyişikliklərinizi sonraya saxlamaq üçün Dəyişikliklər bölməsindən stash edin.',
+  'submodules.badge': 'submodul',
+  'submodules.changed-why': 'Bu repo bunun əvəzinə {hash} commitini istəyir.',
+  'submodules.dirty':
+    'Commit edilməmiş dəyişikliklər var. Commit etmək üçün submodulu aç.',
+  'submodules.missing': 'endirilməyib',
+  'submodules.missing-why':
+    'Hələ endirilməyib. Bu repo {hash} commitini istəyir.',
+  'submodules.new-commit': 'Başqa commitə keçilib',
+  'submodules.open': 'Submodulu aç',
+  'submodules.open-one': '{path} aç',
+  'submodules.title': 'Submodullar',
+  'submodules.update': 'Submodulu yenilə',
+  'submodules.update-all': 'Submodulları yenilə',
+  'submodules.update-body':
+    'Yeniləmə indiki commit əvəzinə bu repoda qeyd olunan commitə keçir. Submodulda branch olmadan edilən commitləri sonradan tapmaq çətin ola bilər.',
+  'submodules.update-one': '{path} yenilə',
   'suggestiondiff.accept': 'Qəbul et',
   'suggestiondiff.reject': 'Rədd et',
   'syncactions.publish-to': '{branch} bura dərc edilsin',
@@ -639,6 +656,22 @@ const messages: Messages = {
   'updatenotice.update-and-restart': 'Yenilə və yenidən başlat',
   'updatenotice.what-s-new': 'Yeniliklər',
   'updatenotice.you-re-up-to-date': 'Son versiyadasınız',
+  'worktrees.add': 'Worktree əlavə et',
+  'worktrees.branch': 'Branch',
+  'worktrees.checked-out-in': '{path} qovluğunda açıqdır',
+  'worktrees.command': 'Worktree-lər…',
+  'worktrees.dirty-body':
+    '{path} içində commit edilməmiş və ya yeni fayllar, yaxud submodullar var. Silsən, həmişəlik itəcəklər.',
+  'worktrees.folder': 'Qovluq',
+  'worktrees.locked': 'Kilidli',
+  'worktrees.missing': 'qovluq yoxdur',
+  'worktrees.new-branch': 'Yeni branch',
+  'worktrees.open': 'açıq',
+  'worktrees.open-it': 'Worktree-ni aç',
+  'worktrees.remove': 'Worktree-ni sil',
+  'worktrees.remove-anyway': 'Yenə də sil',
+  'worktrees.remove-body': '{path} qovluğu silinsin? Branch saxlanılır.',
+  'worktrees.title': 'Worktree-lər',
 }
 
 export default messages

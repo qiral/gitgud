@@ -44,6 +44,7 @@ import {
   type RepoInfo,
   type Status,
 } from '../lib/git'
+import { basename } from '../lib/paths'
 import { useTranslation } from '../i18n'
 import {
   COPILOT_ACTIONS,
@@ -75,6 +76,7 @@ interface Props {
   /** The pull request button, when the branch can have one. */
   pullRequest?: React.ReactNode
   onPullRequests: () => void
+  onWorktrees: () => void
   act: (label: string, action: () => Promise<unknown>) => Promise<boolean>
   /** Asks Copilot what a branch would bring into the current one; unset to
    *  hide. */
@@ -102,6 +104,7 @@ export default function Toolbar({
   onCompare,
   pullRequest,
   onPullRequests,
+  onWorktrees,
   act,
   onSummarizeBranch,
 }: Props) {
@@ -118,6 +121,7 @@ export default function Toolbar({
         onClone={onClone}
         onManageRemotes={onManageRemotes}
         onPullRequests={onPullRequests}
+        onWorktrees={onWorktrees}
       />
       <BranchMenu
         repo={repo}
@@ -127,6 +131,7 @@ export default function Toolbar({
         act={act}
         onSummarizeBranch={onSummarizeBranch}
         onCompare={onCompare}
+        onOpenRecent={onOpenRecent}
       />
 
       <div className="flex-1" />
@@ -283,6 +288,7 @@ function RepoMenu({
   onClone,
   onManageRemotes,
   onPullRequests,
+  onWorktrees,
 }: Pick<
   Props,
   | 'repo'
@@ -292,6 +298,7 @@ function RepoMenu({
   | 'onClone'
   | 'onManageRemotes'
   | 'onPullRequests'
+  | 'onWorktrees'
 >) {
   const { t: tx } = useTranslation()
   const others = recents.filter((r) => r.path !== repo.path)
@@ -365,6 +372,11 @@ function RepoMenu({
             tx('pulls.command'),
             <GitPullRequest className="size-4" />,
             onPullRequests,
+          )}
+          {item(
+            tx('worktrees.command'),
+            <FolderGit2 className="size-4" />,
+            onWorktrees,
           )}
         </div>
       )}
@@ -635,6 +647,7 @@ export function BranchMenu({
   act,
   onSummarizeBranch,
   onCompare,
+  onOpenRecent,
 }: Pick<
   Props,
   | 'repo'
@@ -644,6 +657,7 @@ export function BranchMenu({
   | 'act'
   | 'onSummarizeBranch'
   | 'onCompare'
+  | 'onOpenRecent'
 >) {
   const { t: tx } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -669,6 +683,9 @@ export function BranchMenu({
 
   async function switchTo(name: string) {
     setOpen(false)
+    // Only one worktree can have a branch, so go to that one.
+    const elsewhere = branches.find((b) => b.name === name)?.worktree
+    if (elsewhere) return onOpenRecent(elsewhere)
     await act('switch', () => git.switchBranch(repo.path, name))
   }
 
@@ -709,8 +726,10 @@ export function BranchMenu({
     const items: MenuItem[] = []
     if (!b.current)
       items.push({
-        label: tx('toolbar.switch-to-branch'),
-        icon: GitBranch,
+        label: b.worktree
+          ? tx('worktrees.open-it')
+          : tx('toolbar.switch-to-branch'),
+        icon: b.worktree ? FolderOpen : GitBranch,
         onClick: () => switchTo(b.name),
       })
     if (!b.current && status?.branch)
@@ -762,7 +781,7 @@ export function BranchMenu({
         label: tx('toolbar.delete-2'),
         icon: Trash2,
         danger: true,
-        disabled: b.current,
+        disabled: b.current || !!b.worktree,
         onClick: () => remove(b),
       },
     )
@@ -842,6 +861,17 @@ export function BranchMenu({
                     {b.current && <Check className="size-4 text-accent" />}
                   </span>
                   <span className="truncate">{b.name}</span>
+                  {b.worktree && (
+                    <span
+                      title={tx('worktrees.checked-out-in', {
+                        path: b.worktree,
+                      })}
+                      className="ml-auto flex min-w-0 items-center gap-1 text-xs text-muted"
+                    >
+                      <FolderGit2 className="size-3.5 shrink-0" />
+                      <span className="truncate">{basename(b.worktree)}</span>
+                    </span>
+                  )}
                 </button>
                 {!b.current && status?.branch && (
                   <button

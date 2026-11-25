@@ -194,6 +194,17 @@ pub struct FileChange {
     pub worktree: char,
     pub untracked: bool,
     pub conflicted: bool,
+    /// What changed about it, if it's a submodule.
+    pub submodule: Option<SubmoduleChange>,
+}
+
+#[derive(Debug, Serialize, PartialEq)]
+pub struct SubmoduleChange {
+    /// Another commit is checked out.
+    pub commit: bool,
+    /// It has uncommitted changes, which can only be committed in it.
+    pub modified: bool,
+    pub untracked: bool,
 }
 
 #[derive(Debug, Serialize, Default, PartialEq)]
@@ -239,6 +250,17 @@ pub fn status(repo: &Path) -> Result<Status> {
     Ok(status)
 }
 
+/// The `S<c><m><u>` field of a submodule; `N...` for everything else.
+fn submodule(field: &str) -> Option<SubmoduleChange> {
+    let mut flags = field.strip_prefix('S')?.chars();
+    let mut is = |c| flags.next() == Some(c);
+    Some(SubmoduleChange {
+        commit: is('C'),
+        modified: is('M'),
+        untracked: is('U'),
+    })
+}
+
 fn xy(field: &str) -> (char, char) {
     let mut chars = field.chars();
     (chars.next().unwrap_or('.'), chars.next().unwrap_or('.'))
@@ -282,6 +304,7 @@ fn parse_status(raw: &str) -> Status {
                         worktree,
                         untracked: false,
                         conflicted: false,
+                        submodule: submodule(f[2]),
                     });
                 }
             }
@@ -298,6 +321,7 @@ fn parse_status(raw: &str) -> Status {
                         worktree,
                         untracked: false,
                         conflicted: false,
+                        submodule: submodule(f[2]),
                     });
                 }
             }
@@ -313,6 +337,7 @@ fn parse_status(raw: &str) -> Status {
                         worktree,
                         untracked: false,
                         conflicted: true,
+                        submodule: submodule(f[2]),
                     });
                 }
             }
@@ -323,6 +348,7 @@ fn parse_status(raw: &str) -> Status {
                 worktree: '?',
                 untracked: true,
                 conflicted: false,
+                submodule: None,
             }),
             _ => {}
         }
@@ -1019,6 +1045,9 @@ pub struct Branch {
     pub name: String,
     pub current: bool,
     pub upstream: Option<String>,
+    /// The other worktree it's checked out in, where it can't be switched to
+    /// from here.
+    pub worktree: Option<String>,
 }
 
 pub fn branches(repo: &Path) -> Result<Vec<Branch>> {
@@ -1027,7 +1056,7 @@ pub fn branches(repo: &Path) -> Result<Vec<Branch>> {
         &[
             "for-each-ref",
             "--sort=-committerdate",
-            "--format=%(refname:short)%1f%(HEAD)%1f%(upstream:short)",
+            "--format=%(refname:short)%1f%(HEAD)%1f%(upstream:short)%1f%(worktreepath)",
             "refs/heads",
         ],
     )?;
@@ -1041,10 +1070,15 @@ fn parse_branches(raw: &str) -> Vec<Branch> {
             let name = f.next()?.to_string();
             let current = f.next()? == "*";
             let upstream = f.next().filter(|u| !u.is_empty()).map(String::from);
+            let worktree = f
+                .next()
+                .filter(|w| !current && !w.is_empty())
+                .map(String::from);
             Some(Branch {
                 name,
                 current,
                 upstream,
+                worktree,
             })
         })
         .collect()
@@ -1653,12 +1687,14 @@ fn remove_partial_clone(dest: &Path) -> std::io::Result<()> {
 }
 
 /// Clones `url` into `parent/name` and returns the new repository's path.
+/// `submodules` downloads those too, as far as that works.
 /// `on_progress` is called whenever git reports a new percentage, and
 /// `cancel` can stop the clone from another thread.
 pub fn clone(
     url: &str,
     parent: &Path,
     name: &str,
+    submodules: bool,
     env: &[(String, String)],
     cancel: &CloneCancel,
     on_progress: impl FnMut(CloneProgress),
@@ -1669,7 +1705,7 @@ pub fn clone(
             "Unsupported repository URL: {url}"
         )));
     }
-    clone_unchecked(url, parent, name, env, cancel, on_progress)
+    clone_unchecked(url, parent, name, submodules, env, cancel, on_progress)
 }
 
 /// [`clone`] without the URL allow-list; tests use it with `file://` URLs.
@@ -1677,6 +1713,7 @@ fn clone_unchecked(
     url: &str,
     parent: &Path,
     name: &str,
+    submodules: bool,
     env: &[(String, String)],
     cancel: &CloneCancel,
     mut on_progress: impl FnMut(CloneProgress),
@@ -1692,7 +1729,12 @@ fn clone_unchecked(
         )));
     }
 
-    let mut cmd = command(parent, &["clone", "--progress", "--", url, name])?;
+    let mut args = vec!["clone", "--progress"];
+    if submodules {
+        args.push("--recurse-submodules");
+    }
+    args.extend(["--", url, name]);
+    let mut cmd = command(parent, &args)?;
     cmd.envs(env.iter().cloned())
         .stdout(Stdio::null())
         .stderr(Stdio::piped());
@@ -1719,7 +1761,9 @@ fn clone_unchecked(
         return Err(GitError::Failed(CLONE_CANCELLED.into()));
     }
     let messages = result?;
-    if status.success() {
+    // git keeps the clone when only a submodule couldn't be downloaded; that
+    // can be tried again from the app.
+    if status.success() || (submodules && has_head(&dest).unwrap_or(false)) {
         Ok(dest)
     } else {
         let tail = messages[messages.len().saturating_sub(5)..].join("\n");
@@ -2507,35 +2551,70 @@ mod tests {
         let path = src.display().to_string().replace('\\', "/");
         let url = format!("file:///{}", path.trim_start_matches('/'));
         assert!(
-            clone(&url, &base, "dst", &[], &CloneCancel::default(), |_| {}).is_err(),
+            clone(
+                &url,
+                &base,
+                "dst",
+                false,
+                &[],
+                &CloneCancel::default(),
+                |_| {}
+            )
+            .is_err(),
             "file:// is not user-facing"
         );
 
         let mut events = Vec::new();
-        let dest = clone_unchecked(&url, &base, "dst", &[], &CloneCancel::default(), |p| {
-            events.push(p)
-        })
+        let dest = clone_unchecked(
+            &url,
+            &base,
+            "dst",
+            false,
+            &[],
+            &CloneCancel::default(),
+            |p| events.push(p),
+        )
         .unwrap();
         assert!(dest.join("f.txt").exists());
         assert!(events.iter().any(|p| p.percent == 100), "{events:?}");
 
         assert!(
-            clone_unchecked(&url, &base, "dst", &[], &CloneCancel::default(), |_| {}).is_err(),
+            clone_unchecked(
+                &url,
+                &base,
+                "dst",
+                false,
+                &[],
+                &CloneCancel::default(),
+                |_| {}
+            )
+            .is_err(),
             "dest exists"
         );
         assert!(
-            clone_unchecked(&url, &base, "../x", &[], &CloneCancel::default(), |_| {}).is_err(),
+            clone_unchecked(
+                &url,
+                &base,
+                "../x",
+                false,
+                &[],
+                &CloneCancel::default(),
+                |_| {}
+            )
+            .is_err(),
             "bad name"
         );
 
         // Cancelling as soon as git reports progress leaves nothing behind,
         // and the same folder name can be cloned into afterwards.
         let cancel = CloneCancel::default();
-        let err =
-            clone_unchecked(&url, &base, "again", &[], &cancel, |_| cancel.cancel()).unwrap_err();
+        let err = clone_unchecked(&url, &base, "again", false, &[], &cancel, |_| {
+            cancel.cancel()
+        })
+        .unwrap_err();
         assert_eq!(err.to_string(), CLONE_CANCELLED);
         assert!(!base.join("again").exists());
-        clone_unchecked(&url, &base, "again", &[], &cancel, |_| {}).unwrap();
+        clone_unchecked(&url, &base, "again", false, &[], &cancel, |_| {}).unwrap();
         cancel.cancel();
         assert!(
             base.join("again/f.txt").exists(),
@@ -2556,6 +2635,7 @@ mod tests {
             "https://github.com/octocat/Hello-World.git",
             &base,
             "hello",
+            false,
             &[],
             &CloneCancel::default(),
             |p| events.push(p),

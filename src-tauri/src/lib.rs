@@ -15,7 +15,9 @@ mod pulls;
 mod rebase;
 mod remotes;
 mod signing;
+mod submodules;
 mod undo;
+mod worktrees;
 
 use blame::Blame;
 use compare::Differences;
@@ -33,8 +35,10 @@ use rebase::{RebaseOutcome, RebasePlan, TodoItem};
 use remotes::Remote;
 use std::collections::HashMap;
 use std::path::Path;
+use submodules::Submodule;
 use tauri::{Emitter, Manager};
 use undo::{Kind, ReflogEntry, UndoLog, Undoable};
+use worktrees::{RemoveOutcome, Worktree};
 
 // Commands are marked `async` so git runs on a worker thread instead of
 // blocking the UI thread.
@@ -489,6 +493,31 @@ fn set_upstream(repo: String, branch: String, upstream: Option<String>) -> Resul
 }
 
 #[tauri::command(async)]
+fn submodules(repo: String) -> Result<Vec<Submodule>> {
+    submodules::list(Path::new(&repo))
+}
+
+#[tauri::command(async)]
+fn update_submodules(repo: String, path: Option<String>) -> Result<()> {
+    check_github_auth(submodules::update(Path::new(&repo), path.as_deref()))
+}
+
+#[tauri::command(async)]
+fn worktrees(repo: String) -> Result<Vec<Worktree>> {
+    worktrees::list(Path::new(&repo))
+}
+
+#[tauri::command(async)]
+fn add_worktree(repo: String, path: String, branch: String, create: bool) -> Result<String> {
+    worktrees::add(Path::new(&repo), &path, &branch, create)
+}
+
+#[tauri::command(async)]
+fn remove_worktree(repo: String, path: String, force: bool) -> Result<RemoveOutcome> {
+    worktrees::remove(Path::new(&repo), &path, force)
+}
+
+#[tauri::command(async)]
 fn signing_settings(repo: String) -> signing::Settings {
     signing::settings(Path::new(&repo))
 }
@@ -667,12 +696,14 @@ fn clone_repo(
     url: String,
     parent: String,
     name: String,
+    submodules: bool,
 ) -> Result<RepoInfo> {
     let cancel = app.state::<CloneCancel>();
     let dest = check_github_auth(git::clone(
         &url,
         Path::new(&parent),
         &name,
+        submodules,
         &hosts::git_env_for(&[url.trim().to_string()]),
         &cancel,
         |p| {
@@ -913,6 +944,11 @@ pub fn run() {
             set_remote_url,
             remove_remote,
             set_upstream,
+            submodules,
+            update_submodules,
+            worktrees,
+            add_worktree,
+            remove_worktree,
             signing_settings,
             set_signing,
             signatures,
