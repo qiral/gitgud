@@ -484,6 +484,23 @@ const messages: Messages = {
   'signindialog.try-again': 'Riprova',
   'signindialog.waiting-for-you-to-approve-on-github':
     'In attesa della tua approvazione su GitHub…',
+  'signing.bad': 'Firma non valida',
+  'signing.bad-why':
+    'La firma non corrisponde al commit, o la chiave è stata revocata.',
+  'signing.by-email': 'Quella della tua email',
+  'signing.choose-key': 'Scegli una chiave',
+  'signing.command': 'Firma dei commit…',
+  'signing.enable': 'Firma i commit in questo repository',
+  'signing.hint':
+    'Aggiungi la stessa chiave come chiave di firma nelle impostazioni di GitHub, così i commit risulteranno verificati.',
+  'signing.key': 'Chiave',
+  'signing.keys-openpgp': 'Chiavi GPG',
+  'signing.keys-ssh': 'Chiavi SSH',
+  'signing.title': 'Firma dei commit',
+  'signing.unknown': 'Non verificato',
+  'signing.unknown-why':
+    'Firmato, ma la chiave manca, è scaduta o non è attendibile su questo computer.',
+  'signing.verified': 'Verificato',
   'stashdialog.message-optional': 'Messaggio (facoltativo)',
   'stashdialog.set-your-uncommitted-changes-aside-and-get-a-clean-working-tree-you-can-bring-them-back-from-the-stashes-tab':
     'Metti da parte le modifiche non committate e ottieni una directory di lavoro pulita. Puoi recuperarle dalla scheda Stash.',

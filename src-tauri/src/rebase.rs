@@ -234,6 +234,8 @@ fn finish(repo: &Path, result: Result<String>) -> Result<RebaseOutcome> {
             cleanup(repo)?;
             Ok(RebaseOutcome { stopped: false })
         }
+        // Stopped too, but there is something to say about it.
+        Err(e) if crate::signing::is_failure(&e) && progress(repo)?.is_some() => Err(e),
         Err(e) => {
             if progress(repo)?.is_some() {
                 Ok(RebaseOutcome { stopped: true })

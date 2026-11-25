@@ -13,6 +13,7 @@ mod patch;
 mod pulls;
 mod rebase;
 mod remotes;
+mod signing;
 mod undo;
 
 use blame::Blame;
@@ -29,6 +30,7 @@ use ignore::IgnoreKind;
 use pulls::{Comparison, Parent, PullRequest, PullTarget};
 use rebase::{RebaseOutcome, RebasePlan, TodoItem};
 use remotes::Remote;
+use std::collections::HashMap;
 use std::path::Path;
 use tauri::{Emitter, Manager};
 use undo::{Kind, ReflogEntry, UndoLog, Undoable};
@@ -476,6 +478,26 @@ fn set_upstream(repo: String, branch: String, upstream: Option<String>) -> Resul
 }
 
 #[tauri::command(async)]
+fn signing_settings(repo: String) -> signing::Settings {
+    signing::settings(Path::new(&repo))
+}
+
+#[tauri::command(async)]
+fn set_signing(repo: String, enabled: bool, format: String, key: Option<String>) -> Result<()> {
+    signing::set(Path::new(&repo), enabled, &format, key.as_deref())
+}
+
+/// Signatures of those of `hashes` that have one.
+#[tauri::command(async)]
+fn signatures(
+    app: tauri::AppHandle,
+    repo: String,
+    hashes: Vec<String>,
+) -> Result<HashMap<String, signing::Signature>> {
+    signing::check(Path::new(&repo), &hashes, &app_data(&app)?)
+}
+
+#[tauri::command(async)]
 fn github_parent(repo: String) -> Result<Option<Parent>> {
     pulls::parent(Path::new(&repo))
 }
@@ -862,6 +884,9 @@ pub fn run() {
             set_remote_url,
             remove_remote,
             set_upstream,
+            signing_settings,
+            set_signing,
+            signatures,
             github_parent,
             github_account,
             github_start_sign_in,

@@ -24,6 +24,7 @@ import {
   RefreshCw,
   Search,
   Server,
+  ShieldCheck,
   Undo2,
 } from 'lucide-react'
 import {
@@ -73,6 +74,7 @@ interface Options {
   onSignOut: () => void
   onManageHosts: () => void
   onManageRemotes: () => void
+  onSigning: () => void
   undoable: Undoable | null
   onUndo: (id: number) => void
   onReflog: () => void
@@ -162,6 +164,14 @@ export function useRepoCommands(o: Options) {
       label: t('repocommands.copy-repository-path'),
       icon: Copy,
       run: () => copyText(o.repo.path),
+    },
+    {
+      id: 'signing',
+      group: t('repocommands.group-repository'),
+      label: t('signing.command'),
+      keywords: 'gpg ssh key verified signature',
+      icon: ShieldCheck,
+      run: o.onSigning,
     },
 
     // Remote

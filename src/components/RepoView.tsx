@@ -39,6 +39,7 @@ import ConflictView from './ConflictView'
 import RebaseDialog from './RebaseDialog'
 import SignInDialog from './SignInDialog'
 import HostsDialog from './HostsDialog'
+import SigningDialog from './SigningDialog'
 import ReflogDialog from './ReflogDialog'
 import UndoToast from './UndoToast'
 import RemotesDialog from './RemotesDialog'
@@ -109,7 +110,14 @@ export default function RepoView({
   const [remoteBranches, setRemoteBranches] = useState<string[]>([])
   const [stashes, setStashes] = useState<Stash[]>([])
   const [dialog, setDialog] = useState<
-    'signIn' | 'hosts' | 'publish' | 'stash' | 'remotes' | 'reflog' | null
+    | 'signIn'
+    | 'hosts'
+    | 'publish'
+    | 'stash'
+    | 'remotes'
+    | 'reflog'
+    | 'signing'
+    | null
   >(null)
   const [rebaseFrom, setRebaseFrom] = useState<Commit | null>(null)
   const [selection, setSelection] = useState<Selection | null>(null)
@@ -467,6 +475,7 @@ export default function RepoView({
     onSignOut: signOut,
     onManageHosts: () => setDialog('hosts'),
     onManageRemotes: () => setDialog('remotes'),
+    onSigning: () => setDialog('signing'),
     undoable,
     onUndo: undo,
     onReflog: () => setDialog('reflog'),
@@ -562,6 +571,9 @@ export default function RepoView({
           }
           onClose={() => setDialog(null)}
         />
+      )}
+      {dialog === 'signing' && (
+        <SigningDialog repo={repo} onClose={() => setDialog(null)} />
       )}
       {dialog === 'remotes' && (
         <RemotesDialog
@@ -801,6 +813,7 @@ export default function RepoView({
               }
               header={
                 <CommitHeader
+                  repo={repo.path}
                   commit={selection.commit}
                   message={parts.preamble}
                   onExplain={

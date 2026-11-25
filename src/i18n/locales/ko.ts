@@ -459,6 +459,22 @@ const messages: Messages = {
   'signindialog.try-again': '다시 시도',
   'signindialog.waiting-for-you-to-approve-on-github':
     'GitHub에서 승인하기를 기다리는 중…',
+  'signing.bad': '잘못된 서명',
+  'signing.bad-why': '서명이 커밋과 일치하지 않거나 키가 폐기되었습니다.',
+  'signing.by-email': '이메일에 해당하는 키',
+  'signing.choose-key': '키 선택',
+  'signing.command': '커밋 서명…',
+  'signing.enable': '이 저장소의 커밋에 서명',
+  'signing.hint':
+    'GitHub에서 커밋이 확인됨으로 표시되도록 GitHub 설정에 같은 키를 서명 키로 추가하세요.',
+  'signing.key': '키',
+  'signing.keys-openpgp': 'GPG 키',
+  'signing.keys-ssh': 'SSH 키',
+  'signing.title': '커밋 서명',
+  'signing.unknown': '확인되지 않음',
+  'signing.unknown-why':
+    '서명되었지만 이 컴퓨터에 키가 없거나 만료되었거나 신뢰할 수 없습니다.',
+  'signing.verified': '확인됨',
   'stashdialog.message-optional': '메시지 (선택)',
   'stashdialog.set-your-uncommitted-changes-aside-and-get-a-clean-working-tree-you-can-bring-them-back-from-the-stashes-tab':
     '커밋하지 않은 변경 사항을 잠시 치워 두고 깨끗한 작업 트리를 얻습니다. 스태시 탭에서 다시 가져올 수 있습니다.',

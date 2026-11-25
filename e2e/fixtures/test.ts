@@ -184,6 +184,7 @@ function installTauriMock({
         subject: commit.subject,
       },
     ],
+    signatures: () => ({}),
     diff: () => '',
     discard: () => {
       dirty = false

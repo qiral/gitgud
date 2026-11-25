@@ -1,7 +1,9 @@
 import { Sparkles } from 'lucide-react'
 import type { Commit, Stash } from '../lib/git'
 import { relativeTime } from '../lib/time'
+import { useSignatures } from '../lib/signatures'
 import CopyButton from './CopyButton'
+import SignatureBadge from './SignatureBadge'
 import { useTranslation } from '../i18n'
 
 const fullDate = (unixSeconds: number) =>
@@ -9,10 +11,12 @@ const fullDate = (unixSeconds: number) =>
 
 /** Subject, body, author and hash of the commit shown in the diff pane. */
 export function CommitHeader({
+  repo,
   commit,
   message,
   onExplain,
 }: {
+  repo: string
   commit: Commit
   /** The full message, as `git show --format=%B` prints it. */
   message: string
@@ -20,6 +24,7 @@ export function CommitHeader({
   onExplain?: () => void
 }) {
   const { t } = useTranslation()
+  const signature = useSignatures(repo, [commit.hash]).get(commit.hash)
   const body = message.split('\n').slice(1).join('\n').trim()
   return (
     <div className="shrink-0 border-b border-line px-4 py-3">
@@ -43,6 +48,7 @@ export function CommitHeader({
         </span>
         <span>·</span>
         <span title={fullDate(commit.time)}>{relativeTime(commit.time)}</span>
+        {signature && <SignatureBadge signature={signature} label />}
         <span className="flex-1" />
         {onExplain && (
           <button

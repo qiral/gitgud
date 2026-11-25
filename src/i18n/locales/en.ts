@@ -483,6 +483,23 @@ const messages: Messages = {
   'signindialog.try-again': 'Try again',
   'signindialog.waiting-for-you-to-approve-on-github':
     'Waiting for you to approve on GitHub…',
+  'signing.bad': 'Bad signature',
+  'signing.bad-why':
+    'The signature does not match the commit, or its key was revoked.',
+  'signing.by-email': 'The one for your email',
+  'signing.choose-key': 'Choose a key',
+  'signing.command': 'Commit signing…',
+  'signing.enable': 'Sign commits in this repository',
+  'signing.hint':
+    'Add the same key as a signing key in your GitHub settings so commits show as verified there.',
+  'signing.key': 'Key',
+  'signing.keys-openpgp': 'GPG keys',
+  'signing.keys-ssh': 'SSH keys',
+  'signing.title': 'Commit signing',
+  'signing.unknown': 'Unverified',
+  'signing.unknown-why':
+    'Signed, but the key is missing, expired or not trusted on this computer.',
+  'signing.verified': 'Verified',
   'stashdialog.message-optional': 'Message (optional)',
   'stashdialog.set-your-uncommitted-changes-aside-and-get-a-clean-working-tree-you-can-bring-them-back-from-the-stashes-tab':
     'Set your uncommitted changes aside and get a clean working tree. You\n          can bring them back from the Stashes tab.',
