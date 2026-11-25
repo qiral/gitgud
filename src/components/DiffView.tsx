@@ -247,7 +247,7 @@ export default function DiffView({
   /** A hunk header with its buttons, or (side by side) a meta line, across
    *  the whole row. `span` is the table's column count. */
   const fullRow = (line: Line, span: number) => (
-    <tr key={line.index} className={`group ${ROW[line.kind]}`}>
+    <tr key={line.index} className={`group h-(--code-row) ${ROW[line.kind]}`}>
       {/* Skip the line numbers and sign so the text lines up with the code. */}
       <td
         colSpan={span === 4 ? 3 : 2}

@@ -65,6 +65,7 @@ export default function ImageDiff({
     return only ? (
       <div className="p-4">
         <Picture
+          key={only}
           src={only}
           label={t(after ? 'imagediff.added' : 'imagediff.deleted')}
           color={after ? 'text-added' : 'text-removed'}
@@ -98,11 +99,13 @@ export default function ImageDiff({
       ) : (
         <div className="grid grid-cols-2 items-start gap-4">
           <Picture
+            key={before}
             src={before}
             label={t('imagediff.before')}
             color="text-removed"
           />
           <Picture
+            key={after}
             src={after}
             label={t('imagediff.after')}
             color="text-added"
@@ -137,10 +140,6 @@ function Picture({
   const { t } = useTranslation()
   const [pixels, setPixels] = useState('')
   const [broken, setBroken] = useState(false)
-  useEffect(() => {
-    setPixels('')
-    setBroken(false)
-  }, [src])
   return (
     <figure className="flex min-w-0 flex-col items-center gap-2">
       <figcaption className="text-xs text-muted">
