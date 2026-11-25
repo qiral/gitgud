@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GitGud: a fast, open-source Git GUI for Linux, Windows and macOS</title>
+<meta name="description" content="A fast, open-source Git GUI for Linux, Windows and macOS, with line-level staging, a readable history, interactive rebase and pull requests.">
+<link rel="canonical" href="https://qiral.github.io/gitgud/">
+<link rel="icon" href="mark.png" type="image/png">
+<meta name="theme-color" content="#16181d">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="GitGud">
+<meta property="og:title" content="GitGud: a fast, open-source Git GUI">
+<meta property="og:description" content="Line-level staging, a readable history, interactive rebase and pull requests, without hiding what Git is doing. Linux, Windows and macOS.">
+<meta property="og:url" content="https://qiral.github.io/gitgud/">
+<meta property="og:image" content="https://qiral.github.io/gitgud/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The GitGud logo mark above the GitGud wordmark on the app's dark background, with the tagline git gud at git.">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="GitGud: a fast, open-source Git GUI">
+<meta name="twitter:description" content="Line-level staging, a readable history, interactive rebase and pull requests, without hiding what Git is doing. Linux, Windows and macOS.">
+<meta name="twitter:image" content="https://qiral.github.io/gitgud/og.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,800&amp;family=JetBrains+Mono:wght@500;600&amp;family=Schibsted+Grotesk:wght@400;500;700;800&amp;display=swap">
+
+<style>
+  :root {
+    color-scheme: dark;
+
+    /* Palette: the app's own dark theme, src/themes.css `[data-theme='dark']`
+       (src/index.css maps --color-bg to --app-bg and so on). The one alternate
+       the app ships alongside it, `[data-theme='light']`, is #ffffff surface,
+       #f6f7f9 panel, #1d2129 ink, #4f6ef7 accent; one page, one surface, so it
+       is noted here and not used. */
+    --surface: #16181d;        /* --app-bg */
+    --surface-raised: #1d2026; /* --app-panel */
+    --ink: #e6e8eb;            /* --app-fg */
+    --muted: #8b919c;          /* --app-muted */
+    --line: #2e323b;           /* --app-line, dividers only (1.38:1) */
+    --edge: #6b7787;           /* borders the eye must resolve (3.90:1 on surface) */
+
+    /* signal: one saturated colour, the app's accent */
+    --signal: #7b93ff;         /* --app-accent */
+    --signal-ink: #16181d;     /* 6.31:1 on the signal; the app's white is 2.82:1 */
+
+    /* measure and rhythm (4/8px in the literal values below) */
+    --page: 1080px;
+    --radius-row: 12px;
+    --radius-card: 14px;
+    --radius-chip: 999px;
+    --border: 1.5px;
+
+    /* depth: hard only, one language (console shadow: #000) */
+    --shadow-hard: 4px 4px 0 #000;
+    --shadow-hard-lift: 6px 6px 0 #000;
+
+    /* motion */
+    --ease: 150ms ease;
+
+    /* three families, three roles */
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-body: 'Schibsted Grotesk', system-ui, sans-serif;
+    --font-meta: 'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--surface);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 17px;
+    line-height: 1.5;
+    font-weight: 400;
+  }
+
+  img { max-width: 100%; height: auto; display: block; }
+
+  a { color: var(--ink); }
+
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--ink);
+  }
+
+  .wrap {
+    width: min(100%, var(--page));
+    margin: 0 auto;
+    padding: 0 clamp(18px, 4vw, 40px);
+  }
+
+  /* meta voice */
+  .label,
+  .tagline,
+  .caption,
+  .note,
+  .top-nav a,
+  .chip,
+  .keys,
+  .foot-meta,
+  .files {
+    font-family: var(--font-meta);
+    font-weight: 500;
+  }
+
+  .label {
+    margin: 0 0 12px;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* top bar */
+  .top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 0 16px;
+    border-bottom: var(--border) solid var(--edge);
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    color: var(--ink);
+  }
+
+  .brand-mark {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+  }
+
+  .brand-word {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 21px;
+    line-height: 0.95;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  .top-nav {
+    display: flex;
+    gap: 20px;
+  }
+
+  .top-nav a {
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--ink);
+    border-bottom: var(--border) solid transparent;
+    padding-bottom: 2px;
+    transition: border-color var(--ease);
+  }
+
+  .top-nav a:hover { border-bottom-color: var(--signal); }
+
+  /* hero */
+  .hero { padding: clamp(40px, 8vw, 72px) 0 clamp(32px, 5vw, 56px); }
+
+  .tagline {
+    margin: 0 0 16px;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+  }
+
+  h1 {
+    margin: 0 0 24px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(44px, 8vw, 84px);
+    line-height: 0.95;
+    letter-spacing: -0.02em;
+    max-width: 18ch;
+  }
+
+  .lead {
+    margin: 0 0 24px;
+    font-size: clamp(17px, 2vw, 19px);
+    line-height: 1.45;
+    max-width: 62ch;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 24px;
+    padding: 0;
+    list-style: none;
+  }
+
+  .chip {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: var(--radius-chip);
+    background: var(--signal);
+    color: var(--signal-ink);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin: 0 0 16px;
+    padding: 0;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 8px 20px;
+    font-family: var(--font-body);
+    font-size: 16px;
+    font-weight: 700;
+    text-decoration: none;
+    color: var(--ink);
+    background: var(--surface-raised);
+    border: 2px solid var(--edge);
+    border-radius: var(--radius-row);
+    box-shadow: var(--shadow-hard);
+    transition: transform var(--ease), border-color var(--ease), box-shadow var(--ease);
+  }
+
+  .btn:hover {
+    transform: translate(-1px, -2px);
+    border-color: var(--signal);
+    box-shadow: var(--shadow-hard-lift);
+  }
+
+  .btn:active { transform: scale(0.985); }
+
+  .btn-primary { background: var(--signal); color: var(--signal-ink); border-color: var(--ink); }
+
+  .glyph {
+    font-family: var(--font-meta);
+    font-size: 14px;
+    transition: transform var(--ease);
+  }
+
+  .btn:hover .glyph { transform: translate(3px, 0); }
+
+  .note {
+    margin: 0;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* figures */
+  .figure { margin: 0 0 clamp(40px, 6vw, 64px); }
+
+  .frame {
+    aspect-ratio: 5 / 3;
+    background: var(--surface-raised);
+    border: var(--border) solid var(--edge);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-hard);
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .frame img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .frame.wide { aspect-ratio: 41 / 16; }
+
+  .caption {
+    margin: 12px 0 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+
+  /* sections */
+  .section { padding: 0 0 clamp(40px, 6vw, 64px); }
+
+  .section-rule {
+    border-top: var(--border) solid var(--edge);
+    padding-top: clamp(24px, 4vw, 40px);
+  }
+
+  h2 {
+    margin: 0 0 24px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(28px, 4vw, 40px);
+    line-height: 1.02;
+    letter-spacing: -0.01em;
+    max-width: 24ch;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 22px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (min-width: 680px) {
+    .grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (min-width: 980px) {
+    .grid { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 22px;
+    background: var(--surface-raised);
+    border: var(--border) solid var(--edge);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-hard);
+    transition: transform var(--ease), border-color var(--ease), box-shadow var(--ease);
+  }
+
+  .card:hover {
+    transform: translate(-2px, -2px);
+    border-color: var(--signal);
+    box-shadow: var(--shadow-hard-lift);
+  }
+
+  .card h3 {
+    margin: 0;
+    font-family: var(--font-body);
+    font-weight: 800;
+    font-size: 24px;
+    line-height: 1.15;
+  }
+
+  .card p { margin: 0; font-size: 15px; line-height: 1.5; }
+
+  .card .keys {
+    display: inline-block;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* shortcut list */
+  .table {
+    width: 100%;
+    border: var(--border) solid var(--edge);
+    border-radius: var(--radius-row);
+    background: var(--surface-raised);
+    overflow: hidden;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .table th,
+  .table td {
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: baseline;
+  }
+
+  .table tr:last-child th,
+  .table tr:last-child td { border-bottom: 0; }
+
+  .table th {
+    font-family: var(--font-meta);
+    font-weight: 600;
+    font-size: 13px;
+    white-space: nowrap;
+    width: 40%;
+  }
+
+  .table td { font-size: 15px; }
+
+  /* install */
+  .oslist { display: grid; grid-template-columns: 1fr; gap: 22px; margin: 0; padding: 0; list-style: none; }
+
+  @media (min-width: 680px) {
+    .oslist { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  .files { margin: 8px 0 0; font-size: 13px; line-height: 1.6; color: var(--ink); }
+
+  .aside {
+    margin: 24px 0 0;
+    padding: 16px;
+    font-size: 15px;
+    line-height: 1.5;
+    background: var(--signal);
+    color: var(--signal-ink);
+    border: 2px solid var(--ink);
+    border-radius: var(--radius-row);
+    box-shadow: var(--shadow-hard);
+  }
+
+  /* footer */
+  footer {
+    border-top: var(--border) solid var(--edge);
+    padding: 32px 0 56px;
+  }
+
+  .foot-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 24px;
+    margin: 0 0 16px;
+    padding: 0;
+    list-style: none;
+  }
+
+  .foot-links a {
+    font-size: 15px;
+    font-weight: 700;
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    transition: border-color var(--ease);
+  }
+
+  .foot-links a:hover { border-bottom-color: var(--signal); }
+
+  .foot-meta { margin: 0; font-size: 12px; line-height: 1.7; color: var(--muted); }
+
+  .table-caption {
+    caption-side: bottom;
+    text-align: left;
+    margin-top: 12px;
+  }
+
+  @media (max-width: 560px) {
+    .top-nav { gap: 12px; }
+    .brand-word { font-size: 18px; }
+    .table th { width: 44%; padding: 10px 12px; }
+    .table td { padding: 10px 12px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; }
+    .btn:hover, .card:hover, .btn:active { transform: none; }
+    .btn:hover .glyph { transform: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <a class="brand" href="./">
+      <img class="brand-mark" src="mark.png" alt="" width="36" height="36">
+      <span class="brand-word">GitGud</span>
+    </a>
+    <nav class="top-nav" aria-label="Elsewhere">
+      <a href="https://github.com/qiral/gitgud/releases/latest">Releases <span aria-hidden="true">&#8599;</span></a>
+      <a href="https://github.com/qiral/gitgud">GitHub <span aria-hidden="true">&#8599;</span></a>
+    </nav>
+  </header>
+
+  <main>
+
+    <section class="hero">
+      <p class="tagline">&gt; git gud at git.</p>
+      <h1>A fast, open-source Git GUI.</h1>
+      <p class="lead">GitGud aims to be as approachable as GitHub Desktop while exposing more of Git's power: history, branches, stash, merges, conflict resolution and interactive rebase, without hiding what Git is doing.</p>
+      <ul class="chips">
+        <li class="chip">Linux</li>
+        <li class="chip">Windows</li>
+        <li class="chip">macOS</li>
+      </ul>
+      <p class="actions">
+        <a class="btn btn-primary" href="https://github.com/qiral/gitgud/releases/latest">Download the latest release <span class="glyph" aria-hidden="true">&#8599;</span></a>
+        <a class="btn" href="https://github.com/qiral/gitgud">View the source <span class="glyph" aria-hidden="true">&#8599;</span></a>
+      </p>
+      <p class="note">Early development. Expect rough edges.</p>
+    </section>
+
+    <figure class="figure">
+      <div class="frame">
+        <img src="screenshots/history.png" width="2400" height="1440" alt="The History tab: the commit graph on the left with signature badges and branch chips, and the selected commit's diff on the right.">
+      </div>
+      <figcaption class="caption">History &middot; the commit graph across branches, signature badges, and the selected commit's diff</figcaption>
+    </figure>
+
+    <section class="section">
+      <p class="label">features</p>
+      <h2>Git, without the hiding.</h2>
+      <ul class="grid">
+        <li class="card">
+          <h3>Commit exactly what you want</h3>
+          <p>Click line numbers in a diff to stage, unstage or discard single lines, Shift+click for a range, or take a whole hunk from its header. Amend the last commit, or commit with <span class="keys">Ctrl+Enter</span>.</p>
+        </li>
+        <li class="card">
+          <h3>Undo that actually undoes</h3>
+          <p>Undo right after a commit, amend, merge, cherry-pick, revert, reset (even a hard one), branch or stash deletion, or discarded changes. Nothing done since then gets overwritten.</p>
+        </li>
+        <li class="card">
+          <h3>Read diffs properly</h3>
+          <p>Unified or side by side, changed words marked, whitespace ignored if you like, syntax highlighting in your theme's colors for 45+ languages. Images are compared as images, with a swipe slider.</p>
+        </li>
+        <li class="card">
+          <h3>Find your way through history</h3>
+          <p>A commit graph across all branches, remote branches and tags. Search by message, author or hash, follow a file across renames, and blame it on disk or at any commit.</p>
+        </li>
+        <li class="card">
+          <h3>Rewrite it</h3>
+          <p>Drag commits into a new order, then squash, fixup, reword or drop them. Interactive rebase, at the end of a drag.</p>
+        </li>
+        <li class="card">
+          <h3>Merge and resolve conflicts</h3>
+          <p>Resolve block by block (ours, theirs or both), or take one side for the whole file. Pull asks whether to merge or rebase when both sides moved on, or follows your <span class="keys">pull.rebase</span> setting.</p>
+        </li>
+        <li class="card">
+          <h3>Pull requests, in the app</h3>
+          <p>Create one for the current branch (<span class="keys">Ctrl+R</span>), as a draft if you like. The toolbar shows its checks and review, and any open pull request checks out in a click, forks included.</p>
+        </li>
+        <li class="card">
+          <h3>Sign commits, keep the key</h3>
+          <p>Sign with a GPG or SSH key and History shows Verified, Unverified or Bad signature. Tokens for GitHub, GitLab, Gitea and Forgejo stay in the OS keychain, and each is only sent to its own host.</p>
+        </li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <figure class="figure">
+        <div class="frame wide">
+          <img src="screenshots/compare.png" width="3280" height="1280" alt="Comparing two branches side by side in a light theme, with changed words marked and both files listed down the left.">
+        </div>
+        <figcaption class="caption">Compare &middot; two branches or two commits, unified or side by side, changes marked word by word</figcaption>
+      </figure>
+    </section>
+
+    <section class="section">
+      <p class="label">also in the box</p>
+      <h2>Branches, stashes, worktrees and themes.</h2>
+      <ul class="grid">
+        <li class="card">
+          <h3>Branches and remotes</h3>
+          <p>Create, filter, switch, rename and delete branches; unmerged ones ask before they go. Add, rename or remove remotes, and add a fork's parent as <span class="keys">upstream</span> in one click.</p>
+        </li>
+        <li class="card">
+          <h3>Submodules and worktrees</h3>
+          <p>Submodules show the commit they are on, and open as their own repository. Worktrees add, open and remove, and a branch checked out elsewhere says where.</p>
+        </li>
+        <li class="card">
+          <h3>Make it yours</h3>
+          <p>40 themes with live previews, your accent color, your code font, blue and orange diffs if red and green look alike. Ten languages, switched without a restart.</p>
+        </li>
+        <li class="card">
+          <h3>GitHub Copilot, if you have it</h3>
+          <p>Commit and squash messages, pull request descriptions, reviews of staged changes, explanations of commits and git errors. Each action can be turned off from the Copilot menu.</p>
+        </li>
+      </ul>
+    </section>
+
+    <section class="section section-rule">
+      <p class="label">keyboard</p>
+      <h2>Most of it without the mouse.</h2>
+      <table class="table">
+        <caption class="caption table-caption">Use Cmd instead of Ctrl on macOS. F1 lists every shortcut.</caption>
+        <tbody>
+          <tr><th scope="row">Ctrl+K</th><td>Command palette, for every action</td></tr>
+          <tr><th scope="row">Ctrl+Enter</th><td>Commit, from the message box</td></tr>
+          <tr><th scope="row">Ctrl+Shift+D</th><td>Compare a branch with the current one</td></tr>
+          <tr><th scope="row">Ctrl+Shift+S</th><td>Stash changes</td></tr>
+          <tr><th scope="row">Ctrl+R</th><td>Create or view the branch's pull request</td></tr>
+          <tr><th scope="row">Ctrl+,</th><td>Appearance, themes and code font</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section section-rule">
+      <p class="label">install</p>
+      <h2>One file, then open a repository.</h2>
+      <ul class="oslist">
+        <li class="card">
+          <h3>Linux</h3>
+          <p class="files">.AppImage &middot; .deb &middot; .rpm</p>
+        </li>
+        <li class="card">
+          <h3>Windows</h3>
+          <p class="files">.msi &middot; .exe</p>
+        </li>
+        <li class="card">
+          <h3>macOS</h3>
+          <p class="files">.dmg for Apple Silicon and Intel</p>
+        </li>
+      </ul>
+      <p class="aside">You need <strong>git</strong> installed. Builds are not code-signed yet, so Windows and macOS warn on first launch. The app updates itself after you click once.</p>
+    </section>
+
+  </main>
+
+  <footer>
+    <p class="label">get it</p>
+    <ul class="foot-links">
+      <li><a href="https://github.com/qiral/gitgud/releases/latest">Download the latest release <span aria-hidden="true">&#8599;</span></a></li>
+      <li><a href="https://github.com/qiral/gitgud">Source on GitHub <span aria-hidden="true">&#8599;</span></a></li>
+      <li><a href="https://github.com/qiral/gitgud/issues">Issues <span aria-hidden="true">&#8599;</span></a></li>
+      <li><a href="https://github.com/qiral/gitgud/blob/main/LICENSE">MIT license <span aria-hidden="true">&#8599;</span></a></li>
+    </ul>
+    <p class="foot-meta">Early development, expect rough edges. Tauri 2, Rust, React and TypeScript.</p>
+  </footer>
+
+</div>
+</body>
+</html>
