@@ -145,7 +145,7 @@ function Card({ children }: { children: React.ReactNode }) {
   return (
     <div
       role="status"
-      className="fixed right-4 bottom-4 z-30 flex w-80 items-start gap-3 rounded-lg border border-line bg-panel p-4 shadow-xl"
+      className="fixed right-4 bottom-4 z-30 flex w-80 max-w-[calc(100vw-2rem)] items-start gap-3 rounded-lg border border-line bg-panel p-4 shadow-xl"
     >
       {children}
     </div>

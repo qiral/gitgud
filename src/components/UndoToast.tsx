@@ -39,7 +39,7 @@ export default function UndoToast({ undoable, disabled, onUndo }: Props) {
   return (
     <div
       role="status"
-      className="fixed bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-md border border-line bg-panel px-4 py-2 shadow-lg"
+      className="fixed top-14 left-1/2 z-30 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-md border border-line bg-panel px-4 py-2 shadow-lg"
     >
       <span>{t(`undo.done-${undoable.kind}`)}</span>
       <button
