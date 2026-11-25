@@ -69,7 +69,6 @@ export default function PullDialog({
             type="checkbox"
             checked={remember}
             onChange={(e) => setRemember(e.target.checked)}
-            className="accent-accent"
           />
           {t('pulldialog.remember-for-this-repository')}
         </label>

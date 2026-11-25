@@ -185,7 +185,6 @@ export default function CompareView({
               type="checkbox"
               checked={direct}
               onChange={(e) => setDirect(e.target.checked)}
-              className="accent-accent"
             />
             {t('compare.direct')}
           </label>

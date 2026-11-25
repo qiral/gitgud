@@ -122,7 +122,10 @@ export default function AppearanceDialog({ onClose }: { onClose: () => void }) {
               <Shuffle className="size-4" />
             </button>
           </div>
-          <div ref={list} className="min-h-0 flex-1 overflow-auto pr-2">
+          <div
+            ref={list}
+            className="min-h-0 flex-1 overflow-y-auto pr-2 [scrollbar-gutter:stable]"
+          >
             {groups.map((g) => (
               <section key={g.id} className="mb-4">
                 {g.label && (
@@ -151,9 +154,9 @@ export default function AppearanceDialog({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        <div className="w-60 shrink-0 space-y-5 overflow-auto border-l border-line pl-5">
+        <div className="w-66 shrink-0 space-y-5 overflow-y-auto border-l border-line pr-3 pl-5 [scrollbar-gutter:stable]">
           <section>
-            <label className="flex items-center gap-2">
+            <label className="flex items-center gap-2 py-1">
               <SunMoon className="size-4 text-muted" />
               <span className="flex-1 font-medium">
                 {t('toolbar.match-system')}
@@ -172,7 +175,6 @@ export default function AppearanceDialog({ onClose }: { onClose: () => void }) {
                       : { theme: active.id },
                   )
                 }
-                className="accent-accent"
               />
             </label>
             <p className="mt-1 text-xs text-muted">
@@ -260,7 +262,7 @@ export default function AppearanceDialog({ onClose }: { onClose: () => void }) {
               spellCheck={false}
               className="w-full rounded-md border border-line bg-bg px-2 py-1.5 outline-none focus:border-accent"
             />
-            <label className="mt-2 flex items-center gap-2">
+            <label className="mt-2 flex items-center gap-2 py-1.5">
               <span className="flex-1 text-muted">
                 {t('appearance.syntax')}
               </span>
@@ -268,7 +270,6 @@ export default function AppearanceDialog({ onClose }: { onClose: () => void }) {
                 type="checkbox"
                 checked={a.syntax}
                 onChange={(e) => setAppearance({ syntax: e.target.checked })}
-                className="accent-accent"
               />
             </label>
             <div
@@ -443,7 +444,7 @@ function StepButton({
       disabled={disabled}
       title={label}
       aria-label={label}
-      className="rounded border border-line p-1 text-muted hover:bg-hover hover:text-fg disabled:opacity-40"
+      className="flex size-7 items-center justify-center rounded border border-line text-muted hover:bg-hover hover:text-fg disabled:opacity-40"
     >
       {children}
     </button>

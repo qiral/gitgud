@@ -445,7 +445,6 @@ export default function ChangesPanel({
               checked={amending !== null}
               disabled={busy}
               onChange={(e) => toggleAmend(e.target.checked)}
-              className="accent-accent"
             />
             {t('changespanel.amend-last-commit')}
           </label>

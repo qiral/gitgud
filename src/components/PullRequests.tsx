@@ -442,7 +442,6 @@ export function CreatePullRequestDialog({
             type="checkbox"
             checked={draft}
             onChange={(e) => setDraft(e.target.checked)}
-            className="accent-accent"
           />
           {t('pullrequests.create-as-draft')}
         </label>

@@ -84,7 +84,6 @@ export default function StashDialog({ repo, onClose, act, onSuggest }: Props) {
             type="checkbox"
             checked={includeUntracked}
             onChange={(e) => setIncludeUntracked(e.target.checked)}
-            className="accent-accent"
           />
           Include new (untracked) files
         </label>
