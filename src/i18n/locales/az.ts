@@ -477,6 +477,22 @@ const messages: Messages = {
   'signindialog.try-again': 'Yenidən cəhd et',
   'signindialog.waiting-for-you-to-approve-on-github':
     'GitHub-da təsdiqinizi gözləyirik…',
+  'signing.bad': 'Etibarsız imza',
+  'signing.bad-why': 'İmza commit ilə uyğun gəlmir və ya açarı ləğv edilib.',
+  'signing.by-email': 'E-poçt ünvanına aid olan',
+  'signing.choose-key': 'Açar seç',
+  'signing.command': 'Commit imzalama…',
+  'signing.enable': 'Bu repodakı commitləri imzala',
+  'signing.hint':
+    'Commitlərin GitHub-da təsdiqlənmiş görünməsi üçün eyni açarı GitHub ayarlarına imzalama açarı kimi əlavə et.',
+  'signing.key': 'Açar',
+  'signing.keys-openpgp': 'GPG açarları',
+  'signing.keys-ssh': 'SSH açarları',
+  'signing.title': 'Commit imzalama',
+  'signing.unknown': 'Təsdiqlənmədi',
+  'signing.unknown-why':
+    'İmzalanıb, amma açar bu kompüterdə yoxdur, vaxtı bitib və ya etibarlı deyil.',
+  'signing.verified': 'Təsdiqləndi',
   'stashdialog.message-optional': 'Mesaj (istəyə görə)',
   'stashdialog.set-your-uncommitted-changes-aside-and-get-a-clean-working-tree-you-can-bring-them-back-from-the-stashes-tab':
     'Commit edilməmiş dəyişikliklərinizi kənara qoyun və təmiz iş sahəsi ilə davam edin. Onları Stash-lər bölməsindən geri qaytara bilərsiniz.',

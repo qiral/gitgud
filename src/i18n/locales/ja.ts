@@ -462,6 +462,22 @@ const messages: Messages = {
   'signindialog.try-again': '再試行',
   'signindialog.waiting-for-you-to-approve-on-github':
     'GitHub での承認を待っています…',
+  'signing.bad': '不正な署名',
+  'signing.bad-why': '署名がコミットと一致しないか、鍵が失効しています。',
+  'signing.by-email': 'メールアドレスに対応する鍵',
+  'signing.choose-key': '鍵を選択',
+  'signing.command': 'コミットの署名…',
+  'signing.enable': 'このリポジトリのコミットに署名する',
+  'signing.hint':
+    'GitHub で「Verified」と表示されるように、同じ鍵を GitHub の設定に署名用の鍵として追加してください。',
+  'signing.key': '鍵',
+  'signing.keys-openpgp': 'GPG 鍵',
+  'signing.keys-ssh': 'SSH 鍵',
+  'signing.title': 'コミットの署名',
+  'signing.unknown': '未検証',
+  'signing.unknown-why':
+    '署名されていますが、このコンピューターに鍵がないか、期限切れか、信頼されていません。',
+  'signing.verified': '検証済み',
   'stashdialog.message-optional': 'メッセージ (任意)',
   'stashdialog.set-your-uncommitted-changes-aside-and-get-a-clean-working-tree-you-can-bring-them-back-from-the-stashes-tab':
     'コミットしていない変更を一時的に退避し、作業ツリーをきれいにします。スタッシュタブから元に戻せます。',

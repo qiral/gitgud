@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { git, type Commit, type GraphRow, type RefLabel } from '../lib/git'
 import { hideLines } from '../lib/lines'
+import { useSignatures } from '../lib/signatures'
 import { relativeTime } from '../lib/time'
 import { useVirtualRows } from '../lib/virtual'
 import { copyText } from '../lib/copy'
@@ -34,6 +35,7 @@ import {
 import { useContextMenu, type MenuItem } from './ContextMenu'
 import type { Selection } from './RepoView'
 import type { CommitActions } from './CommitActions'
+import SignatureBadge from './SignatureBadge'
 import { useTranslation } from '../i18n'
 
 /** Narrows History to a search or to one file's commits. */
@@ -195,6 +197,10 @@ export default function HistoryPanel({
     setCollapsed(!collapsed)
   }
   const rows = useVirtualRows<HTMLUListElement>(commits.length, ROW_HEIGHT)
+  const signatures = useSignatures(
+    repoPath,
+    commits.slice(rows.start, rows.end).map((c) => c.hash),
+  )
   useEffect(() => {
     const list = rows.ref.current
     const i = reveal ? commits.findIndex((c) => c.hash === reveal.hash) : -1
@@ -415,6 +421,7 @@ export default function HistoryPanel({
                 (selection?.kind === 'commit' &&
                   selection.commit.hash === c.hash)
               const isHead = c.refs.some((r) => r.kind === 'head')
+              const signature = signatures.get(c.hash)
               return (
                 <li
                   key={c.hash}
@@ -462,9 +469,9 @@ export default function HistoryPanel({
                       <span className="truncate">{c.author}</span>
                       <span>·</span>
                       <span className="shrink-0">{relativeTime(c.time)}</span>
-                      <span className="ml-auto shrink-0 font-mono">
-                        {c.shortHash}
-                      </span>
+                      <span className="ml-auto" />
+                      {signature && <SignatureBadge signature={signature} />}
+                      <span className="shrink-0 font-mono">{c.shortHash}</span>
                       {onRebaseFrom && c.parents.length <= 1 && (
                         <button
                           onClick={(e) => {

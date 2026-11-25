@@ -439,6 +439,22 @@ const messages: Messages = {
   'signindialog.try-again': '重试',
   'signindialog.waiting-for-you-to-approve-on-github':
     '正在等待你在 GitHub 上批准…',
+  'signing.bad': '签名无效',
+  'signing.bad-why': '签名与提交不匹配，或其密钥已被吊销。',
+  'signing.by-email': '与你的邮箱对应的密钥',
+  'signing.choose-key': '选择密钥',
+  'signing.command': '提交签名…',
+  'signing.enable': '为此仓库的提交签名',
+  'signing.hint':
+    '请在 GitHub 设置中将同一密钥添加为签名密钥，这样提交会显示为已验证。',
+  'signing.key': '密钥',
+  'signing.keys-openpgp': 'GPG 密钥',
+  'signing.keys-ssh': 'SSH 密钥',
+  'signing.title': '提交签名',
+  'signing.unknown': '未验证',
+  'signing.unknown-why':
+    '已签名，但此计算机上缺少该密钥，或密钥已过期或不受信任。',
+  'signing.verified': '已验证',
   'stashdialog.message-optional': '消息（可选）',
   'stashdialog.set-your-uncommitted-changes-aside-and-get-a-clean-working-tree-you-can-bring-them-back-from-the-stashes-tab':
     '把未提交的更改暂时收起，得到干净的工作区。之后可以在“贮藏”标签页中恢复。',

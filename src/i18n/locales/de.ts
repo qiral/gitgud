@@ -485,6 +485,23 @@ const messages: Messages = {
   'signindialog.try-again': 'Erneut versuchen',
   'signindialog.waiting-for-you-to-approve-on-github':
     'Warte auf deine Bestätigung auf GitHub…',
+  'signing.bad': 'Ungültige Signatur',
+  'signing.bad-why':
+    'Die Signatur passt nicht zum Commit, oder ihr Schlüssel wurde widerrufen.',
+  'signing.by-email': 'Der zu deiner E-Mail-Adresse',
+  'signing.choose-key': 'Schlüssel wählen',
+  'signing.command': 'Commits signieren…',
+  'signing.enable': 'Commits in diesem Repository signieren',
+  'signing.hint':
+    'Füge denselben Schlüssel in deinen GitHub-Einstellungen als Signierschlüssel hinzu, damit Commits dort als verifiziert erscheinen.',
+  'signing.key': 'Schlüssel',
+  'signing.keys-openpgp': 'GPG-Schlüssel',
+  'signing.keys-ssh': 'SSH-Schlüssel',
+  'signing.title': 'Commits signieren',
+  'signing.unknown': 'Nicht verifiziert',
+  'signing.unknown-why':
+    'Signiert, aber der Schlüssel fehlt auf diesem Computer, ist abgelaufen oder nicht vertrauenswürdig.',
+  'signing.verified': 'Verifiziert',
   'stashdialog.message-optional': 'Nachricht (optional)',
   'stashdialog.set-your-uncommitted-changes-aside-and-get-a-clean-working-tree-you-can-bring-them-back-from-the-stashes-tab':
     'Lege deine nicht committeten Änderungen beiseite und erhalte ein sauberes Arbeitsverzeichnis. Du kannst sie im Tab „Stashes“ zurückholen.',

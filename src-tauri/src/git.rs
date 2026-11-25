@@ -11,6 +11,7 @@ use crate::conflict;
 use crate::graph::{self, GraphRow};
 use crate::patch;
 use crate::remotes;
+use crate::signing;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Output, Stdio};
@@ -68,6 +69,8 @@ fn command(repo: &Path, args: &[&str]) -> Result<Command> {
     // programs just because GitGud looked at it: no fsmonitor hook, and no
     // textconv filters for anything that shows a diff.
     cmd.args(["-c", "core.fsmonitor=false"]);
+    // Nor the program it names for checking signatures, on every log.
+    cmd.args(["-c", "log.showSignature=false"]);
     let textconv_at = match args {
         ["diff" | "show" | "log" | "blame", ..] => Some(1),
         ["stash", "show", ..] => Some(2),
@@ -88,6 +91,12 @@ fn command(repo: &Path, args: &[&str]) -> Result<Command> {
     // takes no file names here and uses pathspec magic itself for -u.
     if args.first() != Some(&"stash") {
         cmd.env("GIT_LITERAL_PATHSPECS", "1");
+    }
+
+    // Signing asks for a passphrase in a window, or fails; never in the
+    // terminal the app happened to be started from.
+    if let Some(&("commit" | "merge" | "cherry-pick" | "revert" | "rebase")) = args.first() {
+        cmd.env("SSH_ASKPASS_REQUIRE", "force");
     }
 
     #[cfg(windows)]
@@ -139,7 +148,7 @@ fn finish(out: Output, args: &[&str]) -> Result<String> {
         Err(GitError::Failed(if stderr.is_empty() {
             format!("git {} failed", args.first().unwrap_or(&""))
         } else {
-            stderr
+            signing::explain(&stderr).unwrap_or(stderr)
         }))
     }
 }
@@ -365,6 +374,7 @@ pub fn merge(repo: &Path, branch: &str) -> Result<MergeOutcome> {
     if out.status.success() {
         return Ok(MergeOutcome { conflicts: false });
     }
+    unsigned(&out)?;
     if merge_message(repo)?.is_some() {
         return Ok(MergeOutcome { conflicts: true });
     }
@@ -372,6 +382,15 @@ pub fn merge(repo: &Path, branch: &str) -> Result<MergeOutcome> {
     Err(GitError::Failed(
         String::from_utf8_lossy(&out.stderr).trim().to_string(),
     ))
+}
+
+/// Fails if git stopped because it couldn't sign the commit, which leaves
+/// the operation in progress just like conflicts do.
+fn unsigned(out: &Output) -> Result<()> {
+    match signing::explain(&String::from_utf8_lossy(&out.stderr)) {
+        Some(message) => Err(GitError::Failed(message)),
+        None => Ok(()),
+    }
 }
 
 /// Aborts whatever `status().operation` says is going on.
@@ -452,6 +471,7 @@ fn pick(repo: &Path, command: &str, hash: &str) -> Result<MergeOutcome> {
     if out.status.success() {
         return Ok(MergeOutcome { conflicts: false });
     }
+    unsigned(&out)?;
     if pick_state(repo)?.is_some() {
         let unmerged = run(repo, &["diff", "--name-only", "--diff-filter=U"])?;
         if !unmerged.trim().is_empty() {
@@ -1467,6 +1487,7 @@ pub fn pull(
             diverged: false,
             conflicts: false,
         }),
+        Err(e) if signing::is_failure(&e) => Err(e),
         Err(e) => {
             if merge_message(repo)?.is_some() || crate::rebase::progress(repo)?.is_some() {
                 Ok(PullOutcome {

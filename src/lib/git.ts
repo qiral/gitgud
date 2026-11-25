@@ -156,6 +156,25 @@ export interface ReflogEntry {
   subject: string
 }
 
+export type SignatureFormat = 'openpgp' | 'ssh' | 'x509'
+
+/** A commit's signature; see src-tauri/src/signing.rs. */
+export interface Signature {
+  state: 'verified' | 'unknown' | 'bad'
+  format: SignatureFormat
+  signer: string | null
+  key: string | null
+}
+
+export interface SigningSettings {
+  enabled: boolean
+  format: SignatureFormat
+  /** Null lets git pick a key by the committer's email. */
+  key: string | null
+  /** Keys found on this computer. */
+  keys: { format: SignatureFormat; value: string; label: string }[]
+}
+
 export interface Stash {
   index: number
   message: string
@@ -562,6 +581,18 @@ export const git = {
   /** Null clears the branch's upstream. */
   setUpstream: (repo: string, branch: string, upstream: string | null) =>
     invoke<void>('set_upstream', { repo, branch, upstream }),
+  signingSettings: (repo: string) =>
+    invoke<SigningSettings>('signing_settings', { repo }),
+  /** Changes this repository's config only. */
+  setSigning: (
+    repo: string,
+    enabled: boolean,
+    format: SignatureFormat,
+    key: string | null,
+  ) => invoke<void>('set_signing', { repo, enabled, format, key }),
+  /** Checks up to 200 commits; unsigned ones are left out. */
+  signatures: (repo: string, hashes: string[]) =>
+    invoke<Record<string, Signature>>('signatures', { repo, hashes }),
 }
 
 /** A change shown in the "Staged" list, i.e. something in the index. */
