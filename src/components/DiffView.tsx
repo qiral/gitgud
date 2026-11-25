@@ -129,11 +129,12 @@ export default function DiffView({
   // Only some rows exist at a time, so they can't size the table's width;
   // reserve room for the longest line up front instead. In split mode,
   // non-virtual diffs stay within the pane and wrap long lines so the right
-  // half is never pushed off-screen; virtual split diffs cap the expansion.
+  // half is never pushed off-screen. Virtual rows can't wrap, so both halves
+  // get that room and long lines scroll instead of being cut off.
   const minWidth = useMemo(() => {
     if (split) {
       return virtual
-        ? `calc(8.5rem + ${2 * Math.min(longestLine(lines), 120) + 4}ch)`
+        ? `calc(8.5rem + ${2 * longestLine(lines) + 4}ch)`
         : undefined
     }
     return virtual ? `calc(8.25rem + ${longestLine(lines)}ch)` : undefined

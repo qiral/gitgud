@@ -193,6 +193,18 @@ describe('DiffView options', () => {
     expect(codeCell.className).toContain('whitespace-pre-wrap')
   })
 
+  it('leaves room for the longest line in big split diffs', () => {
+    setDiffPref('split', true)
+    const long = 'x'.repeat(300)
+    const added = Array.from({ length: 1200 }, () => `+${long}`).join('\n')
+    const { container } = render(
+      <DiffView
+        diff={`diff --git a/f b/f\n--- a/f\n+++ b/f\n@@ -0,0 +1,1200 @@\n${added}\n`}
+      />,
+    )
+    expect(container.querySelector('table')!.style.minWidth).toMatch(/60\dch/)
+  })
+
   it('keeps hunk action buttons sticky so they stay reachable on wide diffs', () => {
     setup()
     const stageHunk = screen.getAllByText('Stage hunk')[0]
