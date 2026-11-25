@@ -113,7 +113,6 @@ export default function RepoView({
   const [submodules, setSubmodules] = useState<Submodule[]>([])
   const [stashes, setStashes] = useState<Stash[]>([])
   const [dialog, setDialog] = useState<
-    | 'signIn'
     | 'hosts'
     | 'publish'
     | 'stash'
@@ -123,6 +122,7 @@ export default function RepoView({
     | 'worktrees'
     | null
   >(null)
+  const [signingIn, setSigningIn] = useState(false)
   const [rebaseFrom, setRebaseFrom] = useState<Commit | null>(null)
   const [selection, setSelection] = useState<Selection | null>(null)
   /** Covers the right-hand pane until something else is picked. */
@@ -381,7 +381,7 @@ export default function RepoView({
     [refresh],
   )
 
-  const openSignIn = useCallback(() => setDialog('signIn'), [])
+  const openSignIn = useCallback(() => setSigningIn(true), [])
   const ai = useCopilot(setError, account !== null, openSignIn)
   const copilotOn = useCopilotPrefs()
   const suggestBranchName = copilotOn.branchName
@@ -435,7 +435,7 @@ export default function RepoView({
       onAccountChange(null)
     })
   const sync = useSync(repo, status, remotes, act, () =>
-    setDialog(account ? 'publish' : 'signIn'),
+    account ? setDialog('publish') : setSigningIn(true),
   )
   const showTab = (t: Tab) => {
     setTab(t)
@@ -515,14 +515,6 @@ export default function RepoView({
       {palette.ui}
       {pullRequests.dialog}
       {commitActions.dialogs}
-      {ai.dialog}
-      {answer && !ai.dialog && (
-        <ExplainDialog
-          title={answer.title}
-          explanation={answer.text}
-          onClose={() => setAnswer(null)}
-        />
-      )}
       <Toolbar
         repo={repo}
         status={status}
@@ -534,7 +526,7 @@ export default function RepoView({
         recents={recents}
         onOpenRecent={onOpenRecent}
         onClone={onClone}
-        onSignIn={() => setDialog('signIn')}
+        onSignIn={openSignIn}
         onSignOut={signOut}
         onManageHosts={() => setDialog('hosts')}
         onManageRemotes={() => setDialog('remotes')}
@@ -560,15 +552,6 @@ export default function RepoView({
         }
       />
 
-      {dialog === 'signIn' && (
-        <SignInDialog
-          onClose={() => setDialog(null)}
-          onSignedIn={(a) => {
-            onAccountChange(a)
-            setDialog(null)
-          }}
-        />
-      )}
       {dialog === 'hosts' && <HostsDialog onClose={() => setDialog(null)} />}
       <UndoToast undoable={undoable} disabled={busy !== null} onUndo={undo} />
       {dialog === 'reflog' && (
@@ -641,6 +624,23 @@ export default function RepoView({
           onPublished={() => {
             setDialog(null)
             refresh()
+          }}
+        />
+      )}
+      {answer && !ai.dialog && (
+        <ExplainDialog
+          title={answer.title}
+          explanation={answer.text}
+          onClose={() => setAnswer(null)}
+        />
+      )}
+      {ai.dialog}
+      {signingIn && (
+        <SignInDialog
+          onClose={() => setSigningIn(false)}
+          onSignedIn={(a) => {
+            onAccountChange(a)
+            setSigningIn(false)
           }}
         />
       )}
