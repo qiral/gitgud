@@ -273,6 +273,30 @@ export interface PullTarget {
   existing: PullRequest | null
 }
 
+/** An open pull request with its checks and reviews. */
+export interface PullDetails {
+  number: number
+  title: string
+  url: string
+  draft: boolean
+  author: string | null
+  /** The branch, or owner:branch when it's in a fork. */
+  head: string
+  base: string
+  /** ISO 8601 */
+  updatedAt: string
+  checks: 'passed' | 'failed' | 'pending' | null
+  review: 'approved' | 'changesRequested' | 'required' | null
+}
+
+export interface PullList {
+  /** owner/repo */
+  repo: string
+  pulls: PullDetails[]
+  /** All open ones; long lists are cut. */
+  total: number
+}
+
 export interface Comparison {
   mergeBase: string
   /** Full commit messages, oldest first. */
@@ -337,6 +361,13 @@ export const github = {
       body,
       draft,
     }),
+  pull: (baseRepo: string, number: number) =>
+    invoke<PullDetails>('github_pull', { baseRepo, number }),
+  /** Open pull requests of the repository, or of the one it's a fork of. */
+  pulls: (repo: string) => invoke<PullList>('github_pulls', { repo }),
+  /** Switches to a pull request and returns the branch it's on. */
+  checkoutPull: (repo: string, baseRepo: string, number: number) =>
+    invoke<string>('github_checkout_pull', { repo, baseRepo, number }),
   /** Null unless `origin` is a fork whose parent isn't a remote yet. */
   parent: (repo: string) => invoke<Parent | null>('github_parent', { repo }),
   account: () => invoke<Account | null>('github_account'),

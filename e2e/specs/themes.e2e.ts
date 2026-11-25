@@ -110,6 +110,10 @@ test.describe('in a repository', () => {
   }) => {
     await page.goto('/')
     const html = page.locator('html')
+    // Shortcuts only work once the repository is open.
+    await expect(
+      page.getByRole('button', { name: /Current branch/ }),
+    ).toBeVisible()
     await page.keyboard.press('ControlOrMeta+k')
     await page.getByRole('combobox').fill('change theme')
     await page.keyboard.press('Enter')

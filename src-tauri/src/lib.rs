@@ -28,7 +28,7 @@ use git::{
 use github::{Account, CreatedRepo, DeviceCode, PollResult, RemoteRepo};
 use hosts::{Host, HostKind};
 use ignore::IgnoreKind;
-use pulls::{Comparison, Parent, PullRequest, PullTarget};
+use pulls::{Comparison, Parent, PullDetails, PullList, PullRequest, PullTarget};
 use rebase::{RebaseOutcome, RebasePlan, TodoItem};
 use remotes::Remote;
 use std::collections::HashMap;
@@ -640,6 +640,22 @@ fn github_create_pull_request(
 }
 
 #[tauri::command(async)]
+fn github_pull(base_repo: String, number: u64) -> Result<PullDetails> {
+    pulls::pull(&base_repo, number)
+}
+
+#[tauri::command(async)]
+fn github_pulls(repo: String) -> Result<PullList> {
+    pulls::list(Path::new(&repo))
+}
+
+/// Switches to the pull request's commits and returns the branch's name.
+#[tauri::command(async)]
+fn github_checkout_pull(repo: String, base_repo: String, number: u64) -> Result<String> {
+    check_github_auth(pulls::checkout(Path::new(&repo), &base_repo, number))
+}
+
+#[tauri::command(async)]
 fn github_repos() -> Result<Vec<RemoteRepo>> {
     github::list_repos()
 }
@@ -915,6 +931,9 @@ pub fn run() {
             github_branches,
             github_compare,
             github_create_pull_request,
+            github_pull,
+            github_pulls,
+            github_checkout_pull,
             clone_repo,
             cancel_clone,
             copilot_install,

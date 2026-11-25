@@ -201,6 +201,20 @@ function installTauriMock({
 
   // A signed-in GitHub account whose branch was pushed to a fork.
   let pull: Record<string, unknown> | null = null
+  const openPulls = [
+    {
+      number: 7,
+      title: 'Remember me',
+      url: 'https://github.com/qiral/demo/pull/7',
+      draft: false,
+      author: 'ada',
+      head: 'ada:remember-me',
+      base: 'main',
+      updatedAt: '2026-01-01T00:00:00Z',
+      checks: 'passed',
+      review: 'approved',
+    },
+  ]
   const githubCommands: Record<
     string,
     (args: Record<string, unknown>) => unknown
@@ -237,6 +251,17 @@ function installTauriMock({
         url: 'https://github.com/qiral/demo/pull/42',
       }
       return pull
+    },
+    github_pull: (args) => ({ ...openPulls[0], number: args.number }),
+    github_pulls: () => ({
+      repo: 'qiral/demo',
+      pulls: openPulls,
+      total: openPulls.length,
+    }),
+    github_checkout_pull: (args) => {
+      current = `pr/${args.number}`
+      branchNames.push(current)
+      return current
     },
     open_url: () => null,
   }

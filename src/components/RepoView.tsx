@@ -444,6 +444,8 @@ export default function RepoView({
     status,
     signedIn: account !== null,
     onSignIn: openSignIn,
+    busy: busy !== null,
+    act,
     push: () => act('push', () => git.push(repo.path)),
     ask: ai.run,
   })
@@ -533,6 +535,7 @@ export default function RepoView({
         onAppearance={onAppearance}
         onCompare={(name) => compareWithCurrent(branchSide(name))}
         pullRequest={pullRequests.button}
+        onPullRequests={pullRequests.openList}
         act={act}
         onSummarizeBranch={
           copilotOn.branchSummary

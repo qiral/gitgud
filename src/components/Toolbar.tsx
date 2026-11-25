@@ -14,6 +14,7 @@ import {
   FolderOpen,
   GitCompareArrows,
   GitMerge,
+  GitPullRequest,
   GitBranch,
   Globe,
   Link2,
@@ -73,6 +74,7 @@ interface Props {
   onCompare?: (branch: string) => void
   /** The pull request button, when the branch can have one. */
   pullRequest?: React.ReactNode
+  onPullRequests: () => void
   act: (label: string, action: () => Promise<unknown>) => Promise<boolean>
   /** Asks Copilot what a branch would bring into the current one; unset to
    *  hide. */
@@ -99,6 +101,7 @@ export default function Toolbar({
   onAppearance,
   onCompare,
   pullRequest,
+  onPullRequests,
   act,
   onSummarizeBranch,
 }: Props) {
@@ -114,6 +117,7 @@ export default function Toolbar({
         onOpenOther={onOpenOther}
         onClone={onClone}
         onManageRemotes={onManageRemotes}
+        onPullRequests={onPullRequests}
       />
       <BranchMenu
         repo={repo}
@@ -278,6 +282,7 @@ function RepoMenu({
   onOpenOther,
   onClone,
   onManageRemotes,
+  onPullRequests,
 }: Pick<
   Props,
   | 'repo'
@@ -286,6 +291,7 @@ function RepoMenu({
   | 'onOpenOther'
   | 'onClone'
   | 'onManageRemotes'
+  | 'onPullRequests'
 >) {
   const { t: tx } = useTranslation()
   const others = recents.filter((r) => r.path !== repo.path)
@@ -354,6 +360,11 @@ function RepoMenu({
             tx('toolbar.manage-remotes'),
             <Globe className="size-4" />,
             onManageRemotes,
+          )}
+          {item(
+            tx('pulls.command'),
+            <GitPullRequest className="size-4" />,
+            onPullRequests,
           )}
         </div>
       )}

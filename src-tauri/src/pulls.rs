@@ -392,9 +392,374 @@ pub fn create(
     read::<ApiPull>(res, "create the pull request", &token).map(Into::into)
 }
 
+// ---------------------------------------------------------------------------
+// Open pull requests: their checks, reviews and checking them out
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum Checks {
+    Passed,
+    Failed,
+    Pending,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum Review {
+    Approved,
+    ChangesRequested,
+    Required,
+}
+
+/// A pull request with what GitHub thinks of it.
+#[derive(Debug, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PullDetails {
+    pub number: u64,
+    pub title: String,
+    pub url: String,
+    pub draft: bool,
+    /// None once the account is gone.
+    pub author: Option<String>,
+    /// The branch, and for another repository's `owner:branch`.
+    pub head: String,
+    pub base: String,
+    /// ISO 8601
+    pub updated_at: String,
+    /// None without any checks.
+    pub checks: Option<Checks>,
+    /// None when no review is asked for.
+    pub review: Option<Review>,
+    #[serde(skip)]
+    head_ref: String,
+    #[serde(skip)]
+    from_fork: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PullList {
+    /// `owner/repo`
+    pub repo: String,
+    pub pulls: Vec<PullDetails>,
+    /// All open ones, which can be more than are listed.
+    pub total: u64,
+}
+
+const PULL_FIELDS: &str = "number title url isDraft author{login} headRefName isCrossRepository \
+     headRepositoryOwner{login} baseRefName updatedAt reviewDecision \
+     commits(last:1){nodes{commit{statusCheckRollup{state}}}}";
+
+fn details(v: &serde_json::Value) -> Option<PullDetails> {
+    let text = |key: &str| Some(v[key].as_str()?.to_string());
+    let head_ref = text("headRefName")?;
+    let from_fork = v["isCrossRepository"].as_bool().unwrap_or(false);
+    let rollup = &v["commits"]["nodes"][0]["commit"]["statusCheckRollup"]["state"];
+    Some(PullDetails {
+        number: v["number"].as_u64()?,
+        title: text("title")?,
+        url: text("url")?,
+        draft: v["isDraft"].as_bool().unwrap_or(false),
+        author: v["author"]["login"].as_str().map(str::to_string),
+        head: match v["headRepositoryOwner"]["login"].as_str() {
+            Some(owner) if from_fork => format!("{owner}:{head_ref}"),
+            _ => head_ref.clone(),
+        },
+        base: text("baseRefName")?,
+        updated_at: text("updatedAt")?,
+        checks: match rollup.as_str() {
+            Some("SUCCESS") => Some(Checks::Passed),
+            Some("FAILURE" | "ERROR") => Some(Checks::Failed),
+            Some(_) => Some(Checks::Pending),
+            None => None,
+        },
+        review: match v["reviewDecision"].as_str() {
+            Some("APPROVED") => Some(Review::Approved),
+            Some("CHANGES_REQUESTED") => Some(Review::ChangesRequested),
+            Some("REVIEW_REQUIRED") => Some(Review::Required),
+            _ => None,
+        },
+        head_ref,
+        from_fork,
+    })
+}
+
+/// Asks for `body` of a repository; `number` is `$number` in it.
+fn graphql(
+    base_repo: &str,
+    parameters: &str,
+    body: &str,
+    number: Option<u64>,
+    what: &str,
+) -> Result<serde_json::Value> {
+    check_repo(base_repo)?;
+    let (owner, name) = base_repo.split_once('/').unwrap_or_default();
+    let token = token()?;
+    let res = ureq::post("https://api.github.com/graphql")
+        .header("Accept", "application/vnd.github+json")
+        .header("Authorization", format!("Bearer {token}"))
+        .header("User-Agent", USER_AGENT)
+        .config()
+        .http_status_as_error(false)
+        .build()
+        .send_json(serde_json::json!({
+            "query": format!(
+                "query($owner:String!,$name:String!{parameters}){{repository(owner:$owner,name:$name){{{body}}}}}"
+            ),
+            "variables": { "owner": owner, "name": name, "number": number },
+        }))
+        .map_err(http_error)?;
+    let mut answer: serde_json::Value = read(res, what, &token)?;
+    let repository = answer["data"]["repository"].take();
+    if repository.is_null() {
+        // GraphQL errors come with a 200.
+        let reason = answer["errors"][0]["message"]
+            .as_str()
+            .unwrap_or("no answer");
+        return Err(GitError::Failed(format!("Could not {what}: {reason}")));
+    }
+    Ok(repository)
+}
+
+/// One pull request.
+pub fn pull(base_repo: &str, number: u64) -> Result<PullDetails> {
+    let what = "read the pull request";
+    let repository = graphql(
+        base_repo,
+        ",$number:Int!",
+        &format!("pullRequest(number:$number){{{PULL_FIELDS}}}"),
+        Some(number),
+        what,
+    )?;
+    details(&repository["pullRequest"])
+        .ok_or_else(|| GitError::Failed(format!("Could not {what}: #{number} wasn't found")))
+}
+
+/// The GitHub repository that pull requests of `repo` are in: where the
+/// current branch or the default remote points, or the parent of that fork.
+fn home(repo: &Path) -> Result<String> {
+    let url = match upstream(repo)? {
+        Some((url, _)) if parse_remote(&url).is_some() => Some(url),
+        _ => {
+            let list = remotes::list(repo)?;
+            let default = remotes::default(repo).ok();
+            list.iter()
+                .filter(|r| parse_remote(&r.url).is_some())
+                .max_by_key(|r| Some(&r.name) == default.as_ref())
+                .map(|r| r.url.clone())
+        }
+    };
+    let Some((owner, name)) = url.as_deref().and_then(parse_remote) else {
+        return Err(GitError::Failed(
+            "This repository has no remote on GitHub".into(),
+        ));
+    };
+    let found: ApiRepo = get(
+        &token()?,
+        &format!("/repos/{owner}/{name}"),
+        &[],
+        "read the repository",
+    )?;
+    Ok(found.parent.map_or(found.full_name, |p| p.full_name))
+}
+
+/// The open pull requests, most recently updated first.
+pub fn list(repo: &Path) -> Result<PullList> {
+    let base_repo = home(repo)?;
+    let found = graphql(
+        &base_repo,
+        "",
+        &format!(
+            "pullRequests(states:OPEN,first:50,orderBy:{{field:UPDATED_AT,direction:DESC}})\
+             {{totalCount nodes{{{PULL_FIELDS}}}}}"
+        ),
+        None,
+        "list pull requests",
+    )?;
+    let nodes = found["pullRequests"]["nodes"].as_array();
+    Ok(PullList {
+        repo: base_repo,
+        pulls: nodes
+            .map(|n| n.iter().filter_map(details).collect())
+            .unwrap_or_default(),
+        total: found["pullRequests"]["totalCount"].as_u64().unwrap_or(0),
+    })
+}
+
+/// Switches to a pull request's commits and returns the branch they're on:
+/// the branch itself if it's in the base repository, so it can be pushed to,
+/// or else `pr/<number>`. Doing it again brings in what's new.
+pub fn checkout(repo: &Path, base_repo: &str, number: u64) -> Result<String> {
+    let pull = pull(base_repo, number)?;
+    let list = remotes::list(repo)?;
+    let remote = list.iter().find(|r| {
+        parse_remote(&r.url)
+            .is_some_and(|(o, n)| format!("{o}/{n}").eq_ignore_ascii_case(base_repo))
+    });
+    let url = match remote {
+        Some(r) => r.url.clone(),
+        None => format!("https://github.com/{base_repo}.git"),
+    };
+    let env = crate::hosts::git_env_for(std::slice::from_ref(&url));
+    let branch = (!pull.from_fork).then_some(pull.head_ref.as_str());
+    match remote {
+        Some(r) => checkout_from(repo, &r.name, branch, number, &env),
+        None => checkout_from(repo, &url, None, number, &env),
+    }
+}
+
+/// `source` is a remote, or a URL when there is no `branch`.
+fn checkout_from(
+    repo: &Path,
+    source: &str,
+    branch: Option<&str>,
+    number: u64,
+    env: &[(String, String)],
+) -> Result<String> {
+    if let Some(branch) = branch {
+        git::check_branch_name(repo, branch)?;
+        let existing = git::branches(repo)?.into_iter().find(|b| b.name == branch);
+        let tracked = format!("{source}/{branch}");
+        // A branch that only shares the name isn't the pull request's.
+        if existing
+            .as_ref()
+            .is_none_or(|b| b.upstream.as_deref() == Some(tracked.as_str()))
+        {
+            let refspec = format!("+refs/heads/{branch}:refs/remotes/{tracked}");
+            git::run_with_env(repo, &["fetch", "--", source, &refspec], env)?;
+            if existing.is_none() {
+                let at = format!("refs/remotes/{tracked}");
+                git::run(repo, &["switch", "-c", branch, "--track", &at])?;
+            } else {
+                git::switch_branch(repo, branch)?;
+                git::run(
+                    repo,
+                    &["merge", "--ff-only", &format!("refs/remotes/{tracked}")],
+                )
+                .map_err(|_| moved_on(branch))?;
+            }
+            return Ok(branch.to_string());
+        }
+    }
+
+    let name = format!("pr/{number}");
+    let head = format!("refs/pull/{number}/head");
+    if git::current_branch(repo)?.as_deref() == Some(name.as_str()) {
+        git::run_with_env(repo, &["fetch", "--", source, &head], env)?;
+        git::run(repo, &["merge", "--ff-only", "FETCH_HEAD"]).map_err(|_| moved_on(&name))?;
+    } else {
+        let refspec = format!("{head}:refs/heads/{name}");
+        git::run_with_env(repo, &["fetch", "--", source, &refspec], env).map_err(|e| {
+            if e.to_string().contains("non-fast-forward") {
+                moved_on(&name)
+            } else {
+                e
+            }
+        })?;
+        git::switch_branch(repo, &name)?;
+    }
+    Ok(name)
+}
+
+fn moved_on(branch: &str) -> GitError {
+    GitError::Failed(format!(
+        "'{branch}' and the pull request have different commits. Rename or delete the branch, then check the pull request out again."
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reads_checks_and_reviews() {
+        let v = serde_json::json!({
+            "number": 7, "title": "t", "url": "u", "isDraft": true,
+            "author": { "login": "grace" }, "headRefName": "fix", "isCrossRepository": true,
+            "headRepositoryOwner": { "login": "grace" }, "baseRefName": "main",
+            "updatedAt": "2026-01-01T00:00:00Z", "reviewDecision": "CHANGES_REQUESTED",
+            "commits": { "nodes": [{ "commit": { "statusCheckRollup": { "state": "ERROR" } } }] },
+        });
+        let p = details(&v).unwrap();
+        assert_eq!(p.head, "grace:fix");
+        assert_eq!(p.checks, Some(Checks::Failed));
+        assert_eq!(p.review, Some(Review::ChangesRequested));
+        // A deleted account and fork, and no checks.
+        let v = serde_json::json!({
+            "number": 8, "title": "t", "url": "u", "isDraft": false, "author": null,
+            "headRefName": "fix", "isCrossRepository": true, "headRepositoryOwner": null,
+            "baseRefName": "main", "updatedAt": "x", "reviewDecision": null,
+            "commits": { "nodes": [{ "commit": { "statusCheckRollup": null } }] },
+        });
+        let p = details(&v).unwrap();
+        assert_eq!((p.head.as_str(), p.author, p.checks), ("fix", None, None));
+    }
+
+    #[test]
+    fn checks_out_pull_requests() {
+        let base = std::env::temp_dir().join(format!("gitgud-prs-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        let (origin, repo) = (base.join("origin"), base.join("repo"));
+        std::fs::create_dir_all(&origin).unwrap();
+        let commit = |dir: &Path, message: &str| {
+            git::run(dir, &["commit", "-q", "--allow-empty", "-m", message]).unwrap();
+        };
+        let configure = |dir: &Path| {
+            for (k, v) in [
+                ("user.name", "T"),
+                ("user.email", "t@x"),
+                ("commit.gpgsign", "false"),
+            ] {
+                git::run(dir, &["config", k, v]).unwrap();
+            }
+        };
+        git::run(&origin, &["init", "-q", "-b", "main"]).unwrap();
+        configure(&origin);
+        commit(&origin, "base");
+        let url = origin.to_string_lossy().into_owned();
+        git::run(&base, &["clone", "-q", &url, "repo"]).unwrap();
+        configure(&repo);
+        // #1 is a branch there, #2 came from a fork.
+        git::run(&origin, &["switch", "-q", "-c", "feature/x"]).unwrap();
+        commit(&origin, "one");
+        git::run(&origin, &["update-ref", "refs/pull/1/head", "HEAD"]).unwrap();
+        git::run(&origin, &["update-ref", "refs/pull/2/head", "HEAD"]).unwrap();
+
+        let go = |branch: Option<&str>, n| checkout_from(&repo, "origin", branch, n, &[]);
+        let subject = || git::log(&repo, 1).unwrap()[0].subject.clone();
+        assert_eq!(go(Some("feature/x"), 1).unwrap(), "feature/x");
+        let b = git::branches(&repo).unwrap();
+        let b = b.iter().find(|b| b.current).unwrap();
+        assert_eq!(b.upstream.as_deref(), Some("origin/feature/x"));
+        assert_eq!(go(None, 2).unwrap(), "pr/2");
+        assert_eq!(subject(), "one");
+
+        // Again, from either branch, with something new.
+        commit(&origin, "two");
+        git::run(&origin, &["update-ref", "refs/pull/2/head", "HEAD"]).unwrap();
+        assert_eq!(go(None, 2).unwrap(), "pr/2");
+        assert_eq!(subject(), "two");
+        assert_eq!(go(Some("feature/x"), 1).unwrap(), "feature/x");
+        assert_eq!(subject(), "two");
+        commit(&origin, "three");
+        git::run(&origin, &["update-ref", "refs/pull/2/head", "HEAD"]).unwrap();
+        assert_eq!(go(None, 2).unwrap(), "pr/2");
+        assert_eq!(subject(), "three");
+
+        // Rewritten since: nothing local is lost.
+        git::switch_branch(&repo, "main").unwrap();
+        git::run(&origin, &["reset", "-q", "--hard", "main"]).unwrap();
+        commit(&origin, "rewritten");
+        git::run(&origin, &["update-ref", "refs/pull/2/head", "HEAD"]).unwrap();
+        assert!(go(None, 2).unwrap_err().to_string().contains("pr/2"));
+        // A local branch that isn't the pull request's is left alone.
+        git::run(&origin, &["branch", "mine"]).unwrap();
+        git::run(&origin, &["update-ref", "refs/pull/3/head", "mine"]).unwrap();
+        git::run(&repo, &["branch", "--no-track", "mine"]).unwrap();
+        assert_eq!(go(Some("mine"), 3).unwrap(), "pr/3");
+        assert!(go(Some("--x"), 4).is_err());
+        std::fs::remove_dir_all(base).unwrap();
+    }
 
     #[test]
     fn offers_the_parent_of_a_fork_once() {

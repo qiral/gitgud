@@ -1054,7 +1054,7 @@ pub fn switch_branch(repo: &Path, name: &str) -> Result<()> {
     run(repo, &["switch", "--", name]).map(drop)
 }
 
-fn check_branch_name(repo: &Path, name: &str) -> Result<()> {
+pub(crate) fn check_branch_name(repo: &Path, name: &str) -> Result<()> {
     run(repo, &["check-ref-format", "--branch", name])
         .map(drop)
         .map_err(|_| GitError::Failed(format!("'{name}' is not a valid branch name")))
