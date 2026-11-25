@@ -146,6 +146,8 @@ Get the [latest release](https://github.com/qiral/gitgud/releases/latest):
 
 You need `git` installed. Builds aren't code-signed yet, so Windows and macOS warn on first launch. Open a repository from the start screen, or pass it on the command line: `gitgud ~/code/project`.
 
+Getting past it takes one step per OS: on Windows, click More info in the SmartScreen box, then Run anyway. On macOS, right-click the app and choose Open, or run `xattr -d com.apple.quarantine /Applications/GitGud.app`.
+
 ## Tech stack
 
 - **[Tauri 2](https://tauri.app)** — native shell, small binaries
