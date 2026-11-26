@@ -1,5 +1,12 @@
 import { expect, it } from 'vitest'
-import { defaultRemote, maskUrl, readPrune, writePrune } from './remotes'
+import {
+  defaultRemote,
+  maskUrl,
+  readFetchEvery,
+  readPrune,
+  setFetchEvery,
+  writePrune,
+} from './remotes'
 
 const remote = (name: string) => ({ name, url: 'u', pushUrl: null })
 
@@ -23,4 +30,12 @@ it('prunes unless told not to', () => {
   expect(readPrune()).toBe(true)
   writePrune(false)
   expect(readPrune()).toBe(false)
+})
+
+it('fetches in the background only when told how often', () => {
+  expect(readFetchEvery()).toBe(0)
+  setFetchEvery(15)
+  expect(readFetchEvery()).toBe(15)
+  localStorage.setItem('gitgud.fetch.everyMinutes', '7')
+  expect(readFetchEvery()).toBe(0)
 })

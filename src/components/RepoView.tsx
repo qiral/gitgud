@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ScrollText } from 'lucide-react'
+import { listen } from '@tauri-apps/api/event'
 import {
   canBlame,
   copilot,
@@ -57,6 +58,7 @@ import { useSync } from './SyncActions'
 import { useRepoCommands, type Tab } from './RepoCommands'
 import { usePullRequests } from './PullRequests'
 import { useDiffPrefs } from '../lib/diffPrefs'
+import { readPrune, useFetchEvery } from '../lib/remotes'
 
 /** What the right-hand pane is showing. */
 export type Selection =
@@ -80,6 +82,12 @@ function Count({ n }: { n: number }) {
 /** History loads this many commits at first, and this many more each time
  *  the list is scrolled near its end. */
 const HISTORY_PAGE = 300
+
+/** Keeps the old value when the new one is the same, so a refresh that
+ *  finds nothing new doesn't redraw lists or rerun what depends on them. */
+function keep<T>(set: (update: (old: T) => T) => void, next: T) {
+  set((old) => (JSON.stringify(old) === JSON.stringify(next) ? old : next))
+}
 
 interface Props {
   repo: RepoInfo
@@ -156,18 +164,42 @@ export default function RepoView({
         git.undoAvailable(repo.path),
         git.submodules(repo.path),
       ])
+      // Always a new status: the open diff reloads with it, and the file may
+      // have changed without its status changing.
       setStatus(s)
-      setBranches(b)
-      setCommits(c)
-      setStashes(st)
-      setRemotes(r)
-      setRemoteBranches(rb)
-      setUndoable(u)
-      setSubmodules(sm)
+      keep(setBranches, b)
+      keep(setCommits, c)
+      keep(setStashes, st)
+      keep(setRemotes, r)
+      keep(setRemoteBranches, rb)
+      keep(setUndoable, u)
+      keep(setSubmodules, sm)
     } catch (e) {
       setError(errorMessage(e))
     }
   }, [repo.path, logLimit])
+
+  // One refresh at a time. Asking while one runs gets one more right after
+  // it, however many times it was asked: changes come in bursts.
+  const latestRefresh = useRef(refresh)
+  latestRefresh.current = refresh
+  const refreshing = useRef(false)
+  const askedAgain = useRef(false)
+  const refreshSoon = useCallback(async () => {
+    if (refreshing.current) {
+      askedAgain.current = true
+      return
+    }
+    refreshing.current = true
+    try {
+      do {
+        askedAgain.current = false
+        await latestRefresh.current()
+      } while (askedAgain.current)
+    } finally {
+      refreshing.current = false
+    }
+  }, [])
 
   // Only asks for more once the last page came back full, i.e. there may be
   // more; until then the commits are still shorter than the limit.
@@ -262,12 +294,25 @@ export default function RepoView({
     }
   }
 
-  // Pick up changes made outside the app (editor saves, terminal commands).
+  // Pick up changes made outside the app (editor saves, terminal commands)
+  // as they happen. Focusing the window refreshes too, for whatever the
+  // watcher can't see: network drives, or Linux running out of watches.
   useEffect(() => {
-    refresh()
-    window.addEventListener('focus', refresh)
-    return () => window.removeEventListener('focus', refresh)
-  }, [refresh])
+    refreshSoon()
+    window.addEventListener('focus', refreshSoon)
+    return () => window.removeEventListener('focus', refreshSoon)
+  }, [refresh, refreshSoon])
+
+  useEffect(() => {
+    const unlisten = listen<string>('repo-changed', (e) => {
+      if (e.payload === repo.path) refreshSoon()
+    })
+    git.watch(repo.path).catch((e) => console.warn(errorMessage(e)))
+    return () => {
+      unlisten.then((stop) => stop())
+      git.unwatch(repo.path).catch(() => {})
+    }
+  }, [repo.path, refreshSoon])
 
   // Drop the selection when the file is no longer in that list.
   useEffect(() => {
@@ -380,6 +425,25 @@ export default function RepoView({
     },
     [refresh],
   )
+
+  // Fetch now and then when asked to (Remotes dialog), quietly: failing
+  // in the background isn't worth an error bar, the next fetch by hand
+  // says what's wrong. Not while something else runs.
+  const fetchEvery = useFetchEvery()
+  const hasRemotes = remotes.length > 0
+  const busyNow = useRef(busy)
+  busyNow.current = busy
+  useEffect(() => {
+    if (!fetchEvery || !hasRemotes) return
+    const timer = setInterval(() => {
+      if (busyNow.current) return
+      git
+        .fetch(repo.path, null, readPrune())
+        .then(refreshSoon)
+        .catch(() => {})
+    }, fetchEvery * 60_000)
+    return () => clearInterval(timer)
+  }, [fetchEvery, hasRemotes, repo.path, refreshSoon])
 
   const openSignIn = useCallback(() => setSigningIn(true), [])
   const ai = useCopilot(setError, account !== null, openSignIn)

@@ -434,6 +434,9 @@ const messages: Messages = {
   'remotesdialog.add': 'Añadir remoto',
   'remotesdialog.add-parent':
     'Añadir {repo}, el origen de este fork, como {name}',
+  'remotesdialog.auto-fetch': 'Hacer fetch en segundo plano',
+  'remotesdialog.auto-fetch-every': 'Cada {minutes} min',
+  'remotesdialog.auto-fetch-off': 'Nunca',
   'remotesdialog.cancel': 'Cancelar',
   'remotesdialog.edit-remote': 'Editar {name}',
   'remotesdialog.empty': 'Este repositorio aún no tiene remotos.',

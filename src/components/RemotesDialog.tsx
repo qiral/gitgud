@@ -16,7 +16,14 @@ import {
   type Remote,
   type RepoInfo,
 } from '../lib/git'
-import { maskUrl, readPrune, writePrune } from '../lib/remotes'
+import {
+  FETCH_INTERVALS,
+  maskUrl,
+  readPrune,
+  setFetchEvery,
+  useFetchEvery,
+  writePrune,
+} from '../lib/remotes'
 import Dialog from './Dialog'
 import { useTranslation } from '../i18n'
 
@@ -45,6 +52,7 @@ export default function RemotesDialog({
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [prune, setPrune] = useState(readPrune)
+  const fetchEvery = useFetchEvery()
   const [parent, setParent] = useState<Parent | null>(null)
 
   // Forks get offered their parent, until a remote points at it.
@@ -277,6 +285,22 @@ export default function RemotesDialog({
             }}
           />
           {t('remotesdialog.prune')}
+        </label>
+        <label className="-mt-1 flex items-center gap-2 text-muted">
+          {t('remotesdialog.auto-fetch')}
+          <select
+            value={fetchEvery}
+            onChange={(e) => setFetchEvery(Number(e.target.value))}
+            className="min-w-0 rounded border border-line bg-panel px-1 py-0.5 text-fg"
+          >
+            {FETCH_INTERVALS.map((m) => (
+              <option key={m} value={m}>
+                {m === 0
+                  ? t('remotesdialog.auto-fetch-off')
+                  : t('remotesdialog.auto-fetch-every', { minutes: m })}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
     </Dialog>

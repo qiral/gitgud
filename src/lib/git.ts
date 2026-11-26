@@ -616,6 +616,10 @@ export const git = {
     invoke<ReflogEntry[]>('lost_stashes', { repo }),
   recoverStash: (repo: string, hash: string) =>
     invoke<void>('recover_stash', { repo, hash }),
+  /** Sends the `repo-changed` event (payload: `repo`) after it changes on
+   *  disk. See src-tauri/src/watch.rs. */
+  watch: (repo: string) => invoke<void>('watch_repo', { repo }),
+  unwatch: (repo: string) => invoke<void>('unwatch_repo', { repo }),
   /** Without a remote, fetches all of them. */
   fetch: (repo: string, remote: string | null, prune: boolean) =>
     invoke<void>('fetch', { repo, remote, prune }),

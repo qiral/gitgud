@@ -425,6 +425,9 @@ const messages: Messages = {
   'remotesdialog.add': 'Uzak depo ekle',
   'remotesdialog.add-parent':
     "Fork'un kaynağı {repo} deposunu {name} olarak ekle",
+  'remotesdialog.auto-fetch': 'Arka planda fetch yap',
+  'remotesdialog.auto-fetch-every': '{minutes} dakikada bir',
+  'remotesdialog.auto-fetch-off': 'Hiçbir zaman',
   'remotesdialog.cancel': 'İptal',
   'remotesdialog.edit-remote': '{name} deposunu düzenle',
   'remotesdialog.empty': 'Bu deponun henüz uzak deposu yok.',

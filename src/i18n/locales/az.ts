@@ -426,6 +426,9 @@ const messages: Messages = {
   'remotesdialog.add': 'Uzaq repozitori əlavə et',
   'remotesdialog.add-parent':
     'Fork-un mənbəyi {repo} repozitorisini {name} kimi əlavə et',
+  'remotesdialog.auto-fetch': 'Arxa planda fetch et',
+  'remotesdialog.auto-fetch-every': 'Hər {minutes} dəqiqədən bir',
+  'remotesdialog.auto-fetch-off': 'Heç vaxt',
   'remotesdialog.cancel': 'Ləğv et',
   'remotesdialog.edit-remote': '{name} repozitorisini redaktə et',
   'remotesdialog.empty': 'Bu repozitorinin hələ uzaq repozitorisi yoxdur.',

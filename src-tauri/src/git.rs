@@ -140,6 +140,24 @@ pub(crate) fn run_with_input(repo: &Path, args: &[&str], input: &str) -> Result<
     finish(child.wait_with_output()?, args)
 }
 
+/// Like [`output`], writing `input` to git's stdin. Writes from another
+/// thread, so a big input can't wait on git while git waits on its output.
+pub(crate) fn output_with_input(repo: &Path, args: &[&str], input: Vec<u8>) -> Result<Output> {
+    use std::io::Write;
+    let mut child = command(repo, args)?
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    let mut stdin = child.stdin.take().expect("stdin is piped");
+    let writer = std::thread::spawn(move || stdin.write_all(&input));
+    let out = child.wait_with_output()?;
+    // git may stop reading early and close the pipe; its exit status says
+    // what happened.
+    let _ = writer.join();
+    Ok(out)
+}
+
 fn finish(out: Output, args: &[&str]) -> Result<String> {
     if out.status.success() {
         Ok(String::from_utf8_lossy(&out.stdout).into_owned())

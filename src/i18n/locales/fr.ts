@@ -436,6 +436,9 @@ const messages: Messages = {
   'remotesdialog.add': 'Ajouter le dépôt distant',
   'remotesdialog.add-parent':
     "Ajouter {repo}, à l'origine de ce fork, sous le nom {name}",
+  'remotesdialog.auto-fetch': 'Fetch en arrière-plan',
+  'remotesdialog.auto-fetch-every': 'Toutes les {minutes} min',
+  'remotesdialog.auto-fetch-off': 'Jamais',
   'remotesdialog.cancel': 'Annuler',
   'remotesdialog.edit-remote': 'Modifier {name}',
   'remotesdialog.empty': "Ce dépôt n'a pas encore de dépôt distant.",

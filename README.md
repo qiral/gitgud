@@ -85,6 +85,7 @@ Create one for the current branch (`Ctrl+R`), as a draft if you like; branches p
 
 - Create, filter, switch, rename and delete branches; unmerged ones ask before they go
 - Add, rename, edit, fetch or remove remotes, add a fork's parent as `upstream` in one click, and set a branch's upstream
+- Edits, commits and branch switches made outside the app (your editor, a terminal) show up right away, and fetching in the background can be turned on in the Remotes dialog
 - Submodules are listed under Changes with the commit they're on: update them, or open one as its own repository. Cloning can download them too
 - Add, open and remove worktrees; a branch checked out in another one says where
 - Clone from a URL or from your GitHub repositories, and publish a local repository to GitHub in one step
@@ -203,6 +204,7 @@ src-tauri/
   src/signing.rs      Commit signing and signature checks
   src/submodules.rs   Submodules
   src/worktrees.rs    Worktrees
+  src/watch.rs        Watches the open repository for changes on disk
   src/hosts.rs        Token sign-in for other hosts, and the git credentials env
   src/lib.rs          Tauri commands exposed to the frontend
 ```
