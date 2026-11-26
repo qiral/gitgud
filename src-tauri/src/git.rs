@@ -821,6 +821,7 @@ pub fn amend(repo: &Path, message: &str) -> Result<()> {
 pub fn diff(
     repo: &Path,
     path: &str,
+    orig_path: Option<&str>,
     staged: bool,
     untracked: bool,
     ignore_whitespace: bool,
@@ -849,6 +850,11 @@ pub fn diff(
         args.push("--cached");
     }
     args.extend(["--", path]);
+    // A renamed row is asked for by both of its paths. Given only the new
+    // one, git cannot pair it with the old and shows it as a new file.
+    if let Some(orig) = orig_path {
+        args.push(orig);
+    }
     run(repo, &args)
 }
 
@@ -1920,7 +1926,7 @@ mod tests {
         assert!(log(repo, 10).unwrap().is_empty());
         std::fs::write(dir.join("a b.txt"), "hello\n").unwrap();
         assert!(status(repo).unwrap().files[0].untracked);
-        assert!(diff(repo, "a b.txt", false, true, false)
+        assert!(diff(repo, "a b.txt", None, false, true, false)
             .unwrap()
             .contains("+hello"));
         stage(repo, &["a b.txt".into()]).unwrap();
@@ -2239,7 +2245,7 @@ mod tests {
         std::fs::write(dir.join("a.txt"), "new\n").unwrap();
 
         status(repo).unwrap();
-        diff(repo, "a.txt", false, false, false).unwrap();
+        diff(repo, "a.txt", None, false, false, false).unwrap();
         let head = run(repo, &["rev-parse", "HEAD"]).unwrap();
         show_commit(repo, head.trim(), false).unwrap();
         assert!(!marker.exists(), "the repo's config ran a command");
@@ -2285,8 +2291,8 @@ mod tests {
             std::env::temp_dir().join(format!("gitgud-elsewhere-{}", std::process::id()));
         std::fs::write(&elsewhere, "secret\n").unwrap();
         let absolute = elsewhere.to_string_lossy().to_string();
-        assert!(diff(&dir, &absolute, false, true, false).is_err());
-        assert!(diff(&dir, "../x", false, true, false).is_err());
+        assert!(diff(&dir, &absolute, None, false, true, false).is_err());
+        assert!(diff(&dir, "../x", None, false, true, false).is_err());
         std::fs::remove_dir_all(&dir).unwrap();
         std::fs::remove_file(&elsewhere).unwrap();
     }
@@ -2892,6 +2898,58 @@ mod tests {
     }
 
     #[test]
+    fn a_renamed_file_diffs_from_its_old_path_and_unstages_from_both() {
+        let dir = std::env::temp_dir().join(format!("gitgud-rename-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("docs")).unwrap();
+        let repo = dir.as_path();
+        run(repo, &["init", "-q", "-b", "main"]).unwrap();
+        for (k, v) in [
+            ("user.name", "T"),
+            ("user.email", "t@x"),
+            ("commit.gpgsign", "false"),
+        ] {
+            run(repo, &["config", k, v]).unwrap();
+        }
+        std::fs::write(dir.join("docs/notes.md"), "one\ntwo\nthree\n").unwrap();
+        stage(repo, &["docs/notes.md".into()]).unwrap();
+        commit(repo, "init").unwrap();
+        run(repo, &["mv", "docs/notes.md", "docs/notes-renamed.md"]).unwrap();
+
+        // With both paths git pairs the rename; with the new one alone it
+        // reports the file as new and drops the old one's lines in.
+        let shown = diff(
+            repo,
+            "docs/notes-renamed.md",
+            Some("docs/notes.md"),
+            true,
+            false,
+            false,
+        )
+        .unwrap();
+        assert!(shown.contains("rename from docs/notes.md"), "{shown}");
+        assert!(shown.contains("rename to docs/notes-renamed.md"), "{shown}");
+        assert!(!shown.contains("new file mode"), "{shown}");
+
+        // Unstaging from both paths leaves the index as it was before the
+        // rename; the new path alone leaves the old one deleted in it.
+        unstage(
+            repo,
+            &["docs/notes-renamed.md".into(), "docs/notes.md".into()],
+        )
+        .unwrap();
+        let after = status(repo).unwrap();
+        assert!(after.files.iter().all(|f| f.index == '.'), "{after:?}");
+        let index = run(repo, &["ls-files", "--", "docs/notes.md"]).unwrap();
+        assert_eq!(
+            index.trim(),
+            "docs/notes.md",
+            "the old path is still tracked"
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
     fn ignores_whitespace_changes_when_asked() {
         let dir = std::env::temp_dir().join(format!("gitgud-ws-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
@@ -2907,9 +2965,9 @@ mod tests {
 
         // Re-indent one line and really change the other.
         std::fs::write(dir.join("f.txt"), "    a\nc\n").unwrap();
-        let all = diff(repo, "f.txt", false, false, false).unwrap();
+        let all = diff(repo, "f.txt", None, false, false, false).unwrap();
         assert!(all.contains("+    a") && all.contains("+c"));
-        let w = diff(repo, "f.txt", false, false, true).unwrap();
+        let w = diff(repo, "f.txt", None, false, false, true).unwrap();
         assert!(!w.contains("+    a") && w.contains("+c"));
 
         stage(repo, &["f.txt".into()]).unwrap();
@@ -2957,16 +3015,16 @@ mod tests {
         };
 
         // Stage only the first edit.
-        let d = diff(repo, "f.txt", false, false, false).unwrap();
+        let d = diff(repo, "f.txt", None, false, false, false).unwrap();
         let picked = [index_of(&d, "-line 2"), index_of(&d, "+line 2 edited")];
         apply_lines(repo, &d, &picked, LineAction::Stage).unwrap();
-        let staged = diff(repo, "f.txt", true, false, false).unwrap();
+        let staged = diff(repo, "f.txt", None, true, false, false).unwrap();
         assert!(staged.contains("+line 2 edited") && !staged.contains("line 18 edited"));
-        let unstaged = diff(repo, "f.txt", false, false, false).unwrap();
+        let unstaged = diff(repo, "f.txt", None, false, false, false).unwrap();
         assert!(unstaged.contains("+line 18 edited") && !unstaged.contains("line 2 edited"));
 
         // Unstage just the added line: the index loses "line 2" entirely.
-        let s = diff(repo, "f.txt", true, false, false).unwrap();
+        let s = diff(repo, "f.txt", None, true, false, false).unwrap();
         apply_lines(
             repo,
             &s,
@@ -2974,7 +3032,7 @@ mod tests {
             LineAction::Unstage,
         )
         .unwrap();
-        let staged = diff(repo, "f.txt", true, false, false).unwrap();
+        let staged = diff(repo, "f.txt", None, true, false, false).unwrap();
         assert!(
             staged.contains("-line 2") && !staged.contains("+line 2 edited"),
             "{staged}"
@@ -2982,7 +3040,7 @@ mod tests {
         unstage(repo, &["f.txt".into()]).unwrap();
 
         // Discard only the second edit from the working tree.
-        let d = diff(repo, "f.txt", false, false, false).unwrap();
+        let d = diff(repo, "f.txt", None, false, false, false).unwrap();
         let picked = [index_of(&d, "-line 18"), index_of(&d, "+line 18 edited")];
         apply_lines(repo, &d, &picked, LineAction::Discard).unwrap();
         let now = std::fs::read_to_string(dir.join("f.txt")).unwrap();
@@ -3019,20 +3077,20 @@ mod tests {
 
         // Untracked file: stage two of three lines.
         std::fs::write(dir.join("new file.txt"), "a\nb\nc\n").unwrap();
-        let d = diff(repo, "new file.txt", false, true, false).unwrap();
+        let d = diff(repo, "new file.txt", None, false, true, false).unwrap();
         let picked = [index_of(&d, "+a"), index_of(&d, "+c")];
         apply_lines(repo, &d, &picked, LineAction::Stage).unwrap();
         assert_eq!(staged_text("new file.txt"), "a\nc\n");
-        let rest = diff(repo, "new file.txt", false, false, false).unwrap();
+        let rest = diff(repo, "new file.txt", None, false, false, false).unwrap();
         assert!(rest.contains("+b") && !rest.contains("+a"), "{rest}");
 
         // Unstage one of them: the file stays added, with one line.
-        let s = diff(repo, "new file.txt", true, false, false).unwrap();
+        let s = diff(repo, "new file.txt", None, true, false, false).unwrap();
         apply_lines(repo, &s, &[index_of(&s, "+a")], LineAction::Unstage).unwrap();
         assert_eq!(staged_text("new file.txt"), "c\n");
 
         // Unstage the last line: the file is no longer in the index.
-        let s = diff(repo, "new file.txt", true, false, false).unwrap();
+        let s = diff(repo, "new file.txt", None, true, false, false).unwrap();
         apply_lines(repo, &s, &[index_of(&s, "+c")], LineAction::Unstage).unwrap();
         assert!(status(repo)
             .unwrap()
@@ -3041,7 +3099,7 @@ mod tests {
             .any(|f| f.path == "new file.txt" && f.untracked));
 
         // Discard one line of the untracked file.
-        let d = diff(repo, "new file.txt", false, true, false).unwrap();
+        let d = diff(repo, "new file.txt", None, false, true, false).unwrap();
         apply_lines(repo, &d, &[index_of(&d, "+b")], LineAction::Discard).unwrap();
         assert_eq!(
             std::fs::read_to_string(dir.join("new file.txt")).unwrap(),
@@ -3050,22 +3108,22 @@ mod tests {
 
         // Deleted file: stage the removal of one line, then unstage it again.
         std::fs::remove_file(dir.join("old.txt")).unwrap();
-        let d = diff(repo, "old.txt", false, false, false).unwrap();
+        let d = diff(repo, "old.txt", None, false, false, false).unwrap();
         apply_lines(repo, &d, &[index_of(&d, "-y")], LineAction::Stage).unwrap();
         assert_eq!(staged_text("old.txt"), "x\nz\n");
-        let s = diff(repo, "old.txt", true, false, false).unwrap();
+        let s = diff(repo, "old.txt", None, true, false, false).unwrap();
         apply_lines(repo, &s, &[index_of(&s, "-y")], LineAction::Unstage).unwrap();
         assert_eq!(staged_text("old.txt"), "x\ny\nz\n");
 
         // Staged deletion: unstage one line, which puts the file back with it.
         stage(repo, &["old.txt".into()]).unwrap();
-        let s = diff(repo, "old.txt", true, false, false).unwrap();
+        let s = diff(repo, "old.txt", None, true, false, false).unwrap();
         apply_lines(repo, &s, &[index_of(&s, "-z")], LineAction::Unstage).unwrap();
         assert_eq!(staged_text("old.txt"), "z\n");
 
         // Discard one removal: the deleted file comes back with just that line.
         unstage(repo, &["old.txt".into()]).unwrap();
-        let d = diff(repo, "old.txt", false, false, false).unwrap();
+        let d = diff(repo, "old.txt", None, false, false, false).unwrap();
         apply_lines(repo, &d, &[index_of(&d, "-x")], LineAction::Discard).unwrap();
         assert_eq!(std::fs::read_to_string(dir.join("old.txt")).unwrap(), "x\n");
         std::fs::remove_dir_all(&dir).unwrap();
