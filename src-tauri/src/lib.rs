@@ -17,6 +17,7 @@ mod remotes;
 mod signing;
 mod submodules;
 mod undo;
+mod watch;
 mod worktrees;
 
 use blame::Blame;
@@ -38,6 +39,7 @@ use std::path::Path;
 use submodules::Submodule;
 use tauri::{Emitter, Manager};
 use undo::{Kind, ReflogEntry, UndoLog, Undoable};
+use watch::Watchers;
 use worktrees::{RemoveOutcome, Worktree};
 
 // Commands are marked `async` so git runs on a worker thread instead of
@@ -863,6 +865,20 @@ fn cancel_clone(cancel: tauri::State<CloneCancel>) {
     cancel.cancel();
 }
 
+/// Sends `repo-changed` with `repo` whenever it changes on disk.
+#[tauri::command(async)]
+fn watch_repo(app: tauri::AppHandle, watchers: tauri::State<Watchers>, repo: String) -> Result<()> {
+    let payload = repo.clone();
+    watchers.watch(&repo, move || {
+        let _ = app.emit(watch::CHANGED, &payload);
+    })
+}
+
+#[tauri::command(async)]
+fn unwatch_repo(watchers: tauri::State<Watchers>, repo: String) {
+    watchers.unwatch(&repo);
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -873,6 +889,7 @@ pub fn run() {
         .manage(CloneCancel::default())
         .manage(Copilot::default())
         .manage(UndoLog::default())
+        .manage(Watchers::default())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -881,6 +898,8 @@ pub fn run() {
             initial_repo,
             open_url,
             open_repo,
+            watch_repo,
+            unwatch_repo,
             status,
             stage,
             unstage,

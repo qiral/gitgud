@@ -83,6 +83,9 @@ function installTauriMock({
   > = {
     initial_repo: () => repo.path,
     open_repo: () => repo,
+    // Nothing changes on disk behind the app's back here.
+    watch_repo: () => null,
+    unwatch_repo: () => null,
     status: () => ({
       branch: current,
       upstream: `origin/${current}`,
@@ -343,6 +346,7 @@ function installTauriMock({
 
   function unregisterCallback(id: number) {
     callbacks.delete(id)
+    listeners.delete(id)
   }
 
   function runCallback(id: number, data: unknown) {
@@ -350,10 +354,14 @@ function installTauriMock({
   }
 
   // The event plugin's own commands. `listen` hands back the callback id it
-  // was given, `unlisten` drops it, and nothing is ever emitted: the UI only
-  // needs a channel that opens and closes without complaining.
+  // was given and `unlisten` drops it. Nothing is emitted unless a spec
+  // calls `window.e2e.emit`.
+  const listeners = new Map<number, string>()
   function invoke(cmd: string, args: Record<string, unknown> = {}) {
-    if (cmd === 'plugin:event|listen') return Promise.resolve(args.handler)
+    if (cmd === 'plugin:event|listen') {
+      listeners.set(Number(args.handler), String(args.event))
+      return Promise.resolve(args.handler)
+    }
     if (cmd === 'plugin:event|unlisten') {
       unregisterCallback(Number(args.eventId))
       return Promise.resolve(null)
@@ -386,6 +394,23 @@ function installTauriMock({
   scope.__TAURI_EVENT_PLUGIN_INTERNALS__ = {
     unregisterListener: (_event: string, id: number) => unregisterCallback(id),
   }
+  // For specs: what the Rust side would do behind the app's back.
+  ;(window as unknown as { e2e: E2e }).e2e = {
+    emit: (event, payload) => {
+      for (const [id, name] of listeners)
+        if (name === event) runCallback(id, { event, id, payload })
+    },
+    editOnDisk: () => {
+      dirty = true
+    },
+  }
+}
+
+/** `window.e2e` in the page; see the end of installTauriMock. */
+export interface E2e {
+  emit: (event: string, payload: unknown) => void
+  /** Leaves an uncommitted change in the fake repository. */
+  editOnDisk: () => void
 }
 
 export const test = base.extend<{

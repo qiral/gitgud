@@ -65,9 +65,17 @@ export async function openFixture(browser) {
   }, repo)
 
   await browser.refresh()
-  const recent = await browser.$(`button[title="${repo}"]`)
-  await recent.waitForDisplayed({ timeout: 30000 })
-  await recent.click()
+  // The app reopens the last repository by itself, and that is the recent
+  // just written. Only the start screen needs a click, and only on its own
+  // list: the toolbar's Repository button carries the same title, and a
+  // click there opens its menu over the tabs.
+  const recent = await browser.$(`li > button[title="${repo}"]`)
+  const opened = async () => (await text(browser)).includes('Current branch')
+  await browser.waitUntil(
+    async () => (await opened()) || (await recent.isDisplayed()),
+    { timeout: 30000, timeoutMsg: 'neither the start screen nor the repository showed up' },
+  )
+  if (!(await opened())) await recent.click()
 
   await browser.waitUntil(
     async () => (await text(browser)).includes('Current branch'),

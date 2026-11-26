@@ -96,8 +96,9 @@ fn command(repo: &Path, args: &[&str]) -> Result<Command> {
         // Stable, parseable output regardless of the user's locale.
         .env("LC_ALL", "C");
     // File names are names: `*` or `:!x` must not match other files. Stash
-    // takes no file names here and uses pathspec magic itself for -u.
-    if args.first() != Some(&"stash") {
+    // takes no file names here and uses pathspec magic itself for -u, and
+    // check-ignore refuses to run with it.
+    if !matches!(args.first(), Some(&("stash" | "check-ignore"))) {
         cmd.env("GIT_LITERAL_PATHSPECS", "1");
     }
 
@@ -165,6 +166,24 @@ pub(crate) fn run_with_input(repo: &Path, args: &[&str], input: &str) -> Result<
         .expect("stdin is piped")
         .write_all(input.as_bytes())?;
     finish(child.wait_with_output()?, args)
+}
+
+/// Like [`output`], writing `input` to git's stdin. Writes from another
+/// thread, so a big input can't wait on git while git waits on its output.
+pub(crate) fn output_with_input(repo: &Path, args: &[&str], input: Vec<u8>) -> Result<Output> {
+    use std::io::Write;
+    let mut child = command(repo, args)?
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    let mut stdin = child.stdin.take().expect("stdin is piped");
+    let writer = std::thread::spawn(move || stdin.write_all(&input));
+    let out = child.wait_with_output()?;
+    // git may stop reading early and close the pipe; its exit status says
+    // what happened.
+    let _ = writer.join();
+    Ok(out)
 }
 
 /// Runs git and returns stdout, or stderr as the error when git exits non-zero.

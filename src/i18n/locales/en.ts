@@ -431,6 +431,9 @@ const messages: Messages = {
   'remotesdialog.add': 'Add remote',
   'remotesdialog.add-parent':
     'Add {repo}, the repository this was forked from, as {name}',
+  'remotesdialog.auto-fetch': 'Fetch in the background',
+  'remotesdialog.auto-fetch-every': 'Every {minutes} min',
+  'remotesdialog.auto-fetch-off': 'Never',
   'remotesdialog.cancel': 'Cancel',
   'remotesdialog.edit-remote': 'Edit {name}',
   'remotesdialog.empty': 'This repository has no remotes yet.',
