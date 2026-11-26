@@ -161,7 +161,7 @@ bug in the lab.
 
 The specs are plain `node` scripts, not a runner's files: nothing named
 `*.e2e.ts` or `*.test.ts`, so neither Playwright nor vitest collects any of
-it, and `npm run build` does not type check it either. Three of them, three
+it, and `npm run build` does not type check it either. Eight of them, eight
 slices:
 
 - **smoke.** The window opens with the debug binary, the title is `GitGud`, the
@@ -174,6 +174,31 @@ slices:
 - **branch.** Types a new branch name into the branch menu, presses Enter, and
   then asks `git` in the fixture: HEAD is the new branch, and it points at
   main's tip. What the app says is not the assertion; the disk is.
+- **conflict-header.** Makes a real conflict in the fixture, opens it, and puts
+  the window at its 800x500 minimum: the sticky header keeps the name of the
+  file it is resolving, at least 60% of the row's width and inside two lines,
+  in English and in Turkish. The gate comes from a bug report, not from the
+  layout: the name used to be 33px of 480.
+- **search-unicode-case.** Writes a Turkish commit and a Turkish author into
+  the fixture, then searches for them through the field: a lowercase query
+  finds a subject in capitals and the other way round, for the message and for
+  the author, including the dotted capital I that a lowercase alone gets
+  wrong. git runs under `LC_ALL=C` and folds ASCII only, so this is the one
+  spec that fails if the case folding moves back into git's hands.
+- **staged-rename.** Renames `docs/notes.md` in the fixture and stages it,
+  then checks both halves of that row: the diff names both paths as a rename
+  instead of showing a new file, and pressing Unstage leaves the index as it
+  was, with `docs/notes.md` still tracked and nothing staged. The second half
+  is asked of `git`, because the bug it covers was the app saying one thing and
+  the index keeping a phantom delete.
+- **branch-shadow.** Tags the fixture's `feature/login` with the same name
+  first, then reads the menu back: the branch is listed under its own name,
+  and clicking the row moves HEAD onto it. A short ref name resolves against
+  every ref, so this is the shape that used to hide the branch.
+- **non-utf8-name.** Creates a file whose name is not valid UTF-8, then works
+  its row through the window: stage, unstage, Stage all. The name travels in
+  git's own quoted form, and the index on disk is the truth: the staged blob
+  hash matches the real bytes, and no U+FFFD shows up anywhere.
 
 The fixture is `applab/fixtures/make-repo.sh`: three commits with fixed dates
 and a fixed identity, a `feature/login` branch, and a rename in the last commit.

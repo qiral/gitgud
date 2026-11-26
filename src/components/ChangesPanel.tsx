@@ -112,6 +112,10 @@ export default function ChangesPanel({
   const staged = files.filter(isStaged)
   const unstaged = files.filter((f) => isUnstaged(f) && !f.conflicted)
   const paths = (list: FileChange[]) => list.map((f) => f.path)
+  // Unstaging a rename takes both of its paths. Given only the new one, git
+  // cannot pair it back and leaves the old one deleted in the index.
+  const unstaging = (list: FileChange[]) =>
+    list.flatMap((f) => (f.origPath ? [f.path, f.origPath] : [f.path]))
 
   // A merge can be committed once nothing is conflicted, even with no
   // staged files, and git already has a message for it.
@@ -259,7 +263,7 @@ export default function ChangesPanel({
               label: t('changespanel.unstage'),
               icon: Minus,
               onClick: () =>
-                act('unstage', () => git.unstage(repo.path, [f.path])),
+                act('unstage', () => git.unstage(repo.path, unstaging([f]))),
             }
           : {
               label: t('changespanel.stage'),
@@ -370,10 +374,10 @@ export default function ChangesPanel({
           onSelect={(file) => onSelect({ kind: 'file', file, staged: true })}
           bulkLabel={t('changespanel.unstage-all')}
           onBulk={() =>
-            act('unstage', () => git.unstage(repo.path, paths(staged)))
+            act('unstage', () => git.unstage(repo.path, unstaging(staged)))
           }
           onToggle={(f) =>
-            act('unstage', () => git.unstage(repo.path, [f.path]))
+            act('unstage', () => git.unstage(repo.path, unstaging([f])))
           }
         />
         <FileList

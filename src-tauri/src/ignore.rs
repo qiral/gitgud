@@ -47,6 +47,14 @@ pub fn extension(path: &str) -> Option<&str> {
 /// repository root and use `/`, like `git status` prints them.
 pub fn pattern(path: &str, kind: IgnoreKind) -> Result<String> {
     let invalid = || GitError::Failed(format!("can't ignore {path} this way"));
+    // A name that isn't valid UTF-8 arrives in the quoted form; a .gitignore
+    // line would have to carry the bytes themselves, and the quoted text
+    // would be a pattern that can never match.
+    if path.starts_with('"') && path.ends_with('"') && path.len() > 1 {
+        return Err(GitError::Failed(format!(
+            "{path} has a name that is not valid text, so it can't be ignored this way"
+        )));
+    }
     let path = path.trim_matches('/');
     if path.is_empty() {
         return Err(invalid());
