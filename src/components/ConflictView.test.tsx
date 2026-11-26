@@ -142,6 +142,22 @@ it("doesn't show one file's suggestion on another", async () => {
   await waitFor(() => expect(screen.queryByText('merged();')).toBeNull())
 })
 
+it('keeps the file name on a line of its own in the sticky header', async () => {
+  mockIPC((cmd) => {
+    if (cmd === 'conflict_parts') return PARTS
+  })
+  render(<ConflictView repo={repo} file={file} version={1} act={act} />)
+  // The name is a block row of its own, and the buttons sit in a group below
+  // it: a flex row with the name as `flex-1` gave the name one character at
+  // the window's minimum width.
+  const name = (await screen.findByText('a.rs')).closest('span')!
+  const row = name.parentElement!
+  expect(row.className).toContain('flex-col')
+  expect(name.className).toContain('truncate')
+  expect(name.nextElementSibling!.className).toContain('flex')
+  expect(name.querySelector('span')!.className).toContain('text-muted')
+})
+
 it('scrolls long conflict lines horizontally and wraps block actions', async () => {
   mockIPC((cmd) => {
     if (cmd === 'conflict_parts') return PARTS

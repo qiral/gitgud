@@ -112,6 +112,10 @@ export default function ChangesPanel({
   const staged = files.filter(isStaged)
   const unstaged = files.filter((f) => isUnstaged(f) && !f.conflicted)
   const paths = (list: FileChange[]) => list.map((f) => f.path)
+  // Unstaging a rename takes both of its paths. Given only the new one, git
+  // cannot pair it back and leaves the old one deleted in the index.
+  const unstaging = (list: FileChange[]) =>
+    list.flatMap((f) => (f.origPath ? [f.path, f.origPath] : [f.path]))
 
   // A merge can be committed once nothing is conflicted, even with no
   // staged files, and git already has a message for it.
@@ -259,7 +263,7 @@ export default function ChangesPanel({
               label: t('changespanel.unstage'),
               icon: Minus,
               onClick: () =>
-                act('unstage', () => git.unstage(repo.path, [f.path])),
+                act('unstage', () => git.unstage(repo.path, unstaging([f]))),
             }
           : {
               label: t('changespanel.stage'),
@@ -370,10 +374,10 @@ export default function ChangesPanel({
           onSelect={(file) => onSelect({ kind: 'file', file, staged: true })}
           bulkLabel={t('changespanel.unstage-all')}
           onBulk={() =>
-            act('unstage', () => git.unstage(repo.path, paths(staged)))
+            act('unstage', () => git.unstage(repo.path, unstaging(staged)))
           }
           onToggle={(f) =>
-            act('unstage', () => git.unstage(repo.path, [f.path]))
+            act('unstage', () => git.unstage(repo.path, unstaging([f])))
           }
         />
         <FileList
@@ -485,12 +489,12 @@ export default function ChangesPanel({
             {t('changespanel.amend-last-commit')}
           </label>
         )}
-        <div className="mt-2 flex min-w-0 gap-2">
+        <div className="mt-2 flex min-w-0 flex-wrap gap-2">
           <button
             onClick={commit}
             disabled={busy || !canCommit || suggested !== null}
             title={t('changespanel.ctrl-enter')}
-            className="min-w-0 flex-1 truncate rounded bg-accent px-2 py-1.5 font-medium text-on-accent hover:opacity-90 disabled:opacity-40"
+            className="min-w-36 flex-1 truncate rounded bg-accent px-2 py-1.5 font-medium text-on-accent hover:opacity-90 disabled:opacity-40"
           >
             {rebasing
               ? t('changespanel.continue-rebase')
@@ -504,36 +508,38 @@ export default function ChangesPanel({
                     ? tp('changespanel.commit-files', staged.length)
                     : t('changespanel.commit')}
           </button>
-          {onReview && (
+          <div className="ml-auto flex shrink-0 gap-2">
+            {onReview && (
+              <button
+                onClick={onReview}
+                disabled={
+                  busy ||
+                  staged.length === 0 ||
+                  merging !== null ||
+                  rebasing !== null
+                }
+                title={t('changespanel.review-with-copilot')}
+                aria-label={t('changespanel.review-with-copilot')}
+                className="flex shrink-0 items-center rounded border border-line px-2 hover:bg-hover disabled:opacity-40"
+              >
+                <ScanSearch className="size-4" />
+              </button>
+            )}
             <button
-              onClick={onReview}
+              onClick={onStash}
               disabled={
                 busy ||
-                staged.length === 0 ||
+                files.length === 0 ||
                 merging !== null ||
                 rebasing !== null
               }
-              title={t('changespanel.review-with-copilot')}
-              aria-label={t('changespanel.review-with-copilot')}
-              className="flex shrink-0 items-center rounded border border-line px-2 hover:bg-hover disabled:opacity-40"
+              title={t('changespanel.stash-all-changes')}
+              className="flex shrink-0 items-center gap-1.5 rounded border border-line px-2.5 whitespace-nowrap hover:bg-hover disabled:opacity-40"
             >
-              <ScanSearch className="size-4" />
+              <Archive className="size-4 shrink-0" />
+              {t('changespanel.stash')}
             </button>
-          )}
-          <button
-            onClick={onStash}
-            disabled={
-              busy ||
-              files.length === 0 ||
-              merging !== null ||
-              rebasing !== null
-            }
-            title={t('changespanel.stash-all-changes')}
-            className="flex shrink-0 items-center gap-1.5 rounded border border-line px-2.5 whitespace-nowrap hover:bg-hover disabled:opacity-40"
-          >
-            <Archive className="size-4 shrink-0" />
-            {t('changespanel.stash')}
-          </button>
+          </div>
         </div>
       </div>
     </div>
@@ -569,14 +575,14 @@ function FileList({
   if (files.length === 0) return null
   return (
     <section>
-      <div className="flex items-center justify-between gap-2 px-3 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted uppercase">
-        <span className="min-w-0 truncate">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted uppercase">
+        <span className="min-w-36 flex-1 truncate">
           {title} ({files.length})
         </span>
         {onBulk && (
           <button
             onClick={onBulk}
-            className="shrink-0 font-normal tracking-normal whitespace-nowrap normal-case hover:text-fg"
+            className="ml-auto shrink-0 font-normal tracking-normal whitespace-nowrap normal-case hover:text-fg"
           >
             {bulkLabel}
           </button>

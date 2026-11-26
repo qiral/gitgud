@@ -170,7 +170,10 @@ fn hash_files(repo: &Path, paths: &[&str], save: bool) -> Result<Vec<Option<Stri
 
 /// `path` as a line of input for git, quoted if it has to be.
 fn quoted(path: &str) -> String {
-    if !path.starts_with('"') && !path.contains(['\n', '\r']) {
+    // A leading quote marks the form `status` makes of a name that isn't
+    // valid UTF-8: it is C-quoted already, and git unquotes it, so wrapping
+    // it again would name a file that doesn't exist.
+    if path.starts_with('"') || !path.contains(['\n', '\r']) {
         return path.to_string();
     }
     let escaped = path
@@ -964,7 +967,7 @@ mod tests {
         let path = "şub dir/f.txt";
         r.commit(path, "one\ntwo\n");
         r.write(path, "one\ntwo\nthree\n");
-        let diff = git::diff(&r.dir, path, false, false, false).unwrap();
+        let diff = git::diff(&r.dir, path, None, false, false, false).unwrap();
         let line = diff.split('\n').position(|l| l == "+three").unwrap();
         r.log.discard_lines(&r.dir, &diff, &[line]).unwrap();
         assert_eq!(r.read(path), "one\ntwo\n");
@@ -991,7 +994,9 @@ mod tests {
     #[test]
     fn paths_are_quoted_only_when_needed() {
         assert_eq!(quoted("a b/ş"), "a b/ş");
-        assert_eq!(quoted("\"a\\\n"), "\"\\\"a\\\\\\n\"");
+        assert_eq!(quoted("a\nb"), "\"a\\nb\"");
+        // The quoted form a non-text name gets is complete already.
+        assert_eq!(quoted("\"caf\\351.txt\""), "\"caf\\351.txt\"");
     }
 
     #[test]
