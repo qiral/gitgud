@@ -302,10 +302,15 @@ export default function RepoView({
       const { file, staged } = selection
       // Staging some lines of an untracked file makes it tracked, so ask the
       // latest status rather than the selection, which was taken before.
-      const untracked =
-        status?.files.find((f) => f.path === file.path)?.untracked ??
-        file.untracked
-      return git.diff(repo.path, file.path, staged, untracked, ignoreWhitespace)
+      const latest = status?.files.find((f) => f.path === file.path) ?? file
+      return git.diff(
+        repo.path,
+        file.path,
+        staged,
+        latest.untracked,
+        ignoreWhitespace,
+        latest.origPath,
+      )
     }
     load()
       .then((d) => !cancelled && setDiff(d))
@@ -886,6 +891,11 @@ export default function RepoView({
               <FileHeader
                 repo={repo.path}
                 path={selection.file.path}
+                oldPath={
+                  selection.staged
+                    ? (selection.file.origPath ?? undefined)
+                    : undefined
+                }
                 onHistory={
                   selection.file.untracked ? undefined : showFileHistory
                 }
