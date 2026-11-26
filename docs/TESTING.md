@@ -174,6 +174,11 @@ slices:
 - **branch.** Types a new branch name into the branch menu, presses Enter, and
   then asks `git` in the fixture: HEAD is the new branch, and it points at
   main's tip. What the app says is not the assertion; the disk is.
+- **conflict-header.** Makes a real conflict in the fixture, opens it, and puts
+  the window at its 800x500 minimum: the sticky header keeps the name of the
+  file it is resolving, at least 60% of the row's width and inside two lines,
+  in English and in Turkish. The gate comes from a bug report, not from the
+  layout: the name used to be 33px of 480.
 - **search-unicode-case.** Writes a Turkish commit and a Turkish author into
   the fixture, then searches for them through the field: a lowercase query
   finds a subject in capitals and the other way round, for the message and for
