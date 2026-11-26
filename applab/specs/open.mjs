@@ -29,16 +29,17 @@ try {
   const filter = await browser.$('input[placeholder="Filter or create a branch"]')
   await filter.waitForDisplayed({ timeout: 30000 })
 
-  // The menu the filter belongs to, whatever its list is classed as.
+  // The dropdown is found from its filter input, not from a layout class that
+  // changes with the toolbar's own styling. Every branch row is the first
+  // button of its `li`, so a row's badge or menu icon never becomes its name.
   const rows = await browser.execute(() => {
-    const panel = document
-      .querySelector('input[placeholder="Filter or create a branch"]')
-      ?.closest('div')
-    return panel
-      ? [...panel.querySelectorAll('ul > li > button:first-child')].map((b) =>
-          b.innerText.trim(),
-        )
-      : []
+    const filter = document.querySelector(
+      'input[placeholder="Filter or create a branch"]',
+    )
+    const list = filter?.closest('div')?.querySelector('ul')
+    return [...(list?.querySelectorAll('li > button:first-child') ?? [])].map(
+      (b) => b.innerText.trim(),
+    )
   })
 
   const names = git('branch', '--format=%(refname:short)').split('\n')
