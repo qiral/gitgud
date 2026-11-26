@@ -29,10 +29,14 @@ try {
   const filter = await browser.$('input[placeholder="Filter or create a branch"]')
   await filter.waitForDisplayed({ timeout: 30000 })
 
+  // The list right after the filter input's form: named by where it is, not by
+  // a Tailwind class, which changes with the styling.
   const rows = await browser.execute(() =>
-    [...document.querySelectorAll('ul.max-h-80 > li > button:first-child')].map(
-      (b) => b.innerText.trim(),
-    ),
+    [
+      ...document.querySelectorAll(
+        'form:has(> input[placeholder="Filter or create a branch"]) + ul > li > button:first-child',
+      ),
+    ].map((b) => b.innerText.trim()),
   )
 
   const names = git('branch', '--format=%(refname:short)').split('\n')
