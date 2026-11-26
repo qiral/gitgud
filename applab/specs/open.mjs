@@ -29,11 +29,20 @@ try {
   const filter = await browser.$('input[placeholder="Filter or create a branch"]')
   await filter.waitForDisplayed({ timeout: 30000 })
 
-  const rows = await browser.execute(() =>
-    [...document.querySelectorAll('ul.max-h-80 > li > button:first-child')].map(
-      (b) => b.innerText.trim(),
-    ),
-  )
+  // The menu's list, found through the filter input rather than a styling
+  // class: 0b77abf renamed the class this used to select, and the spec broke
+  // without the app changing at all.
+  const rows = await browser.execute(() => {
+    const input = document.querySelector(
+      'input[placeholder="Filter or create a branch"]',
+    )
+    const list = input?.closest('div')?.querySelector('ul')
+    return list
+      ? [...list.querySelectorAll('li > button:first-child')].map((b) =>
+          b.innerText.trim(),
+        )
+      : []
+  })
 
   const names = git('branch', '--format=%(refname:short)').split('\n')
   for (const name of names) {

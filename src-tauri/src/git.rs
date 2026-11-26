@@ -5,6 +5,7 @@
 //! can never be interpreted as commands.
 
 use serde::Serialize;
+use std::ffi::OsString;
 
 use crate::appimage;
 use crate::conflict;
@@ -113,6 +114,13 @@ pub(crate) fn output(repo: &Path, args: &[&str]) -> Result<Output> {
     Ok(command(repo, args)?.output()?)
 }
 
+/// Like [`output`], with one argument that may carry bytes that are not
+/// valid UTF-8: a `<commit>:<path>` object name for a file whose name isn't
+/// text, for instance.
+pub(crate) fn output_os(repo: &Path, args: &[&str], arg: &std::ffi::OsStr) -> Result<Output> {
+    Ok(command(repo, args)?.arg(arg).output()?)
+}
+
 /// Runs git and returns stdout, or stderr as the error when git exits non-zero.
 pub(crate) fn run(repo: &Path, args: &[&str]) -> Result<String> {
     run_with_env(repo, args, &[])
@@ -121,6 +129,18 @@ pub(crate) fn run(repo: &Path, args: &[&str]) -> Result<String> {
 /// Like [`run`], with extra environment variables (used for credentials).
 pub(crate) fn run_with_env(repo: &Path, args: &[&str], env: &[(String, String)]) -> Result<String> {
     let out = command(repo, args)?.envs(env.iter().cloned()).output()?;
+    finish(out, args)
+}
+
+/// Like [`run`], with file names appended after `args`. A name that isn't
+/// valid UTF-8 arrives in the quoted form [`parse_status`] makes of it, so
+/// it goes back to the bytes it came from before git sees it.
+pub(crate) fn run_paths(repo: &Path, args: &[&str], paths: &[impl AsRef<str>]) -> Result<String> {
+    let mut cmd = command(repo, args)?;
+    for path in paths {
+        cmd.arg(path_arg(path.as_ref())?);
+    }
+    let out = cmd.output()?;
     finish(out, args)
 }
 
@@ -140,16 +160,32 @@ pub(crate) fn run_with_input(repo: &Path, args: &[&str], input: &str) -> Result<
     finish(child.wait_with_output()?, args)
 }
 
+/// Runs git and returns stdout, or stderr as the error when git exits non-zero.
+fn git_failed(stderr: &[u8], args: &[&str]) -> GitError {
+    let stderr = String::from_utf8_lossy(stderr).trim().to_string();
+    GitError::Failed(if stderr.is_empty() {
+        format!("git {} failed", args.first().unwrap_or(&""))
+    } else {
+        signing::explain(&stderr).unwrap_or(stderr)
+    })
+}
+
 fn finish(out: Output, args: &[&str]) -> Result<String> {
     if out.status.success() {
         Ok(String::from_utf8_lossy(&out.stdout).into_owned())
     } else {
-        let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
-        Err(GitError::Failed(if stderr.is_empty() {
-            format!("git {} failed", args.first().unwrap_or(&""))
-        } else {
-            signing::explain(&stderr).unwrap_or(stderr)
-        }))
+        Err(git_failed(&out.stderr, args))
+    }
+}
+
+/// Like [`run`], but stdout as it came: a file name that isn't valid UTF-8
+/// has to survive as bytes until [`parse_status`] has looked at it.
+fn run_raw(repo: &Path, args: &[&str]) -> Result<Vec<u8>> {
+    let out = command(repo, args)?.output()?;
+    if out.status.success() {
+        Ok(out.stdout)
+    } else {
+        Err(git_failed(&out.stderr, args))
     }
 }
 
@@ -226,7 +262,7 @@ pub struct Status {
 }
 
 pub fn status(repo: &Path) -> Result<Status> {
-    let raw = run(
+    let raw = run_raw(
         repo,
         &[
             "status",
@@ -251,8 +287,8 @@ pub fn status(repo: &Path) -> Result<Status> {
 }
 
 /// The `S<c><m><u>` field of a submodule; `N...` for everything else.
-fn submodule(field: &str) -> Option<SubmoduleChange> {
-    let mut flags = field.strip_prefix('S')?.chars();
+fn submodule(field: &[u8]) -> Option<SubmoduleChange> {
+    let mut flags = std::str::from_utf8(field).ok()?.strip_prefix('S')?.chars();
     let mut is = |c| flags.next() == Some(c);
     Some(SubmoduleChange {
         commit: is('C'),
@@ -261,18 +297,116 @@ fn submodule(field: &str) -> Option<SubmoduleChange> {
     })
 }
 
-fn xy(field: &str) -> (char, char) {
-    let mut chars = field.chars();
-    (chars.next().unwrap_or('.'), chars.next().unwrap_or('.'))
+fn xy(field: &[u8]) -> (char, char) {
+    (
+        field.first().copied().map_or('.', |b| b as char),
+        field.get(1).copied().map_or('.', |b| b as char),
+    )
 }
 
-fn parse_status(raw: &str) -> Status {
+/// A path as `status` carries it: the bytes when they are text, else git's
+/// quoted form (`"caf\351.txt"`, the same thing `git status` prints). The
+/// quoted form is text too, so it reaches the window and comes back intact,
+/// and [`path_arg`] turns it back into the bytes it came from. A name that
+/// is text but starts with a quote is quoted as well, so a leading quote
+/// always means "the quoted form".
+fn name(bytes: &[u8]) -> String {
+    match std::str::from_utf8(bytes) {
+        Ok(s) if !s.starts_with('"') => s.into(),
+        _ => {
+            let mut quoted = String::from("\"");
+            for &b in bytes {
+                match b {
+                    b'"' => quoted.push_str("\\\""),
+                    b'\\' => quoted.push_str("\\\\"),
+                    0x20..=0x7e => quoted.push(b as char),
+                    _ => quoted.push_str(&format!("\\{b:03o}")),
+                }
+            }
+            quoted.push('"');
+            quoted
+        }
+    }
+}
+
+/// A path as git or the file system needs it: the quoted form back to the
+/// bytes it came from, anything else unchanged.
+pub(crate) fn path_arg(path: &str) -> Result<OsString> {
+    let inner = match path.strip_prefix('"').and_then(|p| p.strip_suffix('"')) {
+        // Only a whole quoted string is the quoted form; anything else is a
+        // plain name that happens to begin with a quote.
+        Some(inner) if path.len() > 1 => inner,
+        _ => return Ok(OsString::from(path)),
+    };
+    let src = inner.as_bytes();
+    let mut bytes = Vec::with_capacity(src.len());
+    let mut at = 0;
+    while at < src.len() {
+        match src[at] {
+            b'\\' => {
+                let (b, next) = unescape(src, at + 1)?;
+                bytes.push(b);
+                at = next;
+            }
+            b => {
+                bytes.push(b);
+                at += 1;
+            }
+        }
+    }
+    os_from_bytes(bytes)
+}
+
+/// One escape of the quoted form at `src[at]`, with the byte it means and
+/// the index after it.
+fn unescape(src: &[u8], at: usize) -> Result<(u8, usize)> {
+    match src.get(at) {
+        Some(b'"') => Ok((b'"', at + 1)),
+        Some(b'\\') => Ok((b'\\', at + 1)),
+        Some(b'a') => Ok((0x07, at + 1)),
+        Some(b'b') => Ok((0x08, at + 1)),
+        Some(b'f') => Ok((0x0c, at + 1)),
+        Some(b'n') => Ok((0x0a, at + 1)),
+        Some(b'r') => Ok((0x0d, at + 1)),
+        Some(b't') => Ok((0x09, at + 1)),
+        Some(b'v') => Ok((0x0b, at + 1)),
+        Some(first @ b'0'..=b'7') => {
+            let mut value = (first - b'0') as u32;
+            let mut end = at + 1;
+            while end < src.len() && end < at + 3 && (b'0'..=b'7').contains(&src[end]) {
+                value = value * 8 + (src[end] - b'0') as u32;
+                end += 1;
+            }
+            Ok((value as u8, end))
+        }
+        _ => Err(GitError::Failed(
+            "a quoted file name had an escape git never writes".into(),
+        )),
+    }
+}
+
+#[cfg(unix)]
+fn os_from_bytes(bytes: Vec<u8>) -> Result<OsString> {
+    use std::os::unix::ffi::OsStringExt;
+    Ok(OsString::from_vec(bytes))
+}
+
+#[cfg(not(unix))]
+fn os_from_bytes(bytes: Vec<u8>) -> Result<OsString> {
+    let _ = bytes;
+    Err(GitError::Failed(
+        "This file's name is not valid text, which this platform can't pass on".into(),
+    ))
+}
+
+fn parse_status(raw: &[u8]) -> Status {
     let mut status = Status::default();
-    let mut entries = raw.split('\0').filter(|e| !e.is_empty());
+    let mut entries = raw.split(|&b| b == 0).filter(|e| !e.is_empty());
 
     while let Some(entry) = entries.next() {
-        if let Some(header) = entry.strip_prefix("# ") {
-            let (key, value) = header.split_once(' ').unwrap_or((header, ""));
+        if let Some(header) = entry.strip_prefix(b"# ") {
+            let header = String::from_utf8_lossy(header);
+            let (key, value) = header.split_once(' ').unwrap_or((&header, ""));
             match key {
                 "branch.head" if value != "(detached)" => status.branch = Some(value.into()),
                 "branch.upstream" => status.upstream = Some(value.into()),
@@ -290,15 +424,15 @@ fn parse_status(raw: &str) -> Status {
             continue;
         }
 
-        let kind = entry.as_bytes()[0];
+        let kind = entry.first().copied().unwrap_or(0);
         match kind {
             // 1 XY sub mH mI mW hH hI path
             b'1' => {
-                let f: Vec<&str> = entry.splitn(9, ' ').collect();
+                let f: Vec<&[u8]> = entry.splitn(9, |&b| b == b' ').collect();
                 if f.len() == 9 {
                     let (index, worktree) = xy(f[1]);
                     status.files.push(FileChange {
-                        path: f[8].into(),
+                        path: name(f[8]),
                         orig_path: None,
                         index,
                         worktree,
@@ -310,12 +444,12 @@ fn parse_status(raw: &str) -> Status {
             }
             // 2 XY sub mH mI mW hH hI Xscore path, followed by origPath as its own entry
             b'2' => {
-                let f: Vec<&str> = entry.splitn(10, ' ').collect();
-                let orig = entries.next().map(String::from);
+                let f: Vec<&[u8]> = entry.splitn(10, |&b| b == b' ').collect();
+                let orig = entries.next().map(name);
                 if f.len() == 10 {
                     let (index, worktree) = xy(f[1]);
                     status.files.push(FileChange {
-                        path: f[9].into(),
+                        path: name(f[9]),
                         orig_path: orig,
                         index,
                         worktree,
@@ -327,11 +461,11 @@ fn parse_status(raw: &str) -> Status {
             }
             // u XY sub m1 m2 m3 mW h1 h2 h3 path
             b'u' => {
-                let f: Vec<&str> = entry.splitn(11, ' ').collect();
+                let f: Vec<&[u8]> = entry.splitn(11, |&b| b == b' ').collect();
                 if f.len() == 11 {
                     let (index, worktree) = xy(f[1]);
                     status.files.push(FileChange {
-                        path: f[10].into(),
+                        path: name(f[10]),
                         orig_path: None,
                         index,
                         worktree,
@@ -342,7 +476,7 @@ fn parse_status(raw: &str) -> Status {
                 }
             }
             b'?' => status.files.push(FileChange {
-                path: entry[2..].into(),
+                path: name(&entry[2..]),
                 orig_path: None,
                 index: '.',
                 worktree: '?',
@@ -620,7 +754,8 @@ pub fn push_tag(
 /// `path` inside `repo`, refusing anything that could point outside it.
 pub(crate) fn file_in_repo(repo: &Path, path: &str) -> Result<PathBuf> {
     use std::path::Component;
-    let relative = Path::new(path);
+    let os_path = path_arg(path)?;
+    let relative = Path::new(&os_path);
     if path.is_empty()
         || !relative
             .components()
@@ -703,7 +838,7 @@ pub fn resolve_file(repo: &Path, path: &str, side: Side) -> Result<()> {
         Side::Ours => "2",
         Side::Theirs => "3",
     };
-    let stages = run(repo, &["ls-files", "-u", "--", path])?;
+    let stages = run_paths(repo, &["ls-files", "-u", "--"], &[path])?;
     let present = stages
         .lines()
         .any(|l| l.split_whitespace().nth(2) == Some(stage));
@@ -712,10 +847,10 @@ pub fn resolve_file(repo: &Path, path: &str, side: Side) -> Result<()> {
             Side::Ours => "--ours",
             Side::Theirs => "--theirs",
         };
-        run(repo, &["checkout", flag, "--", path])?;
-        run(repo, &["add", "--", path]).map(drop)
+        run_paths(repo, &["checkout", flag, "--"], &[path])?;
+        run_paths(repo, &["add", "--"], &[path]).map(drop)
     } else {
-        run(repo, &["rm", "-q", "--", path]).map(drop)
+        run_paths(repo, &["rm", "-q", "--"], &[path]).map(drop)
     }
 }
 
@@ -727,34 +862,29 @@ pub fn mark_resolved(repo: &Path, path: &str) -> Result<()> {
             "{path} still has conflict markers"
         )));
     }
-    run(repo, &["add", "-A", "--", path]).map(drop)
+    run_paths(repo, &["add", "-A", "--"], &[path]).map(drop)
 }
 
 // ---------------------------------------------------------------------------
 // Staging and committing
 
 pub fn stage(repo: &Path, paths: &[String]) -> Result<()> {
-    let mut args = vec!["add", "-A", "--"];
-    args.extend(paths.iter().map(String::as_str));
-    run(repo, &args).map(drop)
+    run_paths(repo, &["add", "-A", "--"], paths).map(drop)
 }
 
 pub fn unstage(repo: &Path, paths: &[String]) -> Result<()> {
     // `restore --staged` needs a HEAD to restore from; before the first
     // commit, removing the paths from the index has the same effect.
-    let mut args = if has_head(repo)? {
-        vec!["restore", "--staged", "--"]
+    let args: &[&str] = if has_head(repo)? {
+        &["restore", "--staged", "--"]
     } else {
-        vec!["rm", "--cached", "-r", "-q", "--"]
+        &["rm", "--cached", "-r", "-q", "--"]
     };
-    args.extend(paths.iter().map(String::as_str));
-    run(repo, &args).map(drop)
+    run_paths(repo, args, paths).map(drop)
 }
 
 pub fn discard(repo: &Path, paths: &[String]) -> Result<()> {
-    let mut args = vec!["restore", "--worktree", "--"];
-    args.extend(paths.iter().map(String::as_str));
-    run(repo, &args).map(drop)
+    run_paths(repo, &["restore", "--worktree", "--"], paths).map(drop)
 }
 
 pub fn commit(repo: &Path, message: &str) -> Result<()> {
@@ -832,17 +962,20 @@ pub fn diff(
     }
     if untracked {
         // `--no-index` exits with 1 when the files differ, which is always the
-        // case here, so read the output regardless of the exit code.
+        // case here, so read the output regardless of the exit code. The name
+        // is a file system path here, not a pathspec, and the diff headers
+        // carry it, so it goes in relative to the repository, as the bytes
+        // it really is.
         file_in_repo(repo, path)?;
-        args.extend(["--no-index", "--", "/dev/null", path]);
-        let out = output(repo, &args)?;
+        args.extend(["--no-index", "--", "/dev/null"]);
+        let out = command(repo, &args)?.arg(path_arg(path)?).output()?;
         return Ok(String::from_utf8_lossy(&out.stdout).into_owned());
     }
     if staged {
         args.push("--cached");
     }
-    args.extend(["--", path]);
-    run(repo, &args)
+    args.push("--");
+    run_paths(repo, &args, &[path])
 }
 
 /// Everything staged for the next commit.
@@ -1253,7 +1386,21 @@ pub fn file_log(repo: &Path, path: &str, limit: u32) -> Result<Vec<Commit>> {
     if path.is_empty() {
         return Err(GitError::Failed("No file given".into()));
     }
-    log_with(repo, limit, &["--follow", "HEAD", "--", path])
+    if !has_head(repo)? {
+        return Ok(Vec::new());
+    }
+    let limit = format!("-n{limit}");
+    let all = [
+        "log",
+        "--date-order",
+        "--decorate=full",
+        &limit,
+        LOG_FORMAT,
+        "--follow",
+        "HEAD",
+        "--",
+    ];
+    Ok(parse_log(&run_paths(repo, &all, &[path])?))
 }
 
 /// Full patch for a single commit, with a short header.
@@ -1828,7 +1975,7 @@ mod tests {
             "u UU N... 100644 100644 100644 100644 a b c conflict.rs\0",
             "? untracked.txt\0",
         );
-        let s = parse_status(raw);
+        let s = parse_status(raw.as_bytes());
         assert_eq!(s.branch.as_deref(), Some("main"));
         assert_eq!(s.upstream.as_deref(), Some("origin/main"));
         assert_eq!((s.ahead, s.behind), (2, 1));
@@ -1842,8 +1989,51 @@ mod tests {
     }
 
     #[test]
+    fn parses_names_that_are_not_utf8() {
+        // Latin-1 0xe9 in an untracked name, a tracked one and a rename's
+        // new name: each becomes the quoted form, which is text.
+        let mut raw = Vec::new();
+        raw.extend_from_slice(b"? caf\xe9.txt\0");
+        raw.extend_from_slice(b"1 .M N... 100644 100644 100644 aaa bbb \xe9.txt\0");
+        raw.extend_from_slice(b"2 R. N... 100644 100644 100644 aaa bbb R100 new\xe9.rs\0old.rs\0");
+        let s = parse_status(&raw);
+        assert_eq!(s.files[0].path, "\"caf\\351.txt\"");
+        assert!(s.files[0].untracked);
+        assert_eq!(s.files[1].path, "\"\\351.txt\"");
+        assert_eq!(s.files[2].path, "\"new\\351.rs\"");
+        assert_eq!(s.files[2].orig_path.as_deref(), Some("old.rs"));
+        // A name that is text but starts with a quote is quoted too, so a
+        // leading quote always means the quoted form.
+        let s = parse_status(b"? \"weird.txt\0");
+        assert_eq!(s.files[0].path, "\"\\\"weird.txt\"");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn quoted_names_round_trip_to_their_bytes() {
+        use std::os::unix::ffi::OsStrExt;
+        let cases: [&[u8]; 5] = [
+            b"caf\xe9.txt",
+            b"\"weird.txt",
+            b"a\\\"b",
+            b"plain name.rs",
+            b"\xe9\"",
+        ];
+        for bytes in cases {
+            assert_eq!(
+                path_arg(&name(bytes)).unwrap().as_os_str().as_bytes(),
+                bytes,
+                "the name should survive a round trip: {:?}",
+                String::from_utf8_lossy(bytes),
+            );
+        }
+        // A broken escape is refused rather than half-decoded.
+        assert!(path_arg("\"caf\\x9.txt\"").is_err());
+    }
+
+    #[test]
     fn parses_detached_head() {
-        let s = parse_status("# branch.head (detached)\0");
+        let s = parse_status(b"# branch.head (detached)\0");
         assert_eq!(s.branch, None);
     }
 
@@ -2303,6 +2493,64 @@ mod tests {
         stage(repo, &["*".into()]).unwrap();
         let staged = run(repo, &["diff", "--cached", "--name-only"]).unwrap();
         assert_eq!(staged.trim(), "*", "only the file named *");
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// A name that isn't valid UTF-8 reaches the app in the quoted form; the
+    /// row has to act on the real bytes, or nothing about the file works.
+    #[cfg(unix)]
+    #[test]
+    fn files_with_names_that_are_not_utf8_act_like_any_other() {
+        use std::os::unix::ffi::OsStringExt;
+        let dir = std::env::temp_dir().join(format!("gitgud-non-utf8-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = dir.as_path();
+        run(repo, &["init", "-q", "-b", "main"]).unwrap();
+        for (k, v) in [
+            ("user.name", "T"),
+            ("user.email", "t@x"),
+            ("commit.gpgsign", "false"),
+        ] {
+            run(repo, &["config", k, v]).unwrap();
+        }
+        let name = OsString::from_vec(b"caf\xe9.txt".to_vec());
+        std::fs::write(dir.join(&name), "hello\n").unwrap();
+
+        // What the window lists: git's quoted form, not U+FFFD.
+        let row = status(repo).unwrap().files[0].path.clone();
+        assert_eq!(row, "\"caf\\351.txt\"");
+
+        // The diff a click shows, straight from the untracked file.
+        let shown = diff(repo, &row, false, true, false).unwrap();
+        assert!(shown.contains("+hello"));
+
+        // Stage, unstage, stage all: the index on disk is the truth.
+        stage(repo, std::slice::from_ref(&row)).unwrap();
+        assert_eq!(status(repo).unwrap().files[0].index, 'A');
+        unstage(repo, std::slice::from_ref(&row)).unwrap();
+        assert!(status(repo).unwrap().files[0].untracked);
+        std::fs::write(dir.join("plain.txt"), "plain\n").unwrap();
+        let rows: Vec<String> = status(repo)
+            .unwrap()
+            .files
+            .iter()
+            .map(|f| f.path.clone())
+            .collect();
+        stage(repo, &rows).unwrap();
+        let staged = run_raw(repo, &["diff", "--cached", "--name-only", "-z"]).unwrap();
+        assert!(staged.split(|&b| b == 0).any(|p| p == b"caf\xe9.txt"));
+
+        // Discard after a commit restores the committed content.
+        commit(repo, "one").unwrap();
+        std::fs::write(dir.join(&name), "changed\n").unwrap();
+        discard(repo, &[status(repo).unwrap().files[0].path.clone()]).unwrap();
+        assert_eq!(std::fs::read(dir.join(&name)).unwrap(), b"hello\n");
+
+        // Reading the file's text works on the same name.
+        assert!(read_text(repo, "\"caf\\351.txt\"")
+            .unwrap()
+            .contains("hello"));
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

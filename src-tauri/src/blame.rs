@@ -67,8 +67,8 @@ pub fn blame(
         check_hash(rev)?;
         args.push(rev);
     }
-    args.extend(["--", path]);
-    let raw = git::run(repo, &args)?;
+    args.push("--");
+    let raw = git::run_paths(repo, &args, &[path])?;
     if raw.contains('\0') {
         return Err(GitError::Failed(format!("{path} is a binary file")));
     }
