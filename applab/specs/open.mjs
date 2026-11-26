@@ -29,19 +29,17 @@ try {
   const filter = await browser.$('input[placeholder="Filter or create a branch"]')
   await filter.waitForDisplayed({ timeout: 30000 })
 
-  // The menu's list, found through the filter input rather than a styling
-  // class: 0b77abf renamed the class this used to select, and the spec broke
-  // without the app changing at all.
+  // The dropdown is found from its filter input, not from a layout class that
+  // changes with the toolbar's own styling. Every branch row is the first
+  // button of its `li`, so a row's badge or menu icon never becomes its name.
   const rows = await browser.execute(() => {
-    const input = document.querySelector(
+    const filter = document.querySelector(
       'input[placeholder="Filter or create a branch"]',
     )
-    const list = input?.closest('div')?.querySelector('ul')
-    return list
-      ? [...list.querySelectorAll('li > button:first-child')].map((b) =>
-          b.innerText.trim(),
-        )
-      : []
+    const list = filter?.closest('div')?.querySelector('ul')
+    return [...(list?.querySelectorAll('li > button:first-child') ?? [])].map(
+      (b) => b.innerText.trim(),
+    )
   })
 
   const names = git('branch', '--format=%(refname:short)').split('\n')

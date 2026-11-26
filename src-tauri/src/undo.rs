@@ -967,7 +967,7 @@ mod tests {
         let path = "şub dir/f.txt";
         r.commit(path, "one\ntwo\n");
         r.write(path, "one\ntwo\nthree\n");
-        let diff = git::diff(&r.dir, path, false, false, false).unwrap();
+        let diff = git::diff(&r.dir, path, None, false, false, false).unwrap();
         let line = diff.split('\n').position(|l| l == "+three").unwrap();
         r.log.discard_lines(&r.dir, &diff, &[line]).unwrap();
         assert_eq!(r.read(path), "one\ntwo\n");
