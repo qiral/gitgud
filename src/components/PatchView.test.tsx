@@ -34,6 +34,18 @@ describe('PatchView', () => {
     expect(screen.queryByText('new a')).toBeNull()
   })
 
+  it('wraps the header controls under the path instead of squeezing it', () => {
+    // jsdom has no layout, so the classes are what a unit test can see; the
+    // pixels are applab/specs/commit-path.mjs, at 800x500 and 1280x800.
+    const { container } = render(
+      <PatchView repo="/r" patch={PATCH} sides={SIDES} header={null} />,
+    )
+    const path = container.querySelector('div.truncate.select-text')!
+    expect(path.className).toContain('min-w-32')
+    const row = path.parentElement!
+    expect(row.className).toContain('flex-wrap')
+  })
+
   it('copies paths from the right-click menu', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', {

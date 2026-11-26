@@ -71,9 +71,16 @@ fn command(repo: &Path, args: &[&str]) -> Result<Command> {
     cmd.args(["-c", "core.fsmonitor=false"]);
     // Nor the program it names for checking signatures, on every log.
     cmd.args(["-c", "log.showSignature=false"]);
-    let textconv_at = match args {
-        ["diff" | "show" | "log" | "blame", ..] => Some(1),
-        ["stash", "show", ..] => Some(2),
+    // Callers can prepend `-c key=value` pairs; the verb behind them, not
+    // `args[0]`, says whether a diff is shown. A trailing lone `-c` stops the
+    // search, leaving the guard off as for any other unknown shape.
+    let mut verb = 0;
+    while args.get(verb) == Some(&"-c") && args.get(verb + 1).is_some() {
+        verb += 2;
+    }
+    let textconv_at = match &args[verb..] {
+        ["diff" | "show" | "log" | "blame", ..] => Some(verb + 1),
+        ["stash", "show", ..] => Some(verb + 2),
         _ => None,
     };
     match textconv_at {
@@ -1056,7 +1063,11 @@ pub fn branches(repo: &Path) -> Result<Vec<Branch>> {
         &[
             "for-each-ref",
             "--sort=-committerdate",
-            "--format=%(refname:short)%1f%(HEAD)%1f%(upstream:short)%1f%(worktreepath)",
+            // Not `refname:short`, which resolves against every ref: a tag
+            // named like a branch makes that branch come back as
+            // `heads/<name>`. Off `refs/heads`, dropping the two leading
+            // components leaves the branch's own name, slashes and all.
+            "--format=%(refname:lstrip=2)%1f%(HEAD)%1f%(upstream:short)%1f%(worktreepath)",
             "refs/heads",
         ],
     )?;
@@ -1855,6 +1866,42 @@ mod tests {
         assert_eq!(b[0].upstream.as_deref(), Some("origin/main"));
         assert!(!b[1].current);
         assert_eq!(b[1].upstream, None);
+    }
+
+    #[test]
+    fn lists_a_branch_under_its_own_name_beside_a_tag_of_it() {
+        let dir = std::env::temp_dir().join(format!("gitgud-shadow-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = dir.as_path();
+        run(repo, &["init", "-q", "-b", "main"]).unwrap();
+        for (k, v) in [
+            ("user.name", "T"),
+            ("user.email", "t@x"),
+            ("commit.gpgsign", "false"),
+            ("tag.gpgsign", "false"),
+        ] {
+            run(repo, &["config", k, v]).unwrap();
+        }
+        run(repo, &["commit", "-q", "--allow-empty", "-m", "base"]).unwrap();
+        let base = log(repo, 1).unwrap()[0].hash.clone();
+        create_branch_at(repo, "feature/login", &base).unwrap();
+        // `refname:short` printed `heads/feature/login` for this.
+        create_tag(repo, "feature/login", &base, "").unwrap();
+
+        let b = branches(repo).unwrap();
+        let names: Vec<&str> = b.iter().map(|b| b.name.as_str()).collect();
+        assert_eq!(names, ["feature/login", "main"], "{names:?}");
+        assert!(b[0].current);
+
+        // The listed name switches, and lands on the branch, not the tag.
+        switch_branch(repo, "main").unwrap();
+        switch_branch(repo, "feature/login").unwrap();
+        assert_eq!(
+            run(repo, &["symbolic-ref", "HEAD"]).unwrap().trim(),
+            "refs/heads/feature/login"
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     /// Exercises the real `git` binary in a throwaway repository.
