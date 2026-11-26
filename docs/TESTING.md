@@ -161,7 +161,7 @@ bug in the lab.
 
 The specs are plain `node` scripts, not a runner's files: nothing named
 `*.e2e.ts` or `*.test.ts`, so neither Playwright nor vitest collects any of
-it, and `npm run build` does not type check it either. Eight of them, eight
+it, and `npm run build` does not type check it either. Ten of them, ten
 slices:
 
 - **smoke.** The window opens with the debug binary, the title is `GitGud`, the
@@ -199,6 +199,13 @@ slices:
   its row through the window: stage, unstage, Stage all. The name travels in
   git's own quoted form, and the index on disk is the truth: the staged blob
   hash matches the real bytes, and no U+FFFD shows up anywhere.
+- **commit-path.** Seeds its own commit with a long path, then checks the bar
+  above the diff: the path keeps most of its room at the app's minimum window
+  (800x500) and all five diff controls stay reachable, because they are in
+  neither the file's context menu nor the command palette.
+- **changespanel-min-width.** Stages a change, pins the sidebar to its 220px
+  minimum, and checks both boxes: the commit button and the staged header read
+  whole at 220 and at the default 320, with 320 keeping its one row.
 
 The fixture is `applab/fixtures/make-repo.sh`: three commits with fixed dates
 and a fixed identity, a `feature/login` branch, and a rename in the last commit.
