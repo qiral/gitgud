@@ -161,7 +161,7 @@ bug in the lab.
 
 The specs are plain `node` scripts, not a runner's files: nothing named
 `*.e2e.ts` or `*.test.ts`, so neither Playwright nor vitest collects any of
-it, and `npm run build` does not type check it either. Six of them, six
+it, and `npm run build` does not type check it either. Seven of them, seven
 slices:
 
 - **smoke.** The window opens with the debug binary, the title is `GitGud`, the
