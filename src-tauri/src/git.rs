@@ -2552,7 +2552,11 @@ mod tests {
 
     /// A name that isn't valid UTF-8 reaches the app in the quoted form; the
     /// row has to act on the real bytes, or nothing about the file works.
-    #[cfg(unix)]
+    /// Linux only: APFS refuses to hold a name that isn't valid UTF-8 (the
+    /// write fails with "Illegal byte sequence"), so there is nothing to test
+    /// on a mac; the parse side stays covered everywhere by
+    /// parses_names_that_are_not_utf8.
+    #[cfg(target_os = "linux")]
     #[test]
     fn files_with_names_that_are_not_utf8_act_like_any_other() {
         use std::os::unix::ffi::OsStringExt;
