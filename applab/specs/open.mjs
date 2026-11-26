@@ -29,11 +29,17 @@ try {
   const filter = await browser.$('input[placeholder="Filter or create a branch"]')
   await filter.waitForDisplayed({ timeout: 30000 })
 
-  const rows = await browser.execute(() =>
-    [...document.querySelectorAll('ul.max-h-80 > li > button:first-child')].map(
-      (b) => b.innerText.trim(),
-    ),
-  )
+  // The menu the filter belongs to, whatever its list is classed as.
+  const rows = await browser.execute(() => {
+    const panel = document
+      .querySelector('input[placeholder="Filter or create a branch"]')
+      ?.closest('div')
+    return panel
+      ? [...panel.querySelectorAll('ul > li > button:first-child')].map((b) =>
+          b.innerText.trim(),
+        )
+      : []
+  })
 
   const names = git('branch', '--format=%(refname:short)').split('\n')
   for (const name of names) {

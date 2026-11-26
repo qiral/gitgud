@@ -196,6 +196,45 @@ it('adds an untracked file to .gitignore from its menu', async () => {
   )
 })
 
+it('unstages both paths of a renamed file', async () => {
+  const calls: [string, unknown][] = []
+  mockIPC((cmd, args) => {
+    calls.push([cmd, args])
+  })
+  const renamed = {
+    path: 'docs/notes-renamed.md',
+    origPath: 'docs/notes.md',
+    index: 'R',
+    worktree: '.',
+    untracked: false,
+    conflicted: false,
+  }
+  render(
+    <ChangesPanel
+      repo={repo}
+      files={[renamed]}
+      merging={null}
+      rebasing={null}
+      hasCommits
+      selection={null}
+      onSelect={() => {}}
+      busy={false}
+      onStash={() => {}}
+      act={act}
+    />,
+  )
+  const row = screen.getByText('notes-renamed.md').closest('li')!
+  fireEvent.click(row.querySelector('button[title="Unstage"]')!)
+  // Git pairs the rename only when both of its paths are given: the new one
+  // alone leaves the old one deleted in the index.
+  await waitFor(() =>
+    expect(calls).toContainEqual([
+      'unstage',
+      { repo: '/r', paths: ['docs/notes-renamed.md', 'docs/notes.md'] },
+    ]),
+  )
+})
+
 function renderWithReview(onReview: () => void, files = [stagedFile]) {
   render(
     <ChangesPanel

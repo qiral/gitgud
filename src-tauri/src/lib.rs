@@ -141,6 +141,7 @@ fn last_commit(repo: String) -> Result<Option<LastCommit>> {
 fn diff(
     repo: String,
     path: String,
+    orig_path: Option<String>,
     staged: bool,
     untracked: bool,
     ignore_whitespace: bool,
@@ -148,6 +149,7 @@ fn diff(
     git::diff(
         Path::new(&repo),
         &path,
+        orig_path.as_deref(),
         staged,
         untracked,
         ignore_whitespace,

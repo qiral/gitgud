@@ -489,10 +489,13 @@ export const git = {
     staged: boolean,
     untracked: boolean,
     ignoreWhitespace = false,
+    origPath: string | null = null,
   ) =>
     invoke<string>('diff', {
       repo,
       path,
+      // Both halves of a rename, or git shows the new path as a new file.
+      origPath,
       staged,
       untracked,
       ignoreWhitespace,
