@@ -211,6 +211,49 @@ mod tests {
         assert_eq!(lines, [(0, 1, "one"), (1, 7, "two"), (1, 8, "")]);
     }
 
+    /// A repository can name a program in its own config (a textconv driver),
+    /// and `git.rs` promises that looking at a file never runs one. Blame is
+    /// one of the commands that can, so this asks with a marker file.
+    #[test]
+    fn blame_does_not_run_the_repositorys_textconv() {
+        let dir =
+            std::env::temp_dir().join(format!("gitgud-blame-textconv-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = dir.as_path();
+        git::run(repo, &["init", "-q", "-b", "main"]).unwrap();
+        for (k, v) in [
+            ("user.name", "Ada"),
+            ("user.email", "a@x"),
+            ("commit.gpgsign", "false"),
+            ("core.autocrlf", "false"),
+        ] {
+            git::run(repo, &["config", k, v]).unwrap();
+        }
+        let marker = repo.join("driver-ran");
+        git::run(
+            repo,
+            &[
+                "config",
+                "diff.pwn.textconv",
+                &format!("sh -c 'touch {}; cat \"$0\"'", marker.display()),
+            ],
+        )
+        .unwrap();
+        std::fs::write(repo.join(".gitattributes"), "*.txt diff=pwn\n").unwrap();
+        std::fs::write(repo.join("f.txt"), "one\ntwo\n").unwrap();
+        git::run(repo, &["add", "-A"]).unwrap();
+        git::run(repo, &["commit", "-q", "-m", "seed"]).unwrap();
+
+        blame(repo, "f.txt", None, false, false).unwrap();
+
+        assert!(
+            !marker.exists(),
+            "blame ran the program the repository's own config names"
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
     #[test]
     fn blames_commits_renames_and_local_changes() {
         let dir = std::env::temp_dir().join(format!("gitgud-blame-{}", std::process::id()));
