@@ -71,9 +71,16 @@ fn command(repo: &Path, args: &[&str]) -> Result<Command> {
     cmd.args(["-c", "core.fsmonitor=false"]);
     // Nor the program it names for checking signatures, on every log.
     cmd.args(["-c", "log.showSignature=false"]);
-    let textconv_at = match args {
-        ["diff" | "show" | "log" | "blame", ..] => Some(1),
-        ["stash", "show", ..] => Some(2),
+    // Callers can prepend `-c key=value` pairs; the verb behind them, not
+    // `args[0]`, says whether a diff is shown. A trailing lone `-c` stops the
+    // search, leaving the guard off as for any other unknown shape.
+    let mut verb = 0;
+    while args.get(verb) == Some(&"-c") && args.get(verb + 1).is_some() {
+        verb += 2;
+    }
+    let textconv_at = match &args[verb..] {
+        ["diff" | "show" | "log" | "blame", ..] => Some(verb + 1),
+        ["stash", "show", ..] => Some(verb + 2),
         _ => None,
     };
     match textconv_at {
