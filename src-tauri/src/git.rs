@@ -88,8 +88,9 @@ fn command(repo: &Path, args: &[&str]) -> Result<Command> {
         // Stable, parseable output regardless of the user's locale.
         .env("LC_ALL", "C");
     // File names are names: `*` or `:!x` must not match other files. Stash
-    // takes no file names here and uses pathspec magic itself for -u.
-    if args.first() != Some(&"stash") {
+    // takes no file names here and uses pathspec magic itself for -u, and
+    // check-ignore refuses to run with it.
+    if !matches!(args.first(), Some(&("stash" | "check-ignore"))) {
         cmd.env("GIT_LITERAL_PATHSPECS", "1");
     }
 

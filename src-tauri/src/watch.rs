@@ -453,6 +453,19 @@ mod tests {
     }
 
     #[test]
+    fn asks_git_what_it_ignores() {
+        let dir = repo("ignored");
+        let paths: HashSet<PathBuf> = ["build/out.o", "build", "src/a.txt", "new.txt"]
+            .into_iter()
+            .map(PathBuf::from)
+            .collect();
+        let mut got: Vec<_> = ignored(&dir, &paths).into_iter().collect();
+        got.sort();
+        assert_eq!(got, [PathBuf::from("build"), PathBuf::from("build/out.o")]);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn looks_only_at_what_git_keeps_in_its_folder() {
         let p = Path::new;
         assert!(shown_by_app(p("HEAD")));
