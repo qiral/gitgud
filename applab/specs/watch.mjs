@@ -7,7 +7,7 @@
 import { execFileSync } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { button, launch, openFixture, repo, text } from '../lab.mjs'
+import { launch, openFixture, repo, text } from '../lab.mjs'
 
 const git = (...args) =>
   execFileSync('git', ['-C', repo, ...args], { encoding: 'utf8' }).trim()
@@ -18,12 +18,17 @@ const shows = (browser, what, timeoutMsg) =>
     timeoutMsg,
   })
 
+// The Changes and History tabs: their text starts with the name, then the
+// count. Other buttons only mention it ("Discard changes", "File history").
+const tab = (browser, name) =>
+  browser.$(`//button[starts-with(normalize-space(.), ${JSON.stringify(name)})]`)
+
 const browser = await launch()
 try {
   await openFixture(browser)
 
   // Switching tabs only shows what's already loaded.
-  await (await button(browser, 'Changes')).click()
+  await (await tab(browser, 'Changes')).click()
   writeFileSync(join(repo, 'from-an-editor.txt'), 'saved elsewhere\n')
   await shows(browser, 'from-an-editor.txt', 'the new file never showed up in Changes')
   console.log('  ok: a file written on disk showed up in Changes')
@@ -31,7 +36,7 @@ try {
   const subject = 'committed in a terminal'
   git('add', '-A')
   git('commit', '-qm', subject)
-  await (await button(browser, 'History')).click()
+  await (await tab(browser, 'History')).click()
   await shows(browser, subject, 'the commit never showed up in History')
   console.log('  ok: a commit made with git showed up in History')
 

@@ -30,7 +30,13 @@ try {
   await filter.waitForDisplayed({ timeout: 30000 })
 
   const rows = await browser.execute(() =>
-    [...document.querySelectorAll('ul.max-h-80 > li > button:first-child')].map(
+    // The list right after the filter's form, found by its place rather
+    // than its classes, which change with the layout.
+    [
+      ...document.querySelectorAll(
+        'form:has(input[placeholder="Filter or create a branch"]) + ul > li > button:first-child',
+      ),
+    ].map(
       (b) => b.innerText.trim(),
     ),
   )
