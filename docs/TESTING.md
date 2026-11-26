@@ -161,7 +161,7 @@ bug in the lab.
 
 The specs are plain `node` scripts, not a runner's files: nothing named
 `*.e2e.ts` or `*.test.ts`, so neither Playwright nor vitest collects any of
-it, and `npm run build` does not type check it either. Six of them, six
+it, and `npm run build` does not type check it either. Seven of them, seven
 slices:
 
 - **smoke.** The window opens with the debug binary, the title is `GitGud`, the
@@ -179,6 +179,12 @@ slices:
   file it is resolving, at least 60% of the row's width and inside two lines,
   in English and in Turkish. The gate comes from a bug report, not from the
   layout: the name used to be 33px of 480.
+- **search-unicode-case.** Writes a Turkish commit and a Turkish author into
+  the fixture, then searches for them through the field: a lowercase query
+  finds a subject in capitals and the other way round, for the message and for
+  the author, including the dotted capital I that a lowercase alone gets
+  wrong. git runs under `LC_ALL=C` and folds ASCII only, so this is the one
+  spec that fails if the case folding moves back into git's hands.
 - **staged-rename.** Renames `docs/notes.md` in the fixture and stages it,
   then checks both halves of that row: the diff names both paths as a rename
   instead of showing a new file, and pressing Unstage leaves the index as it
