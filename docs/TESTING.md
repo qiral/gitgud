@@ -174,6 +174,12 @@ slices:
 - **branch.** Types a new branch name into the branch menu, presses Enter, and
   then asks `git` in the fixture: HEAD is the new branch, and it points at
   main's tip. What the app says is not the assertion; the disk is.
+- **search-unicode-case.** Writes a Turkish commit and a Turkish author into
+  the fixture, then searches for them through the field: a lowercase query
+  finds a subject in capitals and the other way round, for the message and for
+  the author, including the dotted capital I that a lowercase alone gets
+  wrong. git runs under `LC_ALL=C` and folds ASCII only, so this is the one
+  spec that fails if the case folding moves back into git's hands.
 - **staged-rename.** Renames `docs/notes.md` in the fixture and stages it,
   then checks both halves of that row: the diff names both paths as a rename
   instead of showing a new file, and pressing Unstage leaves the index as it

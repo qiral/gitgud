@@ -13,7 +13,7 @@ use crate::graph::{self, GraphRow};
 use crate::patch;
 use crate::remotes;
 use crate::signing;
-use std::io::Read;
+use std::io::{BufRead, Read};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Output, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -1350,6 +1350,9 @@ fn parse_refs(raw: &str) -> Vec<RefLabel> {
 
 /// What [`parse_log`] reads.
 const LOG_FORMAT: &str = "--format=%H%x1f%h%x1f%an%x1f%ae%x1f%at%x1f%P%x1f%D%x1f%s%x1e";
+/// [`LOG_FORMAT`] with the whole message after the subject, for a search: git's
+/// own `--grep` matched the body too.
+const SEARCH_FORMAT: &str = "--format=%H%x1f%h%x1f%an%x1f%ae%x1f%at%x1f%P%x1f%D%x1f%s%x1f%B%x1e";
 /// Every branch, remote branch and tag, so the graph shows how they relate.
 const ALL_REFS: [&str; 4] = ["--branches", "--remotes", "--tags", "HEAD"];
 
@@ -1369,7 +1372,7 @@ pub fn log(repo: &Path, limit: u32) -> Result<Vec<Commit>> {
 }
 
 /// Commits on any branch whose message or author contains `query`, ignoring
-/// case, plus the commit `query` is a hash of. Newest first.
+/// case in any alphabet, plus the commit `query` is a hash of. Newest first.
 pub fn search_log(repo: &Path, query: &str, limit: u32) -> Result<Vec<Commit>> {
     let query = query.trim();
     if query.is_empty() {
@@ -1382,14 +1385,19 @@ pub fn search_log(repo: &Path, query: &str, limit: u32) -> Result<Vec<Commit>> {
             found.extend(log_with(repo, 1, &[&spec])?);
         }
     }
-    // `--grep` and `--author` together only match commits with both, so
-    // they're asked separately.
-    for field in ["--grep", "--author"] {
-        let pattern = format!("{field}={query}");
-        let mut args = vec!["-i", "-F", &pattern];
-        args.extend_from_slice(&ALL_REFS);
-        found.extend(log_with(repo, limit, &args)?);
+    // git is asked for the history, not for a match: finding the query in it
+    // is done here, in Rust, where both sides fold the same way on every
+    // platform. git's own `--grep`/`--author` fold ASCII only under the
+    // `LC_ALL=C` this runs with, and neither a locale nor a folded regexp was
+    // dependable across the three systems (see `fold_for_search`).
+    if !has_head(repo)? {
+        return Ok(Vec::new());
     }
+    found.extend(search_history(
+        repo,
+        &fold_for_search(query),
+        limit as usize,
+    )?);
     let mut seen = std::collections::HashSet::new();
     found.retain(|c| seen.insert(c.hash.clone()));
     // Stable, so the hash match stays first among same-time commits.
@@ -1397,6 +1405,109 @@ pub fn search_log(repo: &Path, query: &str, limit: u32) -> Result<Vec<Commit>> {
     found.truncate(limit as usize);
     relayout(&mut found);
     Ok(found)
+}
+
+/// The commits whose message or author contains `needle`, already folded, read
+/// off one `git log` and stopped as soon as there are `limit` of them.
+///
+/// A stream rather than one string: a query that matches nothing walks the
+/// whole history, and one that matches early must not read it all first.
+fn search_history(repo: &Path, needle: &str, limit: usize) -> Result<Vec<Commit>> {
+    let mut args = vec!["log", "--date-order", "--decorate=full", SEARCH_FORMAT];
+    args.extend_from_slice(&ALL_REFS);
+    let mut child = command(repo, &args)?
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    let mut out = std::io::BufReader::new(child.stdout.take().expect("stdout is piped"));
+    let mut err = child.stderr.take().expect("stderr is piped");
+
+    let mut found = Vec::new();
+    let mut record = Vec::new();
+    let mut read_all = false;
+    while found.len() < limit && !read_all {
+        record.clear();
+        if out.read_until(b'\x1e', &mut record)? == 0 {
+            read_all = true;
+            continue;
+        }
+        // The separator came along with the record; it belongs to neither.
+        while matches!(record.last(), Some(b'\x1e' | b'\n')) {
+            record.pop();
+        }
+        let text = String::from_utf8_lossy(&record);
+        let Some((commit, body)) = parse_fields(&text) else {
+            continue;
+        };
+        // The address is searched too, because `--author` matched it, and the
+        // body because `--grep` did.
+        let fields = [
+            commit.subject.as_str(),
+            commit.author.as_str(),
+            commit.email.as_str(),
+            body.unwrap_or_default(),
+        ];
+        if fields
+            .iter()
+            .any(|field| fold_for_search(field).contains(needle))
+        {
+            found.push(commit);
+        }
+    }
+    drop(out);
+
+    if !read_all {
+        // Enough found: git is stopped rather than left writing the rest of
+        // the history into a pipe nobody drains.
+        let _ = child.kill();
+        let _ = child.wait();
+        return Ok(found);
+    }
+    let status = child.wait()?;
+    if !status.success() {
+        let mut text = String::new();
+        let _ = err.read_to_string(&mut text);
+        let text = text.trim();
+        return Err(GitError::Failed(if text.is_empty() {
+            "git log failed".into()
+        } else {
+            text.to_string()
+        }));
+    }
+    Ok(found)
+}
+
+/// `text` folded for a case-insensitive comparison.
+///
+/// Lowercase, with the Turkish i family folded together: "I", "İ", "i" and the
+/// dotless "ı" all become "i". "İ" lowercases to "i" and a combining dot, so
+/// the dot is dropped; the dotless "ı" is folded with them because Turkish and
+/// the rest of Unicode disagree about which capital it belongs to, and a search
+/// that settled that by the user's language would find nothing whenever the
+/// language was guessed wrong. The cost is one collision inside a commit
+/// message ("sık" and "sik" fold alike), which is cheaper than a search that
+/// misses its own commit.
+///
+/// One limit stays: "ß" has no one-character uppercase, so "straße" does not
+/// find "STRASSE" (though "ẞ" finds "ß").
+fn fold_for_search(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for c in text.chars() {
+        if c.is_ascii() {
+            out.push(c.to_ascii_lowercase());
+            continue;
+        }
+        if c == 'ı' {
+            out.push('i');
+            continue;
+        }
+        for l in c.to_lowercase() {
+            if l != '\u{307}' {
+                out.push(l);
+            }
+        }
+    }
+    out
 }
 
 /// Commits on the current branch that changed `path`, following renames.
@@ -1440,26 +1551,33 @@ pub fn show_commit(repo: &Path, hash: &str, ignore_whitespace: bool) -> Result<S
 }
 
 fn parse_log(raw: &str) -> Vec<Commit> {
-    let mut commits: Vec<Commit> = raw
-        .split('\x1e')
-        .filter_map(|record| {
-            let mut f = record.trim_start_matches('\n').split('\x1f');
-            Some(Commit {
-                hash: f.next().filter(|h| !h.is_empty())?.into(),
-                short_hash: f.next()?.into(),
-                author: f.next()?.into(),
-                email: f.next()?.into(),
-                time: f.next()?.parse().ok()?,
-                parents: f.next()?.split_whitespace().map(String::from).collect(),
-                refs: parse_refs(f.next()?),
-                subject: f.next()?.into(),
-                graph: GraphRow::default(),
-            })
-        })
-        .collect();
-
+    let mut commits: Vec<Commit> = raw.split('\x1e').filter_map(parse_record).collect();
     relayout(&mut commits);
     commits
+}
+
+/// One [`LOG_FORMAT`] record, or `None` for the empty tail after a separator.
+fn parse_record(record: &str) -> Option<Commit> {
+    parse_fields(record).map(|(commit, _)| commit)
+}
+
+/// A record's commit and, for [`SEARCH_FORMAT`], the message after the subject.
+fn parse_fields(record: &str) -> Option<(Commit, Option<&str>)> {
+    // Nine fields at most: the eighth separator starts the body, and any
+    // separator inside the body stays part of it.
+    let mut f = record.trim_start_matches('\n').splitn(9, '\x1f');
+    let commit = Commit {
+        hash: f.next().filter(|h| !h.is_empty())?.into(),
+        short_hash: f.next()?.into(),
+        author: f.next()?.into(),
+        email: f.next()?.into(),
+        time: f.next()?.parse().ok()?,
+        parents: f.next()?.split_whitespace().map(String::from).collect(),
+        refs: parse_refs(f.next()?),
+        subject: f.next()?.into(),
+        graph: GraphRow::default(),
+    };
+    Some((commit, f.next()))
 }
 
 fn relayout(commits: &mut [Commit]) {
@@ -2299,7 +2417,7 @@ mod tests {
         );
         assert_eq!(search_log(repo, "ada", 10).unwrap().len(), 4);
         assert_eq!(search_log(repo, "ada", 2).unwrap().len(), 2);
-        // Not a regex.
+        // Not a regex: a dot in the query is a dot in the message.
         assert!(search_log(repo, "n.tes", 10).unwrap().is_empty());
         let notes = search_log(repo, "notes", 10).unwrap();
         assert_eq!(
@@ -2318,6 +2436,103 @@ mod tests {
         assert_eq!(file_log(repo, "notes [draft].txt", 10).unwrap().len(), 3);
         assert!(file_log(repo, "missing.txt", 10).unwrap().is_empty());
         std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// The window promises a search that ignores case, and a user types the
+    /// words of their own language into it. git runs under `LC_ALL=C` here, so
+    /// its own `-i` would fold ASCII only.
+    #[test]
+    fn searches_case_without_ascii() {
+        let dir = std::env::temp_dir().join(format!("gitgud-unicode-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = dir.as_path();
+        run(repo, &["init", "-q", "-b", "main"]).unwrap();
+        for (k, v) in [
+            ("user.name", "Özlem Yıldız"),
+            ("user.email", "ozlem@x"),
+            ("commit.gpgsign", "false"),
+        ] {
+            run(repo, &["config", k, v]).unwrap();
+        }
+        for subject in [
+            "ÖDEME akışı eklendi",
+            "KARŞILAŞTIRMA raporu",
+            "İSTANBUL gezisi",
+            "plain ascii commit",
+        ] {
+            run(repo, &["commit", "-q", "--allow-empty", "-m", subject]).unwrap();
+        }
+
+        let subjects =
+            |found: Vec<Commit>| found.into_iter().map(|c| c.subject).collect::<Vec<_>>();
+        // A query typed in lowercase finds the subject written in capitals.
+        assert_eq!(
+            subjects(search_log(repo, "ödeme", 10).unwrap()),
+            ["ÖDEME akışı eklendi"]
+        );
+        // And the other way round, in capitals typed on any keyboard: the
+        // dotted and dotless i are the same letter to this search.
+        assert_eq!(
+            subjects(search_log(repo, "AKIŞI", 10).unwrap()),
+            ["ÖDEME akışı eklendi"]
+        );
+        assert_eq!(
+            subjects(search_log(repo, "karşılaştırma", 10).unwrap()),
+            ["KARŞILAŞTIRMA raporu"]
+        );
+        // The Turkish dotted capital, which a plain lowercase would spell as
+        // "i" plus a combining dot.
+        assert_eq!(
+            subjects(search_log(repo, "istanbul", 10).unwrap()),
+            ["İSTANBUL gezisi"]
+        );
+        // The author's name too, not only the message.
+        assert_eq!(search_log(repo, "özlem", 10).unwrap().len(), 4);
+        assert_eq!(search_log(repo, "YILDIZ", 10).unwrap().len(), 4);
+        // And an address, as `--author` used to match it.
+        assert_eq!(search_log(repo, "OZLEM@X", 10).unwrap().len(), 4);
+        // A message's body, which `--grep` matched before it was dropped.
+        run(
+            repo,
+            &[
+                "commit",
+                "-q",
+                "--allow-empty",
+                "-m",
+                "a subject",
+                "-m",
+                "GÖVDE metni",
+            ],
+        )
+        .unwrap();
+        assert_eq!(
+            subjects(search_log(repo, "gövde", 10).unwrap()),
+            ["a subject"]
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn folds_case_for_search() {
+        assert_eq!(fold_for_search("ÖDEME"), "ödeme");
+        assert_eq!(fold_for_search("akışı"), "akişi");
+        assert_eq!(fold_for_search("İstanbul"), "istanbul");
+        assert_eq!(fold_for_search("ÇİÇEK"), "çiçek");
+        // The Turkish i family is one letter here, whichever capital is typed.
+        for text in ["I", "İ", "i", "ı"] {
+            assert_eq!(fold_for_search(text), "i", "{text}");
+        }
+        // The two sides fold alike, which is the whole contract: a subject in
+        // capitals is found from lowercase and the other way round.
+        assert_eq!(
+            fold_for_search("KARŞILAŞTIRMA"),
+            fold_for_search("karşılaştırma")
+        );
+        assert_eq!(fold_for_search("AKIŞI"), fold_for_search("akışı"));
+        // No one-character uppercase, so this pair stops here on purpose.
+        assert_eq!(fold_for_search("straße"), "straße");
+        assert_eq!(fold_for_search("STRASSE"), "strasse");
     }
 
     #[test]
