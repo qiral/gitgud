@@ -71,47 +71,55 @@ export default function FileHeader({
   return (
     <div
       onContextMenu={(e) => open(e, items())}
-      className="flex shrink-0 items-center gap-2 border-b border-line bg-panel px-3 py-1.5"
+      className="flex shrink-0 flex-wrap items-center justify-end gap-x-2 gap-y-1 border-b border-line bg-panel px-3 py-1.5"
     >
-      <div className="min-w-0 flex-1 truncate select-text" title={path}>
+      {/* The path keeps a floor of its own: when the row cannot hold it and
+          the controls side by side, the controls drop to a second line
+          instead of squeezing the name of the file to a few characters. */}
+      <div className="min-w-32 flex-1 truncate select-text" title={path}>
         {oldPath && oldPath !== path && (
           <span className="text-muted">{oldPath} → </span>
         )}
         {dir && <span className="text-muted">{dir}/</span>}
         <span className="font-medium">{basename(path)}</span>
       </div>
-      <LineCounts add={additions} del={deletions} />
-      <Toggle
-        on={prefs.ignoreWhitespace}
-        title={t('fileheader.ignore-whitespace')}
-        onClick={() => setDiffPref('ignoreWhitespace', !prefs.ignoreWhitespace)}
-      >
-        <Space className="size-4" />
-      </Toggle>
-      <Toggle
-        on={prefs.split}
-        title={t('fileheader.side-by-side')}
-        onClick={() => setDiffPref('split', !prefs.split)}
-      >
-        <Columns2 className="size-4" />
-      </Toggle>
-      <CopyButton text={path} title={t('fileheader.copy-path')} />
-      {onExplain && (
+      {/* One line for the controls, so they wrap as a group. */}
+      <div className="flex shrink-0 items-center gap-2">
+        <LineCounts add={additions} del={deletions} />
+        <Toggle
+          on={prefs.ignoreWhitespace}
+          title={t('fileheader.ignore-whitespace')}
+          onClick={() =>
+            setDiffPref('ignoreWhitespace', !prefs.ignoreWhitespace)
+          }
+        >
+          <Space className="size-4" />
+        </Toggle>
+        <Toggle
+          on={prefs.split}
+          title={t('fileheader.side-by-side')}
+          onClick={() => setDiffPref('split', !prefs.split)}
+        >
+          <Columns2 className="size-4" />
+        </Toggle>
+        <CopyButton text={path} title={t('fileheader.copy-path')} />
+        {onExplain && (
+          <button
+            title={t('fileheader.explain-with-copilot')}
+            onClick={onExplain}
+            className="shrink-0 rounded p-0.5 text-muted hover:bg-hover hover:text-fg"
+          >
+            <Sparkles className="size-4" />
+          </button>
+        )}
         <button
-          title={t('fileheader.explain-with-copilot')}
-          onClick={onExplain}
+          title={t('fileheader.more')}
+          onClick={(e) => open(e, items())}
           className="shrink-0 rounded p-0.5 text-muted hover:bg-hover hover:text-fg"
         >
-          <Sparkles className="size-4" />
+          <MoreHorizontal className="size-4" />
         </button>
-      )}
-      <button
-        title={t('fileheader.more')}
-        onClick={(e) => open(e, items())}
-        className="shrink-0 rounded p-0.5 text-muted hover:bg-hover hover:text-fg"
-      >
-        <MoreHorizontal className="size-4" />
-      </button>
+      </div>
       {menu}
     </div>
   )

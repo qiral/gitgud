@@ -29,15 +29,18 @@ try {
   const filter = await browser.$('input[placeholder="Filter or create a branch"]')
   await filter.waitForDisplayed({ timeout: 30000 })
 
-  // The list right after the filter input's form: named by where it is, not by
-  // a Tailwind class, which changes with the styling.
-  const rows = await browser.execute(() =>
-    [
-      ...document.querySelectorAll(
-        'form:has(> input[placeholder="Filter or create a branch"]) + ul > li > button:first-child',
-      ),
-    ].map((b) => b.innerText.trim()),
-  )
+  // The dropdown is found from its filter input, not from a layout class that
+  // changes with the toolbar's own styling. Every branch row is the first
+  // button of its `li`, so a row's badge or menu icon never becomes its name.
+  const rows = await browser.execute(() => {
+    const filter = document.querySelector(
+      'input[placeholder="Filter or create a branch"]',
+    )
+    const list = filter?.closest('div')?.querySelector('ul')
+    return [...(list?.querySelectorAll('li > button:first-child') ?? [])].map(
+      (b) => b.innerText.trim(),
+    )
+  })
 
   const names = git('branch', '--format=%(refname:short)').split('\n')
   for (const name of names) {

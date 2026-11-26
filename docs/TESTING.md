@@ -161,7 +161,7 @@ bug in the lab.
 
 The specs are plain `node` scripts, not a runner's files: nothing named
 `*.e2e.ts` or `*.test.ts`, so neither Playwright nor vitest collects any of
-it, and `npm run build` does not type check it either. Four of them, four
+it, and `npm run build` does not type check it either. Five of them, five
 slices:
 
 - **smoke.** The window opens with the debug binary, the title is `GitGud`, the
@@ -180,6 +180,10 @@ slices:
   the author, including the dotted capital I that a lowercase alone gets
   wrong. git runs under `LC_ALL=C` and folds ASCII only, so this is the one
   spec that fails if the case folding moves back into git's hands.
+- **branch-shadow.** Tags the fixture's `feature/login` with the same name
+  first, then reads the menu back: the branch is listed under its own name,
+  and clicking the row moves HEAD onto it. A short ref name resolves against
+  every ref, so this is the shape that used to hide the branch.
 
 The fixture is `applab/fixtures/make-repo.sh`: three commits with fixed dates
 and a fixed identity, a `feature/login` branch, and a rename in the last commit.
