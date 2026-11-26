@@ -29,10 +29,10 @@ try {
   console.log(`  ok: real window, title ${JSON.stringify(shown.title)}`)
   console.log('  ok: the start screen rendered with the real IPC behind it')
 
-  // The app's own minimum window size, 800x600. Narrow widths are where this
+  // The app's own minimum window size, 800x500. Narrow widths are where this
   // layout has broken before, and one claim is enough: nothing hangs off the
   // side of the window.
-  await browser.setWindowSize(800, 600)
+  await browser.setWindowSize(800, 500)
   await browser.pause(300)
   const fit = await browser.execute(() => ({
     portrait: window.innerWidth,
@@ -44,7 +44,7 @@ try {
     )
   }
   console.log(
-    `  ok: no sideways overflow at 800x600 (${fit.content}px of ${fit.portrait}px)`,
+    `  ok: no sideways overflow at 800x500 (${fit.content}px of ${fit.portrait}px)`,
   )
 } finally {
   await browser.deleteSession()

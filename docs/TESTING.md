@@ -166,7 +166,7 @@ slices:
 
 - **smoke.** The window opens with the debug binary, the title is `GitGud`, the
   start screen shows its two buttons, the page has a real Tauri bridge, and at
-  the app's minimum window of 800x600 the screen does not run off the side.
+  the app's minimum window of 800x500 the screen does not run off the side.
 - **open.** Opens the fixture through the recents list, then reads the
   repository off the screen: every commit subject `git log` reports, every
   branch `git branch` reports. This is the first test here that crosses the

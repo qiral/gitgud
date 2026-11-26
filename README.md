@@ -183,6 +183,7 @@ Other commands:
 | `npm run build`                                   | Type-check and build the frontend  |
 | `npm test`                                        | Run the frontend unit tests        |
 | `npm run test:e2e`                                | Drive the web UI in a real browser |
+| `npm run test:app`                                | Drive the real app window locally  |
 | `npm run format`                                  | Format the frontend with Prettier  |
 
 The browser tests and the advisory visual baselines are explained in [docs/TESTING.md](docs/TESTING.md).
