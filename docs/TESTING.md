@@ -1,12 +1,14 @@
 # Testing
 
-Three layers, each catching what the one above it can't.
+Three layers, each catching what the one above it can't. A fourth one drives the
+real app and is run by hand; see [The app lab](#the-app-lab).
 
 | Layer | Command | What it proves |
 | --- | --- | --- |
 | Unit and component tests (vitest, jsdom) | `npm test` | Components render and behave with mocked IPC; the git parsers, paths and time helpers are correct |
 | e2e functional (Playwright) | `npm run test:e2e` | The real page in a real browser: the start screen and the clone dialog render, respond and log nothing |
 | e2e visual (Playwright) | `npm run test:visual` | The pixels of those screens, compared against committed baselines |
+| app lab (WebDriver, local only) | `npm run test:app` | The real window over the real IPC: a repository opens and a branch gets made, checked on disk |
 
 The Rust side has its own tests; see the CI workflow.
 
@@ -135,20 +137,110 @@ run it in the container before believing the diff. Keep the image tag, the
 `@playwright/test` version in `package.json` and the tag in
 `.github/workflows/ci.yml` in step with each other.
 
+## The app lab
+
+Everything above drives the web UI. The app lab drives the app: a real
+window, the real IPC, the real Rust commands, real `git` on a real repository.
+It is a local tool, not a gate, and it lives in `applab/`.
+
+```bash
+npm run test:app                  # the debug binary as it was built
+npm run test:app -- --rebuild     # build it first, then run
+npm run test:app -- --only open   # one spec, by file name
+```
+
+Every spec talks to the window through WebDriver: `tauri-driver` in front,
+`WebKitWebDriver` behind it, both started and stopped by `applab/run.sh`. The
+script checks its prerequisites and says which package is missing, starts its
+own `Xvfb` on the first free display, points the app's data, cache and config
+directories at a temp dir so the run always begins on the start screen, makes
+a fixture repository, runs the specs, and tears all of it down through a trap.
+A failed run leaves no window, no driver and no X server behind. On Wayland it
+unsets `WAYLAND_DISPLAY`, because a window that lands on your own desktop is a
+bug in the lab.
+
+The specs are plain `node` scripts, not a runner's files: nothing named
+`*.e2e.ts` or `*.test.ts`, so neither Playwright nor vitest collects any of
+it, and `npm run build` does not type check it either. Three of them, three
+slices:
+
+- **smoke.** The window opens with the debug binary, the title is `GitGud`, the
+  start screen shows its two buttons, the page has a real Tauri bridge, and at
+  the app's minimum window of 800x600 the screen does not run off the side.
+- **open.** Opens the fixture through the recents list, then reads the
+  repository off the screen: every commit subject `git log` reports, every
+  branch `git branch` reports. This is the first test here that crosses the
+  click, the IPC, Rust and `git` in one line.
+- **branch.** Types a new branch name into the branch menu, presses Enter, and
+  then asks `git` in the fixture: HEAD is the new branch, and it points at
+  main's tip. What the app says is not the assertion; the disk is.
+
+The fixture is `applab/fixtures/make-repo.sh`: three commits with fixed dates
+and a fixed identity, a `feature/login` branch, and a rename in the last commit.
+No network, no clock, the same history on every machine.
+
+The start screen's own Open repository button opens a native GTK picker, which
+WebDriver cannot see into. So the lab seeds one recents entry in the WebView's
+`localStorage` and clicks that row; the click calls the same `open_repo` command
+the picker calls, so the chain under test is unchanged.
+
+### Prerequisites
+
+| | |
+| --- | --- |
+| Arch Linux | `sudo pacman -S webkitgtk-6.0 xorg-server-xvfb` |
+| Debian, Ubuntu | `sudo apt install webkit2gtk-driver xvfb` |
+| anywhere | `cargo install tauri-driver --locked` |
+
+Plus `git`, `node` and a debug build. `applab/run.sh` names whichever of these
+is missing, and refuses to start without it.
+
+If this machine needs something extra to build the debug app (a non-standard
+OpenSSL prefix, say), put the whole command in `LAB_BUILD_CMD`:
+
+```bash
+LAB_BUILD_CMD='PKG_CONFIG_PATH=/opt/openssl/lib/pkgconfig npm run tauri build -- --debug --no-bundle' \
+  npm run test:app -- --rebuild
+```
+
+### What it does not cover
+
+The desktop shell is now reachable, but not entirely. The native file picker,
+the updater, the OS menus and window chrome are all still outside it: WebDriver
+drives the webview, not the window around it. Drag and drop is off in this app
+(`dragDropEnabled: false`) and so is untested here. macOS is out too, because the
+Tauri WebDriver has no macOS driver. And the lab is X11 on Linux, one window per
+session.
+
+It is also one machine's worth of trust, not a portable gate: spawning the debug
+app once per spec costs a few seconds each, and what is green here is green on
+Linux WebKitGTK on this box, not on someone else's.
+
+### Why it is not in CI
+
+Because it is exactly the thing the watchlist note above says it is: pre-alpha,
+a browser engine driven through two intermediaries, and a display server that a
+runner has to fake. Nothing in `.github/workflows/` runs it, and nothing should
+until it has run locally for a while without surprising anyone. The watchlist
+decision has not changed: the app lab is a local tool for bug hunting, and the
+units, the mocked e2e specs and the parity lab stay the gates.
+
 ## What this does not cover
 
 - **The mock is a map, not the territory.** The specs prove the UI layer
   renders and reacts; they don't run git, Rust or the real IPC. A spec can pass
   while the app is broken, so when a change touches `src-tauri/`, read it and
-  test it there (`cargo test`).
+  test it there (`cargo test`), or send the app lab through it.
 - **The desktop shell is not covered.** Window chrome, menus, drag and drop,
   the native file picker and the updater are out of reach for a browser. The
   official route for that is WebDriver (`tauri-driver`), which is still
   pre-alpha, needs `webkit2gtk-driver` and `xvfb` in CI, and doesn't support
-  macOS. It stays on the watchlist rather than in this repo.
+  macOS. It stays on the watchlist rather than in this repo. The app lab above
+  uses it locally, which is the one place it has been made to fit.
 - **Chromium is not WebKitGTK.** Tauri uses WebKit on Linux and macOS, so the
-  tests exercise the same React code in a different engine. Fine for layout and
-  logic, not proof of identical rendering in the app window.
+  tests above exercise the same React code in a different engine. Fine for
+  layout and logic, not proof of identical rendering in the app window. The app
+  lab runs the same WebKitGTK the app ships on Linux, one engine in one window.
 - **Only the start screen and the clone dialog have baselines.** The repo view
   needs a repository and much more fixture data; it has unit tests, not
   screenshots.

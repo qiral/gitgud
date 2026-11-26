@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test --project functional",
+    "test:app": "applab/run.sh",
     "test:visual": "playwright test --project visual",
     "test:visual:update": "playwright test --project visual --update-snapshots"
   },
@@ -40,7 +41,8 @@
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.3",
     "vite": "^8.0.16",
-    "vitest": "^5.0.4"
+    "vitest": "^5.0.4",
+    "webdriverio": "^10.2.0"
   },
   "license": "MIT"
 }
