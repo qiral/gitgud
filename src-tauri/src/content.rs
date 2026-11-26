@@ -2,6 +2,7 @@
 //! lines around its hunks, and pictures.
 
 use base64::Engine;
+use std::ffi::OsString;
 use std::path::Path;
 
 use crate::git::{self, file_in_repo, writable_file_in_repo, GitError, Result};
@@ -24,16 +25,25 @@ fn read(repo: &Path, path: &str, at: &str, limit: usize) -> Result<Option<Vec<u8
             Err(e) => Err(e.into()),
         };
     }
+    // The object name carries the file's name, which may not be text: it
+    // is built from the bytes the name really is.
     let object = if at == "index" {
-        format!(":0:{path}")
+        let mut object = OsString::from(":0:");
+        object.push(git::path_arg(path)?);
+        object
     } else {
         match git::resolve_commit(repo, at) {
-            Ok(commit) => format!("{commit}:{path}"),
+            Ok(commit) => {
+                let mut object = OsString::from(commit);
+                object.push(":");
+                object.push(git::path_arg(path)?);
+                object
+            }
             // E.g. the parent of the first commit.
             Err(_) => return Ok(None),
         }
     };
-    let size = git::output(repo, &["cat-file", "-s", &object])?;
+    let size = git::output_os(repo, &["cat-file", "-s"], &object)?;
     if !size.status.success() {
         return Ok(None);
     }
@@ -41,7 +51,7 @@ fn read(repo: &Path, path: &str, at: &str, limit: usize) -> Result<Option<Vec<u8
     if size.trim().parse::<usize>().unwrap_or(0) > limit {
         return Err(too_big());
     }
-    let out = git::output(repo, &["cat-file", "blob", &object])?;
+    let out = git::output_os(repo, &["cat-file", "blob"], &object)?;
     Ok(out.status.success().then_some(out.stdout))
 }
 
@@ -50,7 +60,13 @@ pub fn text(repo: &Path, path: &str, at: &str) -> Result<Option<String>> {
 }
 
 fn image_type(path: &str) -> Option<&'static str> {
-    let (_, extension) = path.rsplit_once('.')?;
+    // A name that isn't valid UTF-8 arrives in the quoted form; the part
+    // after the last dot is the extension either way.
+    let name = path
+        .strip_prefix('"')
+        .and_then(|p| p.strip_suffix('"'))
+        .unwrap_or(path);
+    let (_, extension) = name.rsplit_once('.')?;
     Some(match extension.to_ascii_lowercase().as_str() {
         "png" => "image/png",
         "jpg" | "jpeg" => "image/jpeg",

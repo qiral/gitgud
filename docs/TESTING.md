@@ -161,7 +161,7 @@ bug in the lab.
 
 The specs are plain `node` scripts, not a runner's files: nothing named
 `*.e2e.ts` or `*.test.ts`, so neither Playwright nor vitest collects any of
-it, and `npm run build` does not type check it either. Seven of them, seven
+it, and `npm run build` does not type check it either. Eight of them, eight
 slices:
 
 - **smoke.** The window opens with the debug binary, the title is `GitGud`, the
@@ -195,6 +195,10 @@ slices:
   first, then reads the menu back: the branch is listed under its own name,
   and clicking the row moves HEAD onto it. A short ref name resolves against
   every ref, so this is the shape that used to hide the branch.
+- **non-utf8-name.** Creates a file whose name is not valid UTF-8, then works
+  its row through the window: stage, unstage, Stage all. The name travels in
+  git's own quoted form, and the index on disk is the truth: the staged blob
+  hash matches the real bytes, and no U+FFFD shows up anywhere.
 
 The fixture is `applab/fixtures/make-repo.sh`: three commits with fixed dates
 and a fixed identity, a `feature/login` branch, and a rename in the last commit.
