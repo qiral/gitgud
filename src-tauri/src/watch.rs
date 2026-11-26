@@ -321,6 +321,14 @@ fn matters(
     #[cfg(not(target_os = "linux"))]
     drop(new_folders);
 
+    // Shown when a test fails: what made a batch count.
+    #[cfg(test)]
+    eprintln!(
+        "watch: git={git} tree={:?}",
+        tree.iter()
+            .filter(|p| !ignored.contains(*p))
+            .collect::<Vec<_>>()
+    );
     git || tree.iter().any(|p| !ignored.contains(p))
 }
 
@@ -394,8 +402,9 @@ mod tests {
 
     /// Whether a change was reported, after letting earlier ones settle.
     fn reported(rx: &Receiver<()>, what: impl FnOnce()) -> bool {
-        std::thread::sleep(Duration::from_millis(300));
-        while rx.try_recv().is_ok() {}
+        // macOS and Windows deliver one write as several events, sometimes
+        // well apart: wait for a whole second without any.
+        while rx.recv_timeout(Duration::from_secs(1)).is_ok() {}
         what();
         rx.recv_timeout(Duration::from_secs(3)).is_ok()
     }
