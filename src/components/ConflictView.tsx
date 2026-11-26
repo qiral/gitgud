@@ -75,8 +75,8 @@ export default function ConflictView({
 
   return (
     <div className="flex min-h-full flex-col">
-      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b border-line bg-panel px-3 py-2">
-        <span className="min-w-0 flex-1 truncate font-medium" title={file.path}>
+      <div className="sticky top-0 z-10 flex flex-col gap-2 border-b border-line bg-panel px-3 py-2">
+        <span className="min-w-0 truncate font-medium" title={file.path}>
           {file.path}
           <span className="ml-2 font-normal text-muted">
             {parts
@@ -86,31 +86,46 @@ export default function ConflictView({
               : ''}
           </span>
         </span>
-        <Button
-          onClick={() =>
-            act('resolve', () => git.resolveFile(repo.path, file.path, 'ours'))
-          }
-        >
-          {t('conflictview.use-ours-for-the-whole-file')}
-        </Button>
-        <Button
-          onClick={() =>
-            act('resolve', () =>
-              git.resolveFile(repo.path, file.path, 'theirs'),
-            )
-          }
-        >
-          {t('conflictview.use-theirs-for-the-whole-file')}
-        </Button>
-        <Button
-          primary
-          disabled={!parts || conflicts > 0}
-          onClick={() =>
-            act('resolve', () => git.markResolved(repo.path, file.path))
-          }
-        >
-          <Check className="size-3.5" /> {t('conflictview.mark-as-resolved')}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            className="min-w-0"
+            title={t('conflictview.use-ours-for-the-whole-file')}
+            onClick={() =>
+              act('resolve', () =>
+                git.resolveFile(repo.path, file.path, 'ours'),
+              )
+            }
+          >
+            <span className="truncate">
+              {t('conflictview.use-ours-for-the-whole-file')}
+            </span>
+          </Button>
+          <Button
+            className="min-w-0"
+            title={t('conflictview.use-theirs-for-the-whole-file')}
+            onClick={() =>
+              act('resolve', () =>
+                git.resolveFile(repo.path, file.path, 'theirs'),
+              )
+            }
+          >
+            <span className="truncate">
+              {t('conflictview.use-theirs-for-the-whole-file')}
+            </span>
+          </Button>
+          <Button
+            primary
+            className="shrink-0"
+            title={t('conflictview.mark-as-resolved')}
+            disabled={!parts || conflicts > 0}
+            onClick={() =>
+              act('resolve', () => git.markResolved(repo.path, file.path))
+            }
+          >
+            <Check className="size-3.5 shrink-0" />
+            {t('conflictview.mark-as-resolved')}
+          </Button>
+        </div>
       </div>
 
       {loadError ? (
@@ -305,18 +320,23 @@ function Button({
   primary,
   disabled,
   onClick,
+  title,
+  className = '',
   children,
 }: {
   primary?: boolean
   disabled?: boolean
   onClick: () => void
+  title?: string
+  className?: string
   children: React.ReactNode
 }) {
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium disabled:opacity-40 ${
+      title={title}
+      className={`flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium disabled:opacity-40 ${className} ${
         primary
           ? 'bg-accent text-on-accent hover:opacity-90'
           : 'border border-line text-fg hover:bg-hover'
